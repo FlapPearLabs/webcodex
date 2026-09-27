@@ -924,7 +924,7 @@ mod tests {
 
     #[test]
     fn structured_or_patch_edit_pre_result_hard_timeout_is_uncertain_not_rejected() {
-        for tool in ["edit_project_files", "apply_patch", "apply_unified_diff"] {
+        for tool in ["edit_project_files"] {
             let record = completion(tool, 0).record_for_pre_result_failure("dispatch_hard_timeout");
             assert!(!record.success);
             assert_eq!(record.error_kind.as_deref(), Some("dispatch_hard_timeout"));
@@ -1008,57 +1008,6 @@ mod tests {
             assert_eq!(record.edit_outcome.as_deref(), outcome);
             assert_eq!(record.edit_conflict_kind.as_deref(), conflict_kind);
         }
-
-        let unified_diff_cases = [
-            (
-                true,
-                json!({"applied": true, "can_apply": true, "policy_blocked": false, "error_kind": null}),
-                Some("applied"),
-            ),
-            (
-                true,
-                json!({"applied": false, "can_apply": false, "policy_blocked": false, "error_kind": "not_applicable"}),
-                Some("not_applicable"),
-            ),
-            (
-                true,
-                json!({"applied": false, "can_apply": false, "policy_blocked": true, "error_kind": "policy_blocked"}),
-                Some("policy_blocked"),
-            ),
-            (
-                false,
-                json!({"applied": false, "can_apply": null, "policy_blocked": false, "error_kind": "unsupported_diff_format"}),
-                Some("malformed"),
-            ),
-            (
-                false,
-                json!({"applied": null, "can_apply": true, "policy_blocked": false, "error_kind": "outcome_unknown"}),
-                Some("uncertain"),
-            ),
-            (
-                false,
-                json!({"applied": false, "can_apply": true, "policy_blocked": false, "error_kind": "apply_failed"}),
-                Some("apply_failed"),
-            ),
-            (
-                false,
-                json!({"applied": false, "can_apply": null, "policy_blocked": false, "error_kind": "project_unavailable"}),
-                Some("rejected"),
-            ),
-        ];
-        for (success, output, outcome) in unified_diff_cases {
-            let result = if success {
-                ToolResult::ok(output)
-            } else {
-                ToolResult::err_with_output("private", output)
-            };
-            let record = completion("apply_unified_diff", 0)
-                .record_for_tool_result(&result)
-                .unwrap();
-            assert_eq!(record.edit_surface.as_deref(), Some("structured_or_patch"));
-            assert_eq!(record.edit_outcome.as_deref(), outcome);
-            assert_eq!(record.edit_conflict_kind, None);
-        }
     }
 
     #[test]
@@ -1091,15 +1040,6 @@ mod tests {
             assert_eq!(record.edit_outcome, None);
             assert_eq!(record.edit_conflict_kind, None);
         }
-
-        for tool in ["write_project_file"] {
-            let record = completion(tool, 0)
-                .record_for_tool_result(&ToolResult::ok(json!({"changed": true})))
-                .unwrap();
-            assert_eq!(record.edit_surface.as_deref(), Some("whole_file"));
-            assert_eq!(record.edit_outcome, None);
-            assert_eq!(record.edit_conflict_kind, None);
-        }
     }
 
     #[test]
@@ -1122,9 +1062,16 @@ mod tests {
     }
 
     #[test]
-    fn retired_and_internal_tools_do_not_start_generic_model_usage_telemetry() {
-        assert!(ModelErgonomicsTimer::start("start_coding_task").is_none());
-        assert!(ModelErgonomicsTimer::start("definitely_internal_helper").is_none());
+    fn retired_internal_and_exact_specialist_tools_do_not_start_generic_model_usage_telemetry() {
+        for tool in [
+            "start_coding_task",
+            "definitely_internal_helper",
+            "apply_patch",
+            "apply_unified_diff",
+            "write_project_file",
+        ] {
+            assert!(ModelErgonomicsTimer::start(tool).is_none(), "{tool}");
+        }
     }
 
     #[test]

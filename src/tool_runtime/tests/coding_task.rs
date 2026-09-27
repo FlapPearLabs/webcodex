@@ -371,8 +371,9 @@ async fn coding_workflow_full_diagnostic_has_no_binding_projection() {
         .as_array()
         .unwrap();
     assert!(contains_string(edit, "edit_project_files"));
-    assert!(contains_string(edit, "apply_unified_diff"));
-    assert!(contains_string(edit, "write_project_file"));
+    for specialist in ["apply_patch", "apply_unified_diff", "write_project_file"] {
+        assert!(!contains_string(edit, specialist), "{specialist}");
+    }
     assert!(!contains_string(edit, "replace_line_range"));
     assert!(!contains_string(edit, "insert_at_line"));
     assert!(!contains_string(edit, "delete_line_range"));

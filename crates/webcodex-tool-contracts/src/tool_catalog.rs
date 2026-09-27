@@ -14,7 +14,6 @@ pub const TOOL_DISCOVERY_GROUP_GIT: &str = "git";
 pub const TOOL_DISCOVERY_GROUP_GOAL: &str = "goal";
 pub const TOOL_DISCOVERY_GROUP_INSPECT: &str = "inspect";
 pub const TOOL_DISCOVERY_GROUP_JOBS: &str = "jobs";
-pub const TOOL_DISCOVERY_GROUP_PATCH: &str = "patch";
 pub const TOOL_DISCOVERY_GROUP_PROJECTS: &str = "projects";
 pub const TOOL_DISCOVERY_GROUP_REVIEW: &str = "review";
 pub const TOOL_DISCOVERY_GROUP_RUNTIME: &str = "runtime";
@@ -181,10 +180,6 @@ pub const TOOL_DISCOVERY_GROUPS: &[ToolDiscoveryGroup] = &[
             "code_mode_exec_effectful",
             "validation_summary",
         ],
-    },
-    ToolDiscoveryGroup {
-        name: TOOL_DISCOVERY_GROUP_PATCH,
-        tools: &["apply_patch", "apply_unified_diff"],
     },
     ToolDiscoveryGroup {
         name: TOOL_DISCOVERY_GROUP_EDIT,

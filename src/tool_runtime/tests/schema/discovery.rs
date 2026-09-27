@@ -669,7 +669,6 @@ fn tool_discovery_groups_drive_tool_categories() {
     );
 
     for allowed in [
-        "apply_unified_diff",
         "cargo_check",
         "cargo_fmt",
         "cargo_test",
@@ -1207,7 +1206,6 @@ async fn tool_manifest_intent_coding_returns_ranked_compact_tools() {
         );
     }
     for gateway_specialist in [
-        "apply_patch",
         "cargo_fmt",
         "go_test",
         "workspace_hygiene_check",

@@ -117,12 +117,14 @@ async fn kernel_generic_telemetry_and_edit_enrichment_each_emit_once() {
     let outcome = runtime
         .call_tool_with_context(
             super::super::kernel::ToolCallRequest {
-                tool_name: "write_project_file".to_string(),
+                tool_name: "edit_project_files".to_string(),
                 arguments: json!({
                     "project": "agent:oe:missing",
-                    "path": "src/private.rs",
-                    "content": "PRIVATE edit body",
-                    "overwrite": true
+                    "changes": [{
+                        "kind": "create",
+                        "path": "src/private.rs",
+                        "content": "PRIVATE edit body"
+                    }]
                 }),
             },
             super::super::kernel::ToolCallContext {
@@ -142,7 +144,7 @@ async fn kernel_generic_telemetry_and_edit_enrichment_each_emit_once() {
         .expect("one generic model-visible completion")
         .record_for_tool_result(result)
         .expect("generic record");
-    assert_eq!(generic.tool_name, "write_project_file");
+    assert_eq!(generic.tool_name, "edit_project_files");
     assert_eq!(generic.tool_category, "edit");
     assert_eq!(generic.success, result.success);
 
@@ -152,7 +154,7 @@ async fn kernel_generic_telemetry_and_edit_enrichment_each_emit_once() {
         1,
         "edit-specific enrichment must remain one event"
     );
-    assert_eq!(edit_events[0].tool_name, "write_project_file");
+    assert_eq!(edit_events[0].tool_name, "edit_project_files");
 }
 
 #[tokio::test]
@@ -252,8 +254,8 @@ fn edit_surface_table_matches_mutation_form_contract() {
 fn sample_edit_tool_args_are_not_required_by_telemetry_module() {
     // Sanity: telemetry classification is name-only; sample args (paths/content)
     // used elsewhere for schema fixtures must not be needed to classify tools.
-    // `apply_text_edits` is the small exact guarded-edit fallback and can
-    // synthesize args from its spec; telemetry classification is name-only and
+    // `edit_project_files` is the primary structured editor and can synthesize
+    // args from its spec; telemetry classification is name-only and
     // is asserted via `edit_tool_surface` above, so no sample-args construction
     // is required beyond the canonical tools.
     let _ = sample_tool_args("edit_project_files");
