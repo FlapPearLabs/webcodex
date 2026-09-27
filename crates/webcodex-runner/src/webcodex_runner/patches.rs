@@ -374,12 +374,14 @@ const APPLY_TEXT_EDITS_MAX_FILE_BYTES: usize = 2 * 1024 * 1024; // 2 MiB
 // The edit wire types, batch/edit limits, and the sensitive-path guard are
 // shared verbatim with the host write path via `apply_edits_shared`; use the
 // neutral shared type names directly rather than preserving Runner-local aliases.
+#[cfg(test)]
+use crate::apply_edits_shared::ApplyTextLineScope;
 use crate::apply_edits_shared::{
     canonicalize_apply_text_line_endings, detect_apply_text_line_ending,
     is_lowercase_hex_sha256 as is_hex_sha256, is_sensitive_edit_path,
     resolve_apply_text_bulk_matches, resolve_apply_text_match, restore_apply_text_line_endings,
     ApplyFileChangeInput, ApplyFileChangeKind, ApplyTextEditInput, ApplyTextEditKind,
-    ApplyTextLineEnding, ApplyTextLineScope, ApplyTextMatchConflict, ApplyTextMatchConflictKind,
+    ApplyTextLineEnding, ApplyTextMatchConflict, ApplyTextMatchConflictKind,
     MAX_APPLY_FILE_CHANGES as APPLY_TEXT_EDITS_MAX_CHANGES,
     MAX_APPLY_TEXT_EDITS as APPLY_TEXT_EDITS_MAX_EDITS,
     MAX_APPLY_TEXT_EDIT_FIELD_BYTES as APPLY_TEXT_EDITS_MAX_FIELD_BYTES,
