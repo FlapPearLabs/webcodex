@@ -349,6 +349,7 @@ fn edit_recommended_flow_converges_on_one_primary_editor() {
     for obsolete in [
         "canonical default even when many lines change",
         "after read_files, apply_text_edits with current sha is the default",
+        "apply_patch for patch-shaped changes",
     ] {
         assert!(
             !guidance.contains(obsolete),
@@ -469,16 +470,16 @@ fn tool_categories_and_recommended_flows_are_well_formed() {
         .take(5)
         .map(|value| value.as_str().unwrap())
         .collect::<Vec<_>>();
-    assert_eq!(
-        edit_prefix,
-        vec![
-            "edit_project_files",
-            "save_project_artifact",
-            "read_project_artifact_metadata",
-            "read_project_artifact",
-            "import_conversation_files_to_project"
-        ]
-    );
+    let mut expected_edit_prefix = vec!["edit_project_files", "save_project_artifact"];
+    #[cfg(feature = "experimental-code-mode")]
+    expected_edit_prefix.push("code_mode_exec_mutating");
+    expected_edit_prefix.extend([
+        "read_project_artifact_metadata",
+        "read_project_artifact",
+        "import_conversation_files_to_project",
+    ]);
+    expected_edit_prefix.truncate(5);
+    assert_eq!(edit_prefix, expected_edit_prefix);
     let file_transfer = categories[TOOL_DISCOVERY_GROUP_FILE_TRANSFER]
         .as_array()
         .expect("file_transfer category present");

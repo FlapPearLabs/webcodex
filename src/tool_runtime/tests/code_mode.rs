@@ -925,7 +925,7 @@ async fn e2a_denies_mutation_shell_recursion_and_invalid_validator_before_busine
     for (label, source) in [
         (
             "edit_project_files",
-            "await tools.apply_text_edits({changes: []});",
+            "await tools.edit_project_files({changes: []});",
         ),
         (
             "run_shell",

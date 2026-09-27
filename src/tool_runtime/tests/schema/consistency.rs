@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn apply_text_edits_metadata_mcp_openapi_consistency() {
+fn edit_project_files_metadata_mcp_openapi_consistency() {
     use crate::tool_runtime::tool_definition::TOOL_DISCOVERY_GROUP_EDIT;
 
     // Known name + spec + metadata coverage. registered_tool_specs() backs
@@ -12,7 +12,7 @@ fn apply_text_edits_metadata_mcp_openapi_consistency() {
     let specs = registered_tool_specs();
     assert!(
         specs.iter().any(|s| s.name == "edit_project_files"),
-        "apply_text_edits must appear in registered tool specs (list_tools + MCP tools/list)"
+        "edit_project_files must appear in registered tool specs (list_tools + MCP tools/list)"
     );
     for spec in &specs {
         assert!(

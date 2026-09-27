@@ -2766,10 +2766,15 @@ async fn http_tools_list_includes_phase4_edit_tools() {
     ] {
         assert!(!names.iter().any(|n| n == removed));
     }
-    assert!(names.iter().any(|n| n == "write_project_file"));
+    for hidden in webcodex_tool_contracts::EXACT_MANIFEST_SPECIALIST_TOOL_NAMES {
+        assert!(
+            !names.iter().any(|n| n == hidden),
+            "exact-manifest specialist leaked into ordinary tools/list: {hidden}"
+        );
+    }
     assert_eq!(body["count"], names.len());
     let tools = body["tools"].as_array().unwrap();
-    for name in ["read_files", "run_shell", "write_project_file"] {
+    for name in ["read_files", "run_shell", "edit_project_files"] {
         let tool = tools
             .iter()
             .find(|tool| tool["name"] == name)

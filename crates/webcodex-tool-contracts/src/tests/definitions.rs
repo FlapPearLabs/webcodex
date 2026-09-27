@@ -130,7 +130,7 @@ fn experimental_code_mode_mutating_has_conservative_e2c_combined_authority_envel
     assert_eq!(metadata.idempotency, ToolIdempotency::NonIdempotent);
     assert!(
         metadata.destructive,
-        "E2c can create/edit/delete/rename through canonical apply_text_edits"
+        "E2c can create/edit/delete/rename through canonical edit_project_files"
     );
     assert_eq!(
         metadata.authority,
@@ -862,7 +862,12 @@ fn adaptive_runtime_direct_declarations_are_visible_ranked_and_unique() {
         expected_gpt_action_direct,
         "GPT Actions direct exposure must inherit Adaptive Direct ordering minus definition-owned unsupported/gateway-only exceptions"
     );
-    assert!(!gpt_action_tool_supported("apply_patch"));
+    for specialist in EXACT_MANIFEST_SPECIALIST_TOOL_NAMES {
+        assert!(
+            gpt_action_tool_supported(specialist),
+            "{specialist} must remain GPT-Action gateway-callable by exact name"
+        );
+    }
     #[cfg(feature = "experimental-code-mode")]
     {
         assert!(gpt_action_tool_supported("code_mode_exec_effectful"));

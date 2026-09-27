@@ -1015,7 +1015,7 @@ fn code_mode_mutating_schema_keeps_authority_outer_bound_and_mutation_scope_narr
     let source_description = properties["source"]["description"]
         .as_str()
         .unwrap_or_default();
-    assert!(source_description.contains("at most one canonical apply_text_edits attempt"));
+    assert!(source_description.contains("at most one canonical edit_project_files attempt"));
     assert!(
         source_description.contains("cargo_check/cargo_test only after a successful known edit")
     );

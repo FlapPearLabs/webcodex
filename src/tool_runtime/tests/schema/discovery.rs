@@ -1645,8 +1645,8 @@ async fn filtered_tool_manifest_recommended_flows_only_reference_returned_tools(
         "coding intent tools should expose canonical precise edits: {coding_names:?}"
     );
     assert!(
-        coding_names.contains(&"apply_patch"),
-        "coding intent tools should expose model-generated Codex patch mutation: {coding_names:?}"
+        !coding_names.contains(&"apply_patch"),
+        "exact-manifest patch specialist should stay outside ordinary coding intent: {coding_names:?}"
     );
     assert!(
         !coding_names.contains(&"apply_unified_diff"),
@@ -1733,8 +1733,8 @@ async fn filtered_tool_manifest_recommended_flows_only_reference_returned_tools(
         .filter_map(|tool| tool["name"].as_str())
         .collect();
     assert!(
-        with_patch_tools.contains(&"apply_patch"),
-        "with patch category, tools should include apply_patch: {with_patch_tools:?}"
+        !with_patch_tools.contains(&"apply_patch"),
+        "coding intent must not reintroduce exact-manifest apply_patch even when patch category is requested: {with_patch_tools:?}"
     );
     assert!(
         !with_patch_tools.contains(&"apply_unified_diff"),
@@ -1751,8 +1751,8 @@ async fn filtered_tool_manifest_recommended_flows_only_reference_returned_tools(
             .as_array()
             .unwrap()
             .iter()
-            .any(|tool| tool == "apply_patch"),
-        "with patch category, edit flow may include apply_patch: {edit_flow}"
+            .all(|tool| tool != "apply_patch"),
+        "filtered coding edit flow must not reintroduce exact-manifest apply_patch: {edit_flow}"
     );
     assert!(
         edit_flow["tools"]

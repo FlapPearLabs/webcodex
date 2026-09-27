@@ -1961,7 +1961,7 @@ pub enum ToolCall {
         /// Required exact Workflow Session. Every nested child remains a canonical ToolRuntime invocation in this same Session.
         #[schemars(regex(pattern = "^wc_sess_([A-Za-z0-9_-]{16}|[0-9a-f]{32})$"))]
         session_id: String,
-        /// Experimental E2c source: E1 reads, at most one canonical apply_text_edits attempt, then cargo_check/cargo_test only after a successful known edit (including no-op). Use read_revision for guarded edits. Inspect source_state independently of execution success. Return Job handoffs to the outer workflow, never wait inside JS. No shell/process, nested Job observation, alternate writes, gateways, recursion or automatic whole-program retry.
+        /// Experimental E2c source: E1 reads, at most one canonical edit_project_files attempt, then cargo_check/cargo_test only after a successful known edit (including no-op). Use read_revision for guarded edits. Inspect source_state independently of execution success. Return Job handoffs to the outer workflow, never wait inside JS. No shell/process, nested Job observation, alternate writes, gateways, recursion or automatic whole-program retry.
         #[schemars(length(max = 65536))]
         source: String,
         /// Optional frontend decision deadline in milliseconds. Defaults to 5000, clamped to 1..30000. A short bounded drain preserves already-dispatched mutation/validation truth and exact Job continuations; timeout is not rollback or retry authority.
