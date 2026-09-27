@@ -685,7 +685,7 @@ fn edit_plan(
                     }),
                 });
             }
-            bulk_matches[index] = Some((matches.match_count, matches.candidate_ranges));
+            bulk_matches[index] = Some((matches.match_count, matches.evidence_ranges));
             let replacement: Arc<str> = replacement.into();
             for (start, end) in matches.ranges {
                 ops.push((start, end, replacement.clone(), index));

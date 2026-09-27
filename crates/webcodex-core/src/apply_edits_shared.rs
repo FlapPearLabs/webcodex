@@ -212,6 +212,10 @@ pub struct ApplyTextBulkMatches {
     pub ranges: Vec<(usize, usize)>,
     pub match_count: usize,
     pub candidate_ranges: Vec<ApplyTextMatchCandidate>,
+    /// Bounded source-order evidence for successful bulk exact edits. This is
+    /// intentionally wider than conflict recovery so reducing failure payloads
+    /// cannot silently shrink successful review evidence.
+    pub evidence_ranges: Vec<ApplyTextMatchCandidate>,
     pub candidates_truncated: bool,
 }
 
@@ -223,6 +227,7 @@ pub fn resolve_apply_text_bulk_matches(
     debug_assert!(!needle.is_empty());
     let mut ranges = Vec::new();
     let mut candidates = Vec::new();
+    let mut evidence_ranges = Vec::new();
     let mut global_occurrence = 0usize;
     let mut match_count = 0usize;
     let mut line_cursor = 0usize;
@@ -249,12 +254,16 @@ pub fn resolve_apply_text_bulk_matches(
             if candidates.len() < MAX_APPLY_TEXT_CONFLICT_CANDIDATES {
                 candidates.push(candidate);
             }
+            if evidence_ranges.len() < MAX_APPLY_TEXT_MATCH_RANGES_PER_EDIT {
+                evidence_ranges.push(candidate);
+            }
         }
     }
     ApplyTextBulkMatches {
         ranges,
         match_count,
         candidate_ranges: candidates,
+        evidence_ranges,
         candidates_truncated: match_count > MAX_APPLY_TEXT_CONFLICT_CANDIDATES,
     }
 }
@@ -557,6 +566,26 @@ mod tests {
         let second = resolve_apply_text_match(&source, "needle\n", Some(2), None).unwrap();
         assert_eq!(&source[second.0..second.1], "needle\n");
         assert!(second.0 > source.find("needle\n").unwrap());
+    }
+
+    #[test]
+    fn bulk_exact_keeps_success_evidence_wider_than_failure_candidates() {
+        let source = (1..=10)
+            .map(|index| format!("prefix-{index}\nneedle\n"))
+            .collect::<String>();
+        let matches = resolve_apply_text_bulk_matches(&source, "needle\n", None);
+        assert_eq!(matches.match_count, 10);
+        assert_eq!(
+            matches.candidate_ranges.len(),
+            MAX_APPLY_TEXT_CONFLICT_CANDIDATES
+        );
+        assert_eq!(
+            matches.evidence_ranges.len(),
+            MAX_APPLY_TEXT_MATCH_RANGES_PER_EDIT
+        );
+        assert!(matches.candidates_truncated);
+        assert_eq!(matches.candidate_ranges.last().unwrap().occurrence, 5);
+        assert_eq!(matches.evidence_ranges.last().unwrap().occurrence, 8);
     }
 
     #[test]
