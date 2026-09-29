@@ -38,6 +38,12 @@ pub use program::{
 #[cfg(unix)]
 mod unix;
 
+/// Per-action sandbox execution broker (SPIKE, round 34).
+///
+/// Research-only module. See its own docs for scope and for what it does not
+/// claim. Nothing in the workspace routes through it yet.
+pub mod execution_broker;
+
 #[cfg(windows)]
 mod windows;
 
