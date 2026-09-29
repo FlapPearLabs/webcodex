@@ -1,0 +1,106 @@
+CHECK 1: ACCEPT  
+  `COMPONENT_REUSE_MATRIX.md §2` now treats the adapter as a provisional recommendation, not a demonstrated winner over pinned-git dependency or bounded vendoring.
+
+CHECK 2: ACCEPT  
+  `SECURITY_INVARIANTS.md I9` and `REFERENCE_ARCHITECTURE.md §5` separate the existing pre-effect permission gate, the post-effect result classifier, and the proposed hard-deny floor.
+
+CHECK 3: ISSUE  
+  `IMPLEMENTATION_PLAN.md P3(7b')` first requires the confirmation affordance to appear only on a surface no model-driven route can reach. Its following paragraph concedes that Browser/Computer tools may drive the process-route confirmation UI and that this reachability is unmeasured. Withholding approval *through* those tools does not establish that a click they synthesize is a human decision. P3 can pass without the boundary its approval claim needs.
+
+CHECK 4: ISSUE  
+  `IMPLEMENTATION_PLAN.md P1a-R` explicitly blocks nothing, while P1a accepts only catalogued sites and cooperative callers of the audited spawn API. Raw spawning, exempt callers, and plan widening remain outside that control. The documents disclose the gap, but a passing P1a/P1b still cannot establish the brief’s hard requirement that the workspace sandbox cover the whole model-reachable process tree.
+
+CHECK 5: ACCEPT  
+  `IMPLEMENTATION_PLAN.md P1c(6)` and P5(6) use the same literal-IP/localhost release set: 1, 2, 3, 4, 5, 7, 9, 10. Hostname approval remains unavailable under this plan. This accepts the specified gate, **not** the untested Seatbelt rule.
+
+CHECK 6: ACCEPT  
+  `SECURITY_TEST_VECTORS.md PE-06` and `IMPLEMENTATION_PLAN.md P1b(13)` disclose the post-admission macOS hardlink escape instead of counting the admission walk or structured resolver as a standing shell control.
+
+CHECK 7: ACCEPT  
+  `REFERENCE_ARCHITECTURE.md §8` limits reviewer approval to a host-owned delegated set, empty by default, after hard floors.
+
+CHECK 8: ISSUE  
+  `SECURITY_TEST_VECTORS.md §8` still requires a credential-path floor to deny in danger mode and after human approval, while `SECURITY_TEST_VECTORS.md §4` and PE-06 admit listed secret content can be read through a post-admission shell hardlink. If HD-02/HD-03 mean **content access**, they overclaim; if they mean only **the listed pathname**, the vectors must say so. The current required-outcome cells do not make that distinction.
+
+CHECK 9: ISSUE  
+  `IMPLEMENTATION_PLAN.md P3-R` says no phase waits on UI isolation, yet P3 still calls its process-route confirmation “human approval” while admitting UI automation may operate that same confirmation. This is a delivery-condition problem, not merely an omitted future feature.
+
+CHECK 10: ACCEPT  
+  `COMPONENT_REUSE_MATRIX.md §§2–3` keeps unassessed reuse options open and conditions licensing obligations on copying, derivation, and distribution.
+
+CHECK 11: ACCEPT, LIMITED  
+  The review log and verifier text are present. `PART 0b` correctly says its self-published hashes are not provenance. The original files, assembler, prior evaluation, and upstream source are not submitted; their byte counts, hashes, and observations cannot be independently checked here.
+
+CHECK 12: ISSUE  
+  `research/verification/verify.py` is candid about its disabled criterion-reference check, but its `0 FAILURE(S)` cannot arbitrate CHECK 3, CHECK 4, or CHECK 8. The pasted output also cannot be tied independently to the pasted document bytes. It is a limited lexical result, not acceptance evidence for the security boundary.
+
+NEW DEFECTS INTRODUCED BY THE ROUND-29 REVISION:
+  - The P1a-R/P3-R split makes previously impossible phase gates satisfiable by moving the unresolved boundaries off every release path. That resolves the *gate contradiction* but not the brief’s whole-tree and human-approval requirements.
+
+NEWLY RAISED FINDINGS (not previously an issue in any round):
+  - `P3(7b')` simultaneously asserts that its displayed approval UI is unreachable and says its reachability from synthetic input is unmeasured. These are incompatible descriptions of the **same process-route UI**, not merely different UI routes.
+
+ROUND-28 FIXES A-H VERIFICATION:
+  - **A — PARTIAL:** The named matrix and network cells open with narrower claims; P3(7b') and the hard-deny content/path outcomes still lead with stronger claims. New surface: confirmation UI and alias reads.
+  - **B — APPLIED AS CLAIMED:** P1a-R records the `exec`/`fork` and attribution gaps. New surface: an unobserved raw child remains possible.
+  - **C — PARTIAL:** UI isolation moved to P3-R, but P3’s displayed confirmation remains model-drivable on the admitted evidence. New surface: synthetic approval of a process-route request.
+  - **D — APPLIED AS CLAIMED:** P1c(7) failure closes the network axis; no localhost-only release. New surface: none identified.
+  - **E — NOT FOUND:** Byte/character columns are supplied, but the assembler and original byte streams are absent. New surface: manifest-to-content identity.
+  - **F — PARTIAL:** The broken check is labelled disabled; its “checkable by eye” replacement is not verification of this large, table-heavy submission. New surface: undefined phase-local references.
+  - **G — APPLIED AS CLAIMED:** L48 no longer ranks the two failure modes. New surface: none identified.
+  - **H — APPLIED AS CLAIMED:** L56–L57 record the failed negative control and limit the checker’s authority. New surface: withdrawal-window false negatives.
+
+LOG-TRUTH AUDIT:
+  1. The Round-28 log’s `verify.py`-convention counts are historical counts, not counts of these revised documents. The pasted current output reports 557/447/1073/645/1296/682 lines and matching stated document byte counts. I cannot reproduce either run or compare original bytes.
+  2. Revised L48 declines an unsupported ranking. L52–L57 correctly distinguish counts, recomputable hashes, provenance, and negative controls.
+  3. The SHA-256 prefixes offer an accidental-mismatch check **only to someone holding the original bytes**. They authenticate neither this assembly nor its source.
+
+CELL-OPENS-WITH-THE-WEAK-CLAIM AUDIT:
+  - `P3(7b')`: “rendered only into a surface no model-driven route can reach” precedes the admission that Browser/Computer reachability of the displayed UI is unmeasured.
+  - `SECURITY_TEST_VECTORS.md HD-02/HD-03`: unconditional `DENY` precedes the separately admitted alias-based content-access limitation. The cells need an explicit pathname-only scope if that is their intent.
+
+NEGATIVE-CONTROL AUDIT:
+  1. I cannot certify every phase-local `criterion (N)` reference by eye from this submission; the supplied checker’s failed `(78)` control shows it cannot certify them either.
+  2. Plausible failing mutations for active checks are: move a P1b-owned phrase under P1c (container); insert a retired phrase outside a withdrawal window (stale-reference); add `FS-08` to a continued strict declaration (strict-list); insert `Invariant I9 holds` in live prose (retired-string). These are **proposed controls, not executions I performed**. The size section is informational.
+
+PRODUCER SWEEP:
+  - Pre-effect policy denial: **observed baseline property**; post-effect hard-deny classification is not its producer.
+  - Sandbox attachment, destination rules, secret path rules, and FD closure: **design proposals** with future probes, not observed confinement.
+  - Whole-tree attachment beyond cooperative/catalogued sites: **no preventive producer specified**; P1a-R’s proposed `ES_LOG` observer is detective and unshipped.
+  - Human-only confirmation against synthetic UI input: **no producer specified**; CP-07 is a test expected to fail, not isolation.
+  - Metadata and wildcard-bind denial: **specified P1c rules**, conditional on compilation and relevant negative tests, not delivered controls.
+
+SINGLE-DEFINITION AUDIT:
+  - P1c’s literal-IP/localhost gate agrees across P1c(6), P5(6), matrix §4, and NET-02/NET-04.
+  - Hostname approval consistently depends on unmet criterion (8).
+  - P3’s release condition does **not** have one coherent meaning: “only an unreachable display surface” and “display-surface reachability unmeasured” cannot both define its pass.
+
+EXECUTABILITY AUDIT:
+  - **Yes:** P1a can pass (1a)/(1b) without whole-tree coverage; the plan expressly permits this.
+  - **Yes:** P3 can pass by withholding approval *through* Browser/Computer while leaving their ability to operate the displayed process-route confirmation unmeasured.
+  - **No finding:** P1c’s stated network gate cannot pass on merely written rules; its specified probes must pass.
+
+DESIGN-COLUMN-AS-STATUS SWEEP:
+  - The principal remaining risk is not a claim that P1a-R or P3-R is delivered; both are labelled otherwise. It is treating **P1a/P3 acceptance despite those absent boundaries** as acceptance of the original whole-tree and human-approval outcomes.
+
+OVER-HEDGING AUDIT:
+  - Moving P1a-R and P3-R off the release path makes the phases executable, but leaves two essential guarantees undelivered. Disclosure is the right treatment for a research artifact; it is not sufficient to call the resulting plan a safe agent design satisfying the hard constraints.
+
+UNDELIVERED-PROMISE SWEEP:
+  - Whole-tree preventive coverage beyond catalogued/cooperative spawns: **no producing phase**.
+  - Isolation of the displayed approval UI from model-driven synthetic input: **no producing phase**.
+  - Runtime bypass accounting: P1a-R names a candidate, but ships neither its extension nor attribution mechanism.
+  - The proposed network and filesystem rules have owners and acceptance probes; they are **specified, not verified or delivered**.
+
+REMAINING WEAKNESSES (accepted, non-blocking, worth recording):
+  - No sandbox profile, arbitrary-destination rule, proxy, or hardlink assumption was exercised in this submission.
+  - The prior empirical baseline and underlying source observations cannot be independently cross-checked from the pasted material.
+
+STRONGEST REMAINING OBJECTION:
+  The phase split fixes unshippable gates by removing two unresolved security properties from every release path. A raw or widened spawn can still evade the cooperative sandbox attach mechanism, and Browser/Computer automation may still approve a request shown in the host UI. Naming both residuals `UNKNOWN` or `NOT_ENFORCED` is honest research, but it does not satisfy the stated safe-agent objective.
+
+FINAL VERDICT: REJECTED  
+  Blocking checks: **3, 4, 8, 9, 12**. The substantive blockers are whole-tree confinement and proof that an approval attributed to a human cannot be supplied by a model-driven UI route.
+
+REVIEWER DECLARATION:
+  This judgment applies only to the material pasted here. I did not read repository files or independently verify the underlying source observations, script execution, assembly, sizes, or hashes.

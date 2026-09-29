@@ -1,0 +1,97 @@
+CHECK 1: ISSUE  
+  `COMPONENT_REUSE_MATRIX.md §2` withdraws a demonstrated comparison with pinned-git and bounded vendoring, but a later numbered paragraph still says the adapter “wins” and the unassessed options are unlikely to close the margin. That is the comparative claim the section says it withdrew.
+
+CHECK 2: ACCEPT  
+  `SECURITY_INVARIANTS.md I7/I9` and `REFERENCE_ARCHITECTURE.md §5` distinguish the existing pre-effect permission gate from post-effect hard-denial classification. The proposed central floor is not presented as existing.
+
+CHECK 3: ISSUE  
+  `IMPLEMENTATION_PLAN.md P3 (7b')` proposes withholding the approval affordance from Browser/Computer surfaces while still showing a local confirmation UI for process-route requests. Withholding an affordance *from a tool* does not establish that the tool cannot drive the host UI displaying it. `SECURITY_TEST_VECTORS.md CP-07` also retains the live sentence “P3 does not pass while CP-07 is `NOT_ENFORCED`,” before a struck-out second clause, whereas P3-R says CP-07 does not block P3.
+
+CHECK 4: ISSUE  
+  `IMPLEMENTATION_PLAN.md P1a (1c)` still says that, until runtime accounting exists, “P1a does not pass on (1b) alone.” The later P1a-R section says precisely that P1a passes on (1a) and (1b), with accounting off the release path. More fundamentally, that path leaves uncooperative model-reachable spawns `UNKNOWN` while the task’s whole-process-tree sandbox requirement remains unmet. Moving the detective condition does not supply preventive confinement.
+
+CHECK 5: ACCEPT  
+  `IMPLEMENTATION_PLAN.md P1c (6)` consistently gates the proposed literal-IP/localhost-port offer on criteria 1, 2, 3, 4, 5, 7, 9, and 10; hostname grants remain unavailable. The arbitrary-destination rule is explicitly unverified and must pass a positive non-loopback test before release.
+
+CHECK 6: ACCEPT  
+  `IMPLEMENTATION_PLAN.md P1b` and `SECURITY_TEST_VECTORS.md PE-06` now disclose that the macOS post-admission hardlink case is not closed by the preflight or resolver check. This is acceptance of the *disclosure*, not verification of the proposed platform controls.
+
+CHECK 7: ACCEPT  
+  `REFERENCE_ARCHITECTURE.md §8` and `IMPLEMENTATION_PLAN.md P7` keep reviewer authorization within a host-owned delegated set after hard floors.
+
+CHECK 8: ISSUE  
+  `COMPONENT_REUSE_MATRIX.md §4` scopes `fs.read.workspace` to a “non-secret working set,” yet the same submission expressly leaves embedded credentials in readable `.git/config` and unmatched project files exposed. The opening `ALLOW` is only accurate for *files not matching the enumerated deny patterns*, not for an independently established non-secret set.
+
+CHECK 9: ISSUE  
+  `SECURITY_TEST_VECTORS.md §4` makes B0 = A conditional on children being unable to reach the unbound proxy, but the B0 outcome cells still print `DENY` or `ASK` as though that condition held. The prose says those verdicts become `UNKNOWN` when it does not. A test table should put that condition in its precondition or cells, rather than require the reader to override its printed outcomes.
+
+CHECK 10: ACCEPT  
+  `COMPONENT_REUSE_MATRIX.md §§2–3` separates assessed from unassessed reuse routes and makes copying and notice obligations conditional.
+
+CHECK 11: ACCEPT, LIMITED  
+  The review log and verifier output are present in the pasted submission, and PART 0b correctly describes its hash manifest as self-published consistency data, not provenance. The original file byte streams, assembler, prior evaluation, and upstream source are not submitted; their authenticity and the manifest’s hashes cannot be independently checked here.
+
+CHECK 12: ISSUE  
+  `research/verification/verify.py` correctly stops printing `PASS` for its disabled criterion-reference diagnostic. Its `0 FAILURE(S)` still does not resolve the live P1a/P3 contradictions above. Its strict-list extraction captures a single line per `OUTCOME_STRICT` declaration, while several declarations span lines; the printed member previews are not a complete membership audit.
+
+NEW DEFECTS INTRODUCED BY THE ROUND-30 REVISION:
+  - `IMPLEMENTATION_PLAN.md P1a (1c)` and P1a-R now give opposite pass conditions for P1a.
+  - `SECURITY_TEST_VECTORS.md CP-07` retains a live P3-blocking condition after CP-07 was reassigned to non-blocking P3-R.
+  - P3’s withholding rule is treated as a host-UI reachability control without specifying how an available local confirmation UI is kept out of model-driven UI automation.
+
+NEWLY RAISED FINDINGS (not previously an issue in any round):
+  - `COMPONENT_REUSE_MATRIX.md §2` contains both the withdrawn comparative argument and a later live “wins” argument in the same section.
+  - The disabled diagnostic is honest, but `verify.py`’s active strict-list check does not validate complete multiline membership.
+
+ROUND-28 FIXES A-H VERIFICATION:
+  A — PARTIAL; the five named cells were revised, but matrix §4 and network B0 still open with outcomes stronger than their qualifications. New surface: every other Default and outcome cell.
+  B — APPLIED AS CLAIMED; P1a (1c) names the `exec` and attribution gaps. New surface: whether accounting blocks P1a, on which P1a and P1a-R conflict.
+  C — PARTIAL; P3-R is separated, but CP-07 retains a live P3 gate and withholding does not establish UI isolation. New surface: the host UI used for process-route approvals.
+  D — APPLIED AS CLAIMED; P1c (7) no longer releases a localhost-only fallback. New surface: none identified.
+  E — PARTIAL; bytes and characters are separated, but original bytes and assembly are not independently checkable. New surface: provenance, which the manifest now properly disclaims.
+  F — APPLIED AS CLAIMED for disabling the broken reference check; NOT VERIFIED for the “no undefined references” assertion. New surface: multiline strict-list coverage in another active check.
+  G — APPLIED AS CLAIMED; L48 no longer ranks uncounted failure modes. New surface: none identified.
+  H — APPLIED AS CLAIMED; L56–L57 record the failed negative control. New surface: other active checks also need controls matching their claimed coverage.
+
+LOG-TRUTH AUDIT:
+  1. The pasted log’s round-30 sizes match the submitted verifier output’s line-count convention. That does not establish the on-disk sizes or hashes.
+  2. L48 and L52–L57 appropriately limit their historical and provenance claims. The later live “adapter wins” paragraph does not observe the same restraint.
+  3. A SHA-256 prefix helps compare original bytes *if those bytes are held*. Here it supplies no independent authentication or recomputation.
+
+CELL-OPENS-WITH-THE-WEAK-CLAIM AUDIT:
+  `COMPONENT_REUSE_MATRIX.md §4` opens `fs.read.workspace` with “non-secret” despite admitting readable embedded credentials. `SECURITY_TEST_VECTORS.md §4` prints unconditional B0 outcomes despite its `UNKNOWN` branch. `IMPLEMENTATION_PLAN.md P1a (1c)` opens with a mandatory P1a condition before later removing it. These are operative claims, not merely historical quotations.
+
+NEGATIVE-CONTROL AUDIT:
+  The submitted controls demonstrate that mutations can fail the container, stale-reference, strict-list, and retired-string checks. They do not demonstrate complete coverage: a multiline strict-list member outside the captured line is a necessary further control. The criterion-reference check failed its control and is correctly disabled. I cannot confirm every criterion reference by reliable inspection of this pasted corpus; the script explicitly does not establish that result.
+
+PRODUCER SWEEP:
+  The pre-effect policy gate and managed process-group behavior are baseline observations. Seatbelt profiles, network destination rules, hardlink checks, local approval isolation, and plugin restrictions are proposals with future tests, not delivered controls. P1a-R’s proposed `ES_LOG` subscription is neither installed nor sufficient for fork coverage or API-use attribution; P3-R names no UI-isolation producer. Neither may be credited as producing confinement or approval-channel isolation.
+
+SINGLE-DEFINITION AUDIT:
+  P1c’s literal-IP release set is aligned in P1c, P5, and the matrix. P1a has conflicting definitions of whether accounting is required to pass. P3, P3-R, and CP-07 conflict over whether UI isolation blocks P3. The log’s account of the latter cannot override the live CP-07 sentence.
+
+EXECUTABILITY AUDIT:
+  A reader can satisfy P1a (1a)/(1b) without preventing an uncooperative spawn; P1a-R explicitly blocks nothing. A reader can withhold approval *through* Browser/Computer while leaving a model-drivable host confirmation UI available. Neither action alone establishes the stronger security property elsewhere claimed for it.
+
+DESIGN-COLUMN-AS-STATUS SWEEP:
+  The baseline/proposal distinction is mostly explicit. The principal remaining error is treating P3’s proposed withholding of a feature as though it establishes reachability of the host-owned approval UI.
+
+OVER-HEDGING AUDIT:
+  P1a can now ship catalogued confinement while universal spawn confinement remains `UNKNOWN`. That is an intelligible limited milestone, but it does not satisfy the stated whole-process-tree constraint. P3-R’s isolation is non-delivered; withholding host-UI approvals is a legitimate product trade only if the available local approval UI is demonstrably inaccessible to model-driven UI routes.
+
+UNDELIVERED-PROMISE SWEEP:
+  P1a-R has no installed accounting producer; P3-R has no isolation producer. Both are explicitly labelled non-delivered, which is honest, but P1a (1c) and CP-07 still make them appear necessary for their parent phases. The “non-secret working set” likewise has no content-classification producer; only an incomplete path-pattern deny list is specified.
+
+REMAINING WEAKNESSES (accepted, non-blocking, worth recording):
+  - No proposed sandbox profile or destination rule was compiled or exercised.
+  - Baseline empirical probes and upstream source observations are reported, not independently verifiable from this submission.
+  - Readable `.git/config` and unmatched project credentials remain possible exfiltration sources over an allowed channel.
+
+STRONGEST REMAINING OBJECTION:
+  Round 30 removes two unsatisfiable gates by moving their unmet properties off the release path, but the live documents still state the old gates elsewhere. More importantly, the resulting deliverable does not establish the brief’s whole-process-tree boundary, and P3 has not shown that a model-driven UI cannot operate the local approval surface. These are security-boundary and release-condition defects, not objections to candidly recording limitations.
+
+FINAL VERDICT: REJECTED  
+  Blocking checks: 1, 3, 4, 8, 9, 12.
+
+REVIEWER DECLARATION:
+  This judgment applies only to the material pasted here. I did not independently verify the underlying repositories, host observations, original file bytes, or execution of the verifier.

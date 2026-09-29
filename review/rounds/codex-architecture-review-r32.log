@@ -1,0 +1,96 @@
+CHECK 1: ISSUE  
+  `COMPONENT_REUSE_MATRIX.md §2` calls the adapter the “cheapest assessed option,” but supplies no comparable cost assessment for the assessed alternatives. Its own P1b gate leaves two potentially competitive options unassessed. The recommendation may remain provisional; the cost ranking is not established.
+
+CHECK 2: ACCEPT  
+  `SECURITY_INVARIANTS.md I9` and `REFERENCE_ARCHITECTURE.md §5` distinguish the existing pre-effect policy gate, per-tool hard checks, and post-effect result classifier.
+
+CHECK 3: ISSUE  
+  `IMPLEMENTATION_PLAN.md P3` now renders **no** confirmation dialog and makes every `ASK` a `DENY`. `REFERENCE_ARCHITECTURE.md §§2, 7, 9–10` still depicts a local approval UI, human decisions, and issued grants as this architecture’s operating path. Those are incompatible delivery descriptions, not merely future design examples.
+
+CHECK 4: ISSUE  
+  The original hard constraint is whole-process-tree confinement. `IMPLEMENTATION_PLAN.md` expressly delivers only the catalogued surface, leaves universal confinement `UNKNOWN`, and makes P1a-R non-blocking with no producer. This is an honestly disclosed **failure to meet a hard requirement**, not completion of the requested architecture.
+
+CHECK 5: ACCEPT  
+  The literal-IP/localhost network release gate consistently names criteria 1, 2, 3, 4, 5, 7, 9, and 10 in P1c and P5. The rule shape and passing probes remain proposed, not verified.
+
+CHECK 6: ISSUE  
+  `SECURITY_TEST_VECTORS.md §2` says PE-06a is a permanent macOS limitation because no link-creation restriction is provided, while P1b’s goal still says the demonstrated shell escapes “fail on paths.” A test of a direct pathname can pass while the same outside inode is read through a newly created workspace hardlink. The prominent goal must not stand in for the qualified test outcome.
+
+CHECK 7: ACCEPT  
+  `REFERENCE_ARCHITECTURE.md §8` and P7 retain a host-owned, empty-by-default reviewer delegation set; a reviewer cannot override a floor.
+
+CHECK 8: ISSUE  
+  `SECURITY_TEST_VECTORS.md §7` still requires AR-06 to “ESCALATE to human” and AR-12 to escalate every default-set `ASK` to a human. P3 explicitly offers no human-approval surface, while AR-03 says `ESCALATE → DENY`. The test specification gives incompatible outcomes for the same reviewer path.
+
+CHECK 9: ISSUE  
+  `SECURITY_TEST_VECTORS.md §9` MD-05 still says “reviewer first, then human if escalated.” P5 and `REFERENCE_ARCHITECTURE.md §8` say escalation is terminal `DENY`. `§6` AP-01–AP-05 and AP-17 also require successful human approvals and grants without a phase that enables an approval affordance. These are live required-outcome cells, not historical quotations.
+
+CHECK 10: ACCEPT  
+  `COMPONENT_REUSE_MATRIX.md §§2–3` separates assessed and unassessed reuse routes and conditions license obligations on copying and distribution.
+
+CHECK 11: ACCEPT, LIMITED  
+  The review log, verifier source, and verifier output are present in the pasted submission. The assembly manifest is self-published; original files and assembler are absent, so neither byte counts nor hashes can be independently checked against source files.
+
+CHECK 12: ISSUE  
+  `verify.py` reports zero failures while the live AR-06, AR-12, and MD-05 contradictions above remain. Its disabled criterion-reference diagnostic is appropriately labelled, but the output validates only selected lexical properties; it cannot validate this submission’s approval lifecycle or hard-constraint coverage.
+
+NEW DEFECTS INTRODUCED BY THE ROUND-32 REVISION:
+  - Removing P3’s approval affordance left live human-escalation outcomes in AR-06, AR-12, and MD-05.
+  - P3-R’s `IF IT IS NEVER BUILT` cell still says “The local confirmation UI continues to work on the process route,” directly opposing P3’s “local confirmation dialog is not displayed at all.”
+
+NEWLY RAISED FINDINGS (not previously an issue in any round):
+  - `IMPLEMENTATION_PLAN.md P4` promises `always` grants and persistence after P3, although P3 supplies no way to issue a human grant. The phase needs a revised source of authority or must be deferred.
+  - `REFERENCE_ARCHITECTURE.md §14` says approval timeout and transport failures have required runtime behavior; under the stated milestone, all `ASK` calls deny without presenting a request. Those rows describe machinery tests, not delivered approval behavior.
+
+ROUND-28 FIXES A-H VERIFICATION:
+  A: PARTIAL — the named matrix and P1c cells were weakened, but the approval required-outcome cells were not updated after the later P3 scope change. New surface: downstream consumers of approval.
+  B: APPLIED AS CLAIMED — P1a-R names ES_LOG’s fork and attribution gaps. New surface: a non-blocking, unproduced assurance phase.
+  C: PARTIAL — P3 withholds all approval, but P3-R and downstream vectors still describe a working dialog. New surface: process-route UI claims.
+  D: APPLIED AS CLAIMED — P1c says criterion 7 failure closes the whole network axis. New surface: localhost usability is coupled to arbitrary-IP expressibility.
+  E: PARTIAL — bytes and characters are labelled separately, but source bytes and assembler are not submitted. New surface: self-reported assembly identity.
+  F: APPLIED AS CLAIMED — criterion-reference checking is disabled and prints no `PASS`. New surface: undefined-reference detection has no working gate.
+  G: APPLIED AS CLAIMED — L48 now declines to rank the two failure modes. New surface: none material.
+  H: APPLIED AS CLAIMED — L56–L57 disclose the failed negative control. New surface: broad withdrawal windows can still hide live claims.
+
+LOG-TRUTH AUDIT:
+  1. The six reported sizes and line counts agree *between* PART 0b and the pasted verifier output. The pasted text has no independently separable original file bytes, so the log’s on-disk sweep figures cannot be recomputed here.
+  2. L48’s revised non-ranking and L52’s conditional hash claim are appropriately limited. L57 does not turn the remaining verifier checks into semantic evidence.
+  3. The SHA-256 prefixes cannot be recomputed from the original per-file streams supplied here—none are supplied. They add a potential future mismatch check, not provenance.
+
+CELL-OPENS-WITH-THE-WEAK-CLAIM AUDIT:
+  The principal surviving offenders are AR-06 (“ESCALATE to human”), AR-12 (“escalates to a human”), MD-05 (“then human”), and P3-R’s working-confirmation-UI claim. Each opens with an outcome stronger than P3 can deliver. The matrix’s `secret.read` cell now opens with its weaker capability-wide label.
+
+NEGATIVE-CONTROL AUDIT:
+  The disabled criterion-reference check failed its stated mutation and cannot establish that all references resolve; an unaided exhaustive check of this submission is not reliable. Active-check mutations are identifiable: move P1b(12) under P1a (container), reinsert an old criterion number outside a withdrawal window (stale reference), add FS-08 to a continuation line (strict list), and reinsert a retired claim outside a withdrawal window (retired strings). These test lexical detection only.
+
+PRODUCER SWEEP:
+  Observed baseline producers are limited to the indexed permission gate, classifier, and recorded spawn sites. Sandbox profiles, deny rules, descriptor closure, control-channel isolation, reviewer delegation, and grant storage are **design proposals**; their vectors are **tests**, not producers. P1a-R has no delivered observer, P3-R has no UI-isolation mechanism, and—after the P3 scope change—successful human approval and its downstream grants have no delivered producer.
+
+SINGLE-DEFINITION AUDIT:
+  The P1c literal-IP gate agrees across its operative restatements. The approval lifecycle does not: P3/P5/AR-03 define escalation as denial, while AR-06/AR-12/MD-05 define a human hand-off. P3-R separately defines a confirmation UI as working when P3 says none is displayed.
+
+EXECUTABILITY AUDIT:
+  Yes: P3 can pass “every `ASK` resolves to `DENY`” while AP-01–AP-05, AR-06/12, and MD-05 remain unsatisfied. Yes: P1a/P1b can pass their bounded criteria while the requested whole-tree property remains `UNKNOWN`. Those are narrower milestones than their consumers and original constraint require.
+
+DESIGN-COLUMN-AS-STATUS SWEEP:
+  The explicit baseline/status distinctions are improved. The remaining error is treating the proposed approval lifecycle and test outcomes as delivered behavior after P3 removes its only approval affordance.
+
+OVER-HEDGING AUDIT:
+  P1a-R and P3-R are disclosed but produce nothing and block nothing. That is honest as a **bounded research milestone**, but it does not satisfy the whole-tree hard constraint or deliver low-friction human approval. Calling the full objective met would be wrong.
+
+UNDELIVERED-PROMISE SWEEP:
+  Whole-tree confinement: no preventive producer for bypass routes. Runtime-bypass accounting: ES_LOG candidate unshipped and unattributed. Host-UI isolation: no producer. Human approvals and consequent `once/session/always` grants: machinery specified, affordance withheld. These must be labelled non-delivered wherever a phase or vector presently requires them.
+
+REMAINING WEAKNESSES (accepted, non-blocking, worth recording):
+  - No sandbox profile, destination rule, or proxy was compiled or exercised.
+  - The prior empirical evaluation and original source streams are not submitted.
+  - Secret patterns deliberately do not protect unmatched or embedded credentials.
+
+STRONGEST REMAINING OBJECTION:
+  The revision makes P3 safe by removing human approval, but fails to revise the architecture, grant phases, and test vectors that require human approval to succeed. More fundamentally, the bounded P1 milestone explicitly leaves the requested whole-process-tree confinement unestablished and moves its residual off the release path. Disclosure is valuable, but it does not satisfy that hard constraint.
+
+FINAL VERDICT: REJECTED  
+  Blocking checks: 1, 3, 4, 6, 8, 9, 12.
+
+REVIEWER DECLARATION:
+  This judgment applies only to the pasted material. I did not read files from disk or independently verify underlying source observations, host behavior, byte counts, or hashes.

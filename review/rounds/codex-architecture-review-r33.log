@@ -1,0 +1,94 @@
+CHECK 1: ISSUE
+  `COMPONENT_REUSE_MATRIX.md §2` recommends the adapter while pinned-Git dependency and bounded SBPL vendoring remain unassessed. The recommendation is labelled provisional, but no comparison establishes it as the best minimal route.
+
+CHECK 2: ACCEPT
+  `SECURITY_INVARIANTS.md I7/I9` and `REFERENCE_ARCHITECTURE.md §5` distinguish the existing pre-effect permission gate from the post-effect hard-denial classifier.
+
+CHECK 3: ISSUE
+  `IMPLEMENTATION_PLAN.md P3(7b')` says Browser/Computer automation cannot answer a Unix-socket approval because it cannot connect to the socket. That does not exclude using Computer automation to operate an **unsandboxed host terminal** running `webcodex approve`. Socket mode `0600` and a same-user peer credential do not distinguish that action from the operator’s. CP-07 tests the route but specifies no control that makes it fail.
+
+CHECK 4: ISSUE
+  The round-33 claim that confining `webcodex-runner` covers its whole descendant tree changes the attachment design without changing P1’s executable plan. `IMPLEMENTATION_PLAN.md` still makes P1a a hard prerequisite, names per-spawn attachment in P1b, and lists only `webcodex-process` attachment files. More fundamentally, a runner confined by a fixed profile cannot later give a child access that the runner’s profile denies; P1c’s network grants, P1d’s external reads, and the relaxed mode need a stated mechanism compatible with runner-level confinement. None is supplied.
+
+CHECK 5: ISSUE
+  `IMPLEMENTATION_PLAN.md P1c/P1d` compile approved grants into child profiles, but the new runner-level profile’s bounds are unspecified. A child-profile test alone cannot demonstrate that an approved connection or external read succeeds beneath that parent profile.
+
+CHECK 6: ISSUE
+  `IMPLEMENTATION_PLAN.md P1` now claims whole-tree coverage while its own P1a-R and definition-of-done sections still say universal confinement is `UNKNOWN`. The hardlink limitation is candid, but it does not reconcile these opposite claims about *process coverage*.
+
+CHECK 7: ACCEPT
+  `REFERENCE_ARCHITECTURE.md §8` keeps reviewer authorization within a host-owned delegated set, empty by default, after hard floors.
+
+CHECK 8: ISSUE
+  `IMPLEMENTATION_PLAN.md` says approval is delivered and `P7` routes escalation to the operator, but `P5(5)` still makes reviewer `ESCALATE` a **terminal `DENY` because P3 offers no human-approval surface**. This is a live round-32 rule, not a historical quotation.
+
+CHECK 9: ISSUE
+  `SECURITY_TEST_VECTORS.md CP-07` asserts that no model-reachable host-UI surface can produce a socket decision. Its proposed test can observe a failure on exercised routes; it cannot establish that Computer automation cannot invoke the operator CLI through an accessible host terminal. P3 nevertheless treats that isolation as structurally delivered.
+
+CHECK 10: ACCEPT
+  `COMPONENT_REUSE_MATRIX.md §§2–3` distinguishes assessed from unassessed reuse options and conditions licensing obligations on actual copying and distribution.
+
+CHECK 11: ISSUE
+  The log and verifier output are included, but the original byte streams and assembler are not. The manifest’s sizes and hashes cannot be recomputed from this submission. The round-33 log records a design change, **not** an independent verdict on it.
+
+CHECK 12: ISSUE
+  `verify.py §5b` checks for phrases such as “approval is delivered” and a P3 socket. It passes while `P5(5)` still denies escalation and while P1’s runner-level attachment lacks a producing criterion. Its negative controls show sensitivity to three selected strings, not lifecycle consistency.
+
+NEW DEFECTS INTRODUCED BY THE ROUND-29 REVISION:
+  - None attributable specifically to round 29; the decisive new defects are the **round-33** runner-attachment and approval-channel changes assessed above.
+
+NEWLY RAISED FINDINGS (not previously an issue in any round):
+  - Runner-level confinement has no specified relationship to later, more permissive per-spawn grants.
+  - A non-GUI socket does not by itself prevent model-driven host-terminal use of the operator CLI.
+
+ROUND-28 FIXES A-H VERIFICATION:
+  A: PARTIAL — the named matrix and P1c cells open with qualified claims; the new delivery statement opens with whole-tree coverage while P1a-R says `UNKNOWN`. New surface: plan headline.
+  B: APPLIED AS CLAIMED — P1a(1c) records the `exec`/`fork` and attribution gaps. New surface: the runner-level claim bypasses, rather than resolves, that accounting question.
+  C: PARTIAL — P3’s GUI gate changed, but CLI accessibility through host UI is unaddressed. New surface: operator terminal.
+  D: APPLIED AS CLAIMED — P1c(7) failure leaves the network axis `DENY`. New surface: runner-profile compatibility.
+  E: PARTIAL — bytes and chars are separated, but source bytes are unavailable to this reviewer. New surface: assembly provenance.
+  F: APPLIED AS CLAIMED — the broken criterion-reference check is labelled disabled and prints no PASS. New surface: §5b’s lexical claims.
+  G: APPLIED AS CLAIMED — L48 declines to rank the two failure modes. New surface: no quantitative claim remains.
+  H: APPLIED AS CLAIMED — L56/L57 record the failed negative control and its consequence. New surface: controls for newly added §5b.
+
+LOG-TRUTH AUDIT:
+  1. The pasted six documents and printed size table are consistent as declarations; without original files, I cannot independently establish the byte, line, or hash figures. The round-33 log correctly says its verdict is not yet known.
+  2. Revised L48 and L52–L57 appropriately limit their claims. L77’s three passing mutations do **not** justify the broader §5b heading “approval lifecycle consistency”.
+  3. A hash prefix adds an accidental-mismatch check **only for a reader holding the original bytes**. Here it supplies no independent provenance or recomputable check.
+
+CELL-OPENS-WITH-THE-WEAK-CLAIM AUDIT:
+  `IMPLEMENTATION_PLAN.md` opens its delivery statement with “Confinement covers the whole process tree,” then leaves universal coverage `UNKNOWN` in P1a-R and the definition of done. P3(7b') opens with the assertion that UI automation cannot connect to the socket, then relies on an unestablished exclusion of host-terminal operation. `P5(5)` still opens with a terminal-denial escalation rule contrary to the delivered-approval claim.
+
+NEGATIVE-CONTROL AUDIT:
+  The disabled criterion-reference check has a reported failing negative control and yields no verdict. The active container, stale-reference, strict-list, and retired-string checks have named mutations that make them fail; §5b has three phrase mutations. None tests the P5 contradiction or the runner-profile grant conflict. The “checkable by eye” claim for all criterion references is not established by this volume of table-heavy text.
+
+PRODUCER SWEEP:
+  The existing permission gate is an observed baseline mechanism; the post-effect classifier does not produce prevention. Runner-level confinement, its inheritance and its compatibility with child grants are **design proposals**, not observed properties or P1b deliverables. The socket and token are design proposals; `0600`/same-UID peer checks do not produce the claimed human-versus-model distinction on a host-terminal route. CP-07 and §5b are **tests**, not those producers.
+
+SINGLE-DEFINITION AUDIT:
+  P1 has incompatible definitions: runner-level, whole-tree attachment in its opening versus mandatory P1a normalization and per-spawn attachment in the graph and phase criteria. P3/RA §8/AR-06/MD-05 send escalation to the operator; P5(5) sends it to terminal `DENY`. These are operative restatements, not merely differences in terminology.
+
+EXECUTABILITY AUDIT:
+  **No** — satisfying P1a/P1b as written need not confine the runner before it launches children. **No** — satisfying P3’s socket-path tests need not prevent Computer automation from using an accessible operator terminal. **No** — satisfying §5b’s string checks need not make P5 escalation work.
+
+DESIGN-COLUMN-AS-STATUS SWEEP:
+  The plan’s “what this plan delivers” section promotes a proposed runner-level attachment into a delivered whole-tree property without an attachment criterion or a demonstrated grant model. P3 likewise promotes a proposed IPC transport into proof that a decision is operator-originated.
+
+OVER-HEDGING AUDIT:
+  P1a-R remains off the release path, but the new headline now claims the property it formerly left unknown; that is overclaiming, not useful hedging. Hostname grants remain unavailable and hardlink aliases remain disclosed limits. Those narrower limitations are clear and do not themselves block a research-stage design.
+
+UNDELIVERED-PROMISE SWEEP:
+  No phase produces the **runner-before-exec profile attachment** claimed by the delivery statement or defines how later child grants work beneath it. No phase produces isolation of the **operator CLI from model-driven host terminals**. P3 produces proposed approval machinery, while P5(5) still consumes the old no-approval design.
+
+REMAINING WEAKNESSES (accepted, non-blocking, worth recording):
+  - No proposed sandbox profile, arbitrary-destination Seatbelt rule, or approval channel was exercised.
+  - The secret-pattern list is incomplete, and `.git/config` credentials and post-admission hardlink aliases remain disclosed exposures.
+
+STRONGEST REMAINING OBJECTION:
+  Round 33 changes the two objects that carried the design, but does not propagate those changes into their enforcement criteria. Confining the runner may cover uncatalogued descendants, yet a fixed parent profile conflicts with later per-spawn widening; moving approval from a window to a socket does not exclude model control of an unsandboxed operator terminal. Both are security-boundary claims presented as delivered by the plan without a mechanism sufficient for the claimed scope.
+
+FINAL VERDICT: REJECTED
+  Blocking checks: 3, 4, 5, 6, 8, 9, 11, 12.
+
+REVIEWER DECLARATION:
+  This judgment applies only to the material submitted in the prompt. I did not read files from disk or independently verify the underlying source observations, assembly manifest, or host behavior.

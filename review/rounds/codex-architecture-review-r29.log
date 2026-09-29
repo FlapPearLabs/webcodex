@@ -1,0 +1,120 @@
+CHECK 1: ISSUE  
+  `COMPONENT_REUSE_MATRIX.md §2` calls the adapter recommendation “defensible” while pinned-git and bounded vendoring remain unassessed. Its claim that both alternatives would need more construction than the adapter is an estimate, not a comparison established by the submitted evidence. The provisional label is appropriate; the comparative justification is not established.
+
+CHECK 2: ACCEPT  
+  `SECURITY_INVARIANTS.md I9` and `REFERENCE_ARCHITECTURE.md §5` distinguish the existing pre-effect permission gate, the post-effect result classifier, and the proposed hard floor. They do not claim that the proposed floor already runs.
+
+CHECK 3: ISSUE  
+  `IMPLEMENTATION_PLAN.md P3(7b')` removes UI isolation from the release gate and permits the approval route to be “unavailable.” But `SECURITY_TEST_VECTORS.md CP-07` still says **“P3 does not pass while CP-07 is `NOT_ENFORCED`,”** and `REFERENCE_ARCHITECTURE.md §10(1b)` says P3 does not pass on process isolation alone. The same phase has incompatible pass conditions. Withholding host-UI approval does not, by itself, establish that Browser/Computer tools cannot operate an available CLI or other host control affordance.
+
+CHECK 4: ISSUE  
+  `IMPLEMENTATION_PLAN.md P1a(1c)` still makes independent runtime detection an acceptance condition, selects an `ES_LOG` extension it says this plan **does not ship**, and concedes that exec-only coverage and audited-API attribution are unbuilt. Its own rule says P1a cannot pass without (1c). Thus the macOS-first path remains non-deliverable as written. Detection would not close the admitted preventive confinement gap even if installed.
+
+CHECK 5: ISSUE  
+  `IMPLEMENTATION_PLAN.md P1c(6)` now lists the same numeric gates for literal-IP/localhost release as P5 and the matrix, but `P1c(7)` requires demonstrating **arbitrary non-loopback destination matching** before even localhost-port grants can release. This is a deliberate all-or-nothing choice, not a localhost fallback; the documents should not present the two paths as independently releasable. More seriously, `NET-02` and `NET-04` print `ASK` in column A with only a criterion-7 parenthetical, omitting the other mandatory gates (1–5, 9, 10) in the operative outcome cells.
+
+CHECK 6: ISSUE  
+  `SECURITY_TEST_VECTORS.md §2` states a post-admission hardlink is `NOT_ENFORCED` for shell/agent reads, but its `OUTCOME_STRICT` list still includes **PE-07**, “symlink created by the agent then read through,” as an unconditional `DENY` without specifying that the link is a *symlink rather than a hardlink* in its required-outcome cell. The technique column does specify symlink, so this is not itself a hardlink contradiction. The actual unresolved issue is `PE-06a`: the proposed macOS profile allows creation of an outside-inode alias after admission, and P1b(13)'s preflight/resolver pair expressly does not close it. That limitation is disclosed, but the P1b goal “close the shell escape” and its general descendant-confinement language remain stronger than its pathname boundary.
+
+CHECK 7: ACCEPT  
+  `REFERENCE_ARCHITECTURE.md §8` and P7 retain an empty-by-default host-owned delegation set, with floors outside reviewer authority. No submitted reviewer verdict is treated as independent authorization.
+
+CHECK 8: ISSUE  
+  `COMPONENT_REUSE_MATRIX.md §4` repairs `secret.read` by opening its Default cell with `NOT_ENFORCED`. In the same table, **`fs.read.workspace` opens with `ALLOW`** although P1b(9) explicitly denies in-project `.env`, `*.pem`, and other patterns. Under the matrix’s own definition, `ALLOW` permits the effect across its stated surface; the capability must be scoped to the non-secret working set in its operative cell, not inferred from a later section. `proc.spawn` also opens with `ALLOW (inside sandbox)` while P1a leaves uncatalogued, unconfined spawning `UNKNOWN`.
+
+CHECK 9: ISSUE  
+  `SECURITY_TEST_VECTORS.md §4 NET-06b1` now opens its post-exit B cell with `NOT_ENFORCED`, correctly allowing a surviving descendant. Its explanatory paragraph later still says **“After exit: `DENY` — premise does not arise.”** This is the precise strong-claim-after-correction defect the revision says it eliminated. The same section also states B0=A only if children cannot reach the unbound proxy, yet its table prints unconditional B0 verdicts rather than marking failure of that precondition `UNKNOWN`.
+
+CHECK 10: ACCEPT  
+  `COMPONENT_REUSE_MATRIX.md §§2–3` separates assessed from unassessed reuse routes and distinguishes design reference from copied or closely derived material. The license conclusions are conditional on what is actually incorporated.
+
+CHECK 11: ISSUE  
+  The review log is present this time, but its Round-28 mechanical sweep says `P1a(1c): ES_LOG selected as the single producer` and reports a verified write, while the current operative criterion admits that its coverage, attribution, and required installed extension are absent. The log records the textual selection, not a working producer. The Part 0b hashes and sizes cannot be independently recomputed from reliably delimited original file bytes in this pasted composite; they are an assembly manifest, not independent verification.
+
+CHECK 12: ISSUE  
+  `verify.py` correctly labels its criterion-reference check **NOT A GATE**, but it still prints `PASS … criterion refs resolve` for all six documents. The negative control establishes those PASS lines do not mean what they say. Its zero-failure result supports only the remaining lexical checks, and cannot certify the conflicting P3 or NET-06b1 outcomes above.
+
+NEW DEFECTS INTRODUCED BY THE ROUND-29 REVISION:
+  - `P3(7b')` creates a release route that conflicts with the still-operative CP-07 and architecture §10 P3 pass conditions.
+  - The matrix repairs `secret.read` but leaves the adjacent `fs.read.workspace = ALLOW` headline unscoped against the explicit in-project denies.
+  - `NET-06b1`’s cell is corrected while its later live explanatory bullet retains the opposite post-exit outcome.
+
+NEWLY RAISED FINDINGS (not previously an issue in any round):
+  - `P1c(7)` is a mandatory arbitrary-IP demonstration for *both* arbitrary-IP and localhost-port release; the `NET-02`/`NET-04` cells mention only that one criterion, not their full release gate.
+  - `P1a(1c)` is mandatory for P1a acceptance while its selected producer is unshipped and cannot yet provide the specified attribution. Disclosure has not supplied an executable path through the phase.
+
+ROUND-28 FIXES A-H VERIFICATION:
+  - **A — PARTIAL:** Matrix `secret.read`, P1c(10c), and NET-06b1 cells open with weaker claims; `NET-06b1`’s later prose and `fs.read.workspace` expose the unpropagated surfaces.
+  - **B — APPLIED AS CLAIMED:** P1a(1c) withdraws universal ES_LOG coverage and names missing attribution. This exposes an unshippable mandatory gate.
+  - **C — PARTIAL:** P3(7b) is marked blocked; P3(7b') offers withholding approval. CP-07 and architecture §10 still require the blocked property for P3 to pass.
+  - **D — APPLIED AS CLAIMED:** P1c(7) failure now closes the entire network axis. This exposes that localhost release also depends on the arbitrary-IP fixture.
+  - **E — NOT FOUND as independent proof:** Part 0b supplies byte/character counts and hash prefixes; original per-file byte streams and the assembler are not separately submitted. This exposes provenance as an assertion to check, not authentication.
+  - **F — APPLIED AS CLAIMED:** `verify.py` marks the failed criterion-reference check non-gating. Its printed `PASS` labels still invite an unsupported reading.
+  - **G — PARTIAL:** L48 withdraws “dominant,” but replaces it with **“two roughly equal failure modes,”** for which the history gives no count or classification. The new surface is the log’s own quantitative characterization.
+  - **H — APPLIED AS CLAIMED:** L56–L57 describe the failed negative control and disabled gate. This exposes the need to distinguish disabled-check output from active PASS evidence.
+
+LOG-TRUTH AUDIT:
+  1. The Round-28 sweep’s listed six line counts match Part 0b’s `lines` column under the verifier’s `split("\n")` convention, and its `RESULT: 0 FAILURE(S)` matches the pasted output. I cannot establish its claimed on-disk write confirmations or independently recompute the sizes and hashes from the original file byte streams. Its ES_LOG “producer” wording describes a selected proposal, not a delivered observer.
+  2. L48’s “roughly equal” is unsupported by three named undelivered promises and an uncounted set of overclaims. L52’s “a hash can be trusted” is too strong: a 16-hex-character prefix helps detect accidental mismatch **if independently recomputed**, but does not authenticate the source or prove every byte was submitted. L53–L57 otherwise accurately describe the cited failures as lessons, not verified controls.
+  3. Byte counts cannot be checked by treating the rendered Markdown in this prompt as original files: headings, separators, and concatenation boundaries are additional text. The prefixes offer a stronger accidental-identity check than counts only to a reviewer holding and hashing the exact original bytes; merely printing them adds no independent evidence here.
+
+CELL-OPENS-WITH-THE-WEAK-CLAIM AUDIT:
+  - `COMPONENT_REUSE_MATRIX.md §4`: `fs.read.workspace | … | ALLOW` is broader than P1b’s explicit in-project secret-path denials; `proc.spawn | … | ALLOW (inside sandbox)` assumes a boundary P1a leaves unknown for bypass paths.
+  - `SECURITY_TEST_VECTORS.md §4`: `NET-02`/`NET-04` open with `ASK` while their cells state only criterion 7, not the full release gate; B0 opens with A’s verdict although B0=A is conditional on proxy inaccessibility.
+  - `SECURITY_TEST_VECTORS.md §4 NET-06b1`: its cell opens correctly with `NOT_ENFORCED`, but its later “After exit: `DENY`” is a second operative outcome.
+  - `IMPLEMENTATION_PLAN.md P3`: the goal promises a model-unreachable control channel, while (7b') can pass by making approval unavailable and CP-07 remains failed. A withheld feature is not proof of the promised isolation.
+
+NEGATIVE-CONTROL AUDIT:
+  1. The supplied text contains references to local criterion numbers across P0/P1a/P1b/P1c/P2/P3/P5, including historical quoted numbers. I can confirm the prominent live P1b(12), P1b(13), P1c(7)/(9)/(10), and P5→P1c lists against visible definitions. I **cannot honestly certify every reference by eye** in more than 100,000 characters of plan text, particularly where a table cell contains both current and withdrawn definitions. The injected `(78)` failure proves the script cannot certify that claim either.
+  2. Active-check mutations: remove P1b’s `(12a)` to fail the **container** check; restore a live `criterion (6) below` outside a withdrawal window to fail the **stale-reference** check; add `FS-08` to an `OUTCOME_STRICT` membership line to fail the **strict-list** check; restore a live `HOLDS (I2)` away from withdrawal words to fail the **retired-string** check. **Size** has no failing mutation—it only prints values and is informational. The disabled criterion-reference section has no reliable failing mutation, as its `(78)` negative control demonstrates. Broad withdrawal windows may also hide live stale claims in otherwise active checks.
+
+PRODUCER SWEEP:
+  - **Observed baseline:** WebCodex’s pre-effect permission gate and post-effect classifier have named observations; process-group ownership is best-effort. None produces an OS filesystem/network boundary.
+  - **Design proposals:** Seatbelt profile compiler, mandatory sandbox plan, descriptor closure, local token/channel, bind/metadata rules, grant storage, and restrict-only plugin process. Their tests are future observations, not current producers. P1a(1c)’s ES_LOG subscriber is neither shipped nor sufficient for fork-without-exec or audited-API attribution.
+  - **Tests, not producers:** CP-01–CP-07, PE-09, P1c(7)/(9a)/(10a), MD-09. CP-07 cannot isolate the UI; P1c probes cannot supply an otherwise unexpressible bind rule. A preflight produces only an admission decision, not standing per-access hardlink denial.
+  - **No producer:** prevention of arbitrary raw-spawn bypass, isolation of an available host approval UI from synthetic input, traffic-origin attribution, and stopping already-running children on a mode downgrade. These are variously disclosed, but P1a/P3 still make some of them acceptance conditions.
+
+SINGLE-DEFINITION AUDIT:
+  - P1c’s numeric **literal-IP/localhost** list now agrees in the plan, matrix, and P5: 1, 2, 3, 4, 5, 7, 9, 10. Its **hostname** list adds 8 and excludes 6. That fixes the round-28 self-reference.
+  - The *operational* restatement in `NET-02`/`NET-04` names only criterion 7, so a reader of the required-outcome table can treat one passed probe as sufficient for `ASK`.
+  - P3 has two incompatible definitions of completion: (7b') permits unavailable approval, while CP-07 and architecture §10 require demonstrated UI-route isolation before P3 passes.
+  - NET-06b1 has `NOT_ENFORCED` post-exit in its cell and `DENY` post-exit in the explanatory rule.
+
+EXECUTABILITY AUDIT:
+  - **“Until that mechanism exists, this residual is `NOT_ENFORCED` and P1a does not pass on (1b) alone.”** No: the plan does not ship the signed/entitled extension or attribution it requires, so the condition cannot be met within its stated phases.
+  - **“(7b') no approval affordance is rendered into a model-reachable surface … or states that the approval route is unavailable.”** Yes, by withholding approvals; no, that does not satisfy CP-07’s retained P3 pass condition or deliver human approval.
+  - **“(12c) a positive test proves each entry is actually required by a representative build.”** A single representative build cannot prove necessity of each entry for the toolchains and builds the product supports; it can only demonstrate usage under that fixture.
+  - **“(13a) a workspace-entry preflight … (13b) a resolver-time `st_nlink` check.”** Yes, both can be implemented and pass while an agent creates a hardlink after admission and reads it in a shell, which the text correctly discloses. They cannot satisfy a broader standing secret-read guarantee.
+
+DESIGN-COLUMN-AS-STATUS SWEEP:
+  - Matrix §4’s `ALLOW` workspace-read and process-spawn defaults read like complete present or future coverage despite explicit exceptions and P1a’s unknown bypasses.
+  - `REFERENCE_ARCHITECTURE.md §13` says the backend/compiler “closes” steps 3–5 and 8, while its spawn enumeration and facility escape are explicitly `UNKNOWN`/not delivered. The row is a design dependency, not closure evidence.
+  - The Round-28 log’s “ES_LOG selected as the single producer” must not be read as an operating observer; the current P1a text itself denies that reading.
+
+OVER-HEDGING AUDIT:
+  - **P1a is non-deliverable as written.** Its mandatory independent detector requires a signed, entitled, installed extension not shipped here, and still lacks fork coverage and attribution. This is not resolved by calling the residual `NOT_ENFORCED`.
+  - **P3’s human-approval feature may be withheld to pass (7b')**, while other parts say P3 cannot pass without CP-07. Conservative withholding is the right safety posture, but not a completed approval phase.
+  - **Hostname approval and true unconfined danger mode are explicitly not delivered.** Those are defensible scope decisions if the product promise is narrowed accordingly. The “minimal, executable plan” characterization is not defensible while P1a and P3 gates conflict with their deliverables.
+
+UNDELIVERED-PROMISE SWEEP:
+  - Spawn inventory and exemption list: P0/P1a own them; **runtime bypass accounting** has no shipped producer.
+  - Toolchain-read allow-list and hardlink preflight/resolver: P1b owns them; their tests do not produce universal access control.
+  - Literal-IP descriptor and metadata/bind floors: P1c owns them, conditionally on expressible, tested rules; hostname proxy attribution has no phase capable of satisfying criterion 8.
+  - External-read profile extension: P1d owns it, conditional on P2 approval and P1b compiler.
+  - Local human approval: P3 owns request/transport/UI, but model-inaccessible UI isolation has no specified producer; withholding the route is not delivery.
+  - Host-minted observable logical-session lifetime: P5 owns the proof; until then danger mode is unavailable.
+  - Plugin restrict-only execution: P8 owns it; P0 owns the interim hard disable gate.
+  - Facility-escape prevention, raw-spawn prevention, mode-change revocation of existing children, and traffic-origin isolation: no producer in this plan; disclosed limitations must remain outside claims of complete confinement.
+
+REMAINING WEAKNESSES (accepted, non-blocking, worth recording):
+  - No proposed sandbox or network profile was compiled or exercised; the research establishes candidate mechanisms, not their effectiveness.
+  - The verifier’s lexical PASS and the assembly manifest are not independent semantic or byte-for-byte validation of this pasted submission.
+
+STRONGEST REMAINING OBJECTION:
+  The plan cannot pass its own macOS-first P1a gate: it mandates runtime bypass accounting through an extension it does not ship, and that proposed observer lacks both fork coverage and API-use attribution. P3 similarly offers a weaker release gate while retaining a stronger CP-07 completion requirement. These are contradictory delivery conditions for the two boundaries on which the proposed agent depends.
+
+FINAL VERDICT: REJECTED  
+  Blocking checks: **1, 3, 4, 5, 6, 8, 9, 11, 12**. The most consequential are **3 and 4**; the others include operative outcome and evidence claims that still mislead a reader about what is enforceable or verified.
+
+REVIEWER DECLARATION:  
+  This judgment applies only to the material submitted in the prompt. I did not read repository files or independently verify the underlying source observations.
