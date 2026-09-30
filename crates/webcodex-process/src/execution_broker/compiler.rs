@@ -108,7 +108,12 @@ pub enum CompileError {
     /// The plan requires a capability this compiler does not implement.
     Unsupported(String),
     /// The caller supplied a toolchain root that cannot be used.
-    ToolchainRootRejected(PathBuf),
+    ToolchainRootRejected {
+        /// The offending path.
+        root: PathBuf,
+        /// Why the host will not vouch for it.
+        reason: String,
+    },
 }
 
 impl std::fmt::Display for CompileError {
@@ -130,28 +135,153 @@ impl std::fmt::Display for CompileError {
                  spawning a process that cannot do anything"
             ),
             Self::Unsupported(what) => write!(f, "sandbox plan unsupported: {what}"),
-            Self::ToolchainRootRejected(p) => write!(
-                f,
-                "toolchain root must be an absolute path outside the user's \
-                 home directory, got {}",
-                p.display()
-            ),
+            Self::ToolchainRootRejected { root, reason } => {
+                write!(f, "toolchain root {} rejected: {reason}", root.display())
+            }
         }
     }
 }
 
 impl std::error::Error for CompileError {}
 
+/// A read-only prefix the host has vouched for, not the caller.
+///
+/// # Why this is not a `PathBuf`
+///
+/// A toolchain root *widens* what a sandboxed action can read, past the roots
+/// the plan named. If the public API accepted a `PathBuf`, then
+/// `spawn_with_toolchain(spec, &["/"])` would compile to a profile granting
+/// `(subpath "/")` — the entire filesystem, readable — and every check that
+/// could have caught it ("absolute?", "outside `$HOME`?") passes, because `/`
+/// is absolute and is not inside `$HOME`.
+///
+/// So the type carries the *provenance* of a grant, not just its value. There
+/// is no public constructor: a caller cannot mint one, and therefore cannot
+/// name a root the host did not derive from an executable it actually resolved.
+/// The field is private so the value cannot be forged by struct literal either.
+///
+/// # What the resolver actually proves
+///
+/// [`TrustedToolchainRoot::resolve`] takes the **path of an executable** and
+/// derives a bounded prefix from it:
+///
+/// 1. the executable is canonicalized, so `/usr/bin/../bin/node` cannot smuggle
+///    a different target past the check;
+/// 2. it must be a regular file — a directory or device node is not something
+///    an interpreter is derived from;
+/// 3. the derived prefix must be a *recognised* toolchain layout.
+///
+/// That last step is what makes `"/"` unrepresentable. It is not a path that
+/// fails a range check; it is a path the resolver will not hand out, because it
+/// is not a recognised prefix of any executable it was given.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrustedToolchainRoot(PathBuf);
+
+/// Toolchain layouts the resolver will vouch for, most specific first.
+///
+/// Deliberately an allow-list. A prefix that is not here is not a toolchain.
+const KNOWN_TOOLCHAIN_PREFIXES: &[&str] = &[
+    "/opt/homebrew",
+    "/usr/local",
+    "/opt/local",
+    "/sw",
+    "/nix/var/nix/profiles/default",
+];
+
+/// System prefixes, which are allow-listed by shape rather than by prefix match.
+const SYSTEM_PREFIXES: &[&str] = &[
+    "/bin",
+    "/sbin",
+    "/usr/bin",
+    "/usr/sbin",
+    "/usr/lib",
+    "/usr/libexec",
+];
+
+impl TrustedToolchainRoot {
+    /// Derive a trusted root from the resolved path of an executable.
+    ///
+    /// Returns an error unless the derived prefix is a recognised toolchain
+    /// layout. This is the whole point of the type: an arbitrary directory
+    /// cannot become a grant.
+    pub fn resolve(executable: &Path) -> Result<Self, CompileError> {
+        let canonical =
+            executable
+                .canonicalize()
+                .map_err(|e| CompileError::ToolchainRootRejected {
+                    root: executable.to_path_buf(),
+                    reason: format!("executable could not be resolved: {e}"),
+                })?;
+
+        if !canonical.is_file() {
+            return Err(CompileError::ToolchainRootRejected {
+                root: canonical,
+                reason: "not a regular file".to_string(),
+            });
+        }
+
+        let prefix = Self::recognised_prefix_of(&canonical).ok_or_else(|| {
+            CompileError::ToolchainRootRejected {
+                root: canonical.clone(),
+                reason: "not inside a recognised toolchain prefix \
+                         (/opt/homebrew, /usr/local, /opt/local, /sw, nix, or a system prefix)"
+                    .to_string(),
+            }
+        })?;
+
+        // Defence in depth: the recognised-prefix check is the real gate, but a
+        // home directory could be a legal-looking path on some layouts, so it
+        // is refused explicitly rather than by implication.
+        if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+            if let Ok(home) = home.canonicalize() {
+                if prefix.starts_with(&home) {
+                    return Err(CompileError::ToolchainRootRejected {
+                        root: prefix,
+                        reason: "resolves inside the user's home directory".to_string(),
+                    });
+                }
+            }
+        }
+
+        Ok(Self(prefix))
+    }
+
+    /// The path to hand to the profile compiler.
+    pub fn as_path(&self) -> &Path {
+        &self.0
+    }
+
+    /// The recognised prefix containing `executable`, if any.
+    fn recognised_prefix_of(executable: &Path) -> Option<PathBuf> {
+        let text = executable.to_string_lossy();
+        for candidate in KNOWN_TOOLCHAIN_PREFIXES {
+            if text.starts_with(candidate) {
+                return Some(PathBuf::from(candidate));
+            }
+        }
+        for candidate in SYSTEM_PREFIXES {
+            if text == *candidate || text.starts_with(&format!("{candidate}/")) {
+                return Some(PathBuf::from(candidate));
+            }
+        }
+        None
+    }
+}
+
+impl std::fmt::Display for TrustedToolchainRoot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.display())
+    }
+}
+
 /// Compile a plan into a profile and its parameter definitions.
 ///
-/// `toolchain_roots` names extra read-only prefixes the action needs *beyond*
-/// its plan roots in order to start at all — a Homebrew `node`, for example.
-/// They are validated separately from plan roots because they widen what the
-/// action can read, and widening is the one thing a sandbox must not do by
-/// accident.
+/// `toolchain_roots` are **trusted** roots — see [`TrustedToolchainRoot`]. The
+/// type is the enforcement: this function has no overload that takes a bare
+/// path, so a caller cannot widen the profile with a directory it merely named.
 pub fn compile(
     plan: &SandboxPlan,
-    toolchain_roots: &[PathBuf],
+    toolchain_roots: &[TrustedToolchainRoot],
 ) -> Result<CompiledProfile, CompileError> {
     let (writable_roots, readable_roots, network) = match plan {
         SandboxPlan::Confined {
@@ -216,10 +346,12 @@ pub fn compile(
     }
 
     // --- runtime toolchain read access -----------------------------------
+    // The value is already trusted by construction, so there is nothing left to
+    // validate here: `TrustedToolchainRoot` cannot be constructed from a bare
+    // path by anyone outside this module.
     for (index, root) in toolchain_roots.iter().enumerate() {
-        let resolved = resolve_toolchain_root(root)?;
         let name = format!("{TOOLCHAIN_PARAM}{index}");
-        push_definition(&mut definitions, &name, &resolved);
+        push_definition(&mut definitions, &name, root.as_path());
         let _ = writeln!(
             body,
             "(allow file-read* file-map-executable (subpath (param \"{name}\")))"
@@ -270,19 +402,35 @@ fn resolve_root(root: &Path) -> Result<PathBuf, CompileError> {
 /// into `~`, then "give me node" would quietly become "read my home
 /// directory". Homebrew prefixes live outside `~`, so the refusal costs this
 /// design nothing and removes a whole failure mode.
-fn resolve_toolchain_root(root: &Path) -> Result<PathBuf, CompileError> {
+///
+/// Superseded by [`TrustedToolchainRoot::resolve`], which additionally requires
+/// the root to be derived from a real executable inside a recognised prefix.
+/// Retained only as the negative-test oracle: it shows what the *old*,
+/// caller-supplied-path behaviour was, so the new type's guarantee can be
+/// stated as a difference rather than an assertion.
+#[cfg(test)]
+fn resolve_toolchain_root_unchecked(root: &Path) -> Result<PathBuf, CompileError> {
     if !root.is_absolute() {
-        return Err(CompileError::ToolchainRootRejected(root.to_path_buf()));
+        return Err(CompileError::ToolchainRootRejected {
+            root: root.to_path_buf(),
+            reason: "not absolute".to_string(),
+        });
     }
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
         .and_then(|h| h.canonicalize().ok());
     let resolved = root
         .canonicalize()
-        .map_err(|_| CompileError::ToolchainRootRejected(root.to_path_buf()))?;
+        .map_err(|_| CompileError::ToolchainRootRejected {
+            root: root.to_path_buf(),
+            reason: "could not be resolved".to_string(),
+        })?;
     if let Some(home) = home {
         if resolved.starts_with(&home) {
-            return Err(CompileError::ToolchainRootRejected(resolved));
+            return Err(CompileError::ToolchainRootRejected {
+                root: resolved,
+                reason: "inside the user's home directory".to_string(),
+            });
         }
     }
     Ok(resolved)
@@ -379,14 +527,114 @@ mod tests {
     #[test]
     fn toolchain_root_inside_home_is_refused() {
         let home = std::env::var_os("HOME").expect("HOME must be set");
-        let err = compile(
-            &plan(&[&std::env::temp_dir().to_string_lossy()], &[]),
-            &[PathBuf::from(home).join("somewhere")],
-        )
-        .unwrap_err();
+        // A file inside the home directory is not a recognised toolchain
+        // prefix, so the resolver refuses it before any grant is minted.
+        let inside_home = PathBuf::from(home).join(".webcodex-fake-executable");
+        std::fs::write(&inside_home, b"#!/bin/sh\n").expect("write fake executable");
+        let err = TrustedToolchainRoot::resolve(&inside_home).unwrap_err();
         assert!(
-            matches!(err, CompileError::ToolchainRootRejected(_)),
+            matches!(err, CompileError::ToolchainRootRejected { .. }),
             "got {err:?}"
+        );
+        let _ = std::fs::remove_file(&inside_home);
+    }
+
+    /// **`/` must be unreachable as a toolchain grant.**
+    ///
+    /// This is the negative test the whole type exists for. Under the previous
+    /// caller-supplied-`PathBuf` API, `/` was absolute and outside `$HOME`, so
+    /// it passed every check and compiled to a profile granting
+    /// `(subpath "/")` — the entire filesystem, readable.
+    ///
+    /// The new API cannot express that: the resolver only mints roots derived
+    /// from a real executable inside a recognised prefix, and `/` is not one.
+    #[test]
+    fn arbitrary_root_cannot_become_a_toolchain_grant() {
+        // The old behaviour, for contrast: `/` sailed through the checks.
+        let naive = resolve_toolchain_root_unchecked(Path::new("/"))
+            .expect("the old checks would have accepted /");
+        assert_eq!(
+            naive,
+            PathBuf::from("/"),
+            "precondition: the old validator did accept /"
+        );
+
+        // The new behaviour: there is no path to express it, because the only
+        // constructor takes an executable and requires a recognised prefix.
+        for bogus in ["/", "/usr", "/opt", "/System", "/private"] {
+            // A directory is not a file, so it cannot be an executable.
+            assert!(
+                TrustedToolchainRoot::resolve(Path::new(bogus)).is_err(),
+                "{bogus} must not be resolvable as a toolchain root"
+            );
+        }
+    }
+
+    /// The resolver accepts a real executable in a recognised prefix and yields
+    /// a *bounded* prefix, never the executable's own parent chain.
+    #[test]
+    fn resolver_derives_a_bounded_prefix_from_a_real_executable() {
+        let true_bin = Path::new("/usr/bin/true");
+        if !true_bin.is_file() {
+            eprintln!("SKIP_REASON: /usr/bin/true not present on this host");
+            return;
+        }
+        let root = TrustedToolchainRoot::resolve(true_bin).expect("system binary is trusted");
+        let path = root.as_path().to_string_lossy().into_owned();
+        assert!(
+            KNOWN_TOOLCHAIN_PREFIXES.contains(&path.as_str())
+                || SYSTEM_PREFIXES.contains(&path.as_str()),
+            "resolver returned an unrecognised prefix: {path}"
+        );
+        assert!(
+            !path.is_empty() && path != "/",
+            "resolver must never yield the filesystem root"
+        );
+    }
+
+    /// A compiled profile with a trusted toolchain root carries the root as an
+    /// argv definition, and the profile names it only through the parameter.
+    ///
+    /// The assertion is on the *toolchain rule* rather than on the whole
+    /// profile: `/usr/bin` legitimately appears in the embedded Codex platform
+    /// defaults, so "the path is absent from the profile" would be false for a
+    /// reason that has nothing to do with this code. What matters is that the
+    /// rule this compiler emits carries no path text.
+    #[test]
+    fn trusted_toolchain_root_reaches_the_profile_as_argv_only() {
+        let true_bin = Path::new("/usr/bin/true");
+        if !true_bin.is_file() {
+            eprintln!("SKIP_REASON: /usr/bin/true not present on this host");
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let trusted = TrustedToolchainRoot::resolve(true_bin).expect("trusted");
+        let compiled = compile(
+            &plan(&[dir.path().to_str().unwrap()], &[]),
+            std::slice::from_ref(&trusted),
+        )
+        .expect("compiles");
+
+        let rule = compiled
+            .sbpl
+            .lines()
+            .find(|l| l.contains("WEB_CODEX_TOOLCHAIN_0"))
+            .expect("a toolchain rule must be emitted");
+        assert!(
+            rule.contains("(subpath (param \"WEB_CODEX_TOOLCHAIN_0\"))"),
+            "the rule must reference the parameter, not a literal path: {rule}"
+        );
+        assert!(
+            !rule.contains(&*trusted.as_path().to_string_lossy()),
+            "the toolchain rule must not interpolate the path: {rule}"
+        );
+        assert!(
+            compiled
+                .definitions
+                .iter()
+                .any(|d| d.starts_with("WEB_CODEX_TOOLCHAIN_0=")),
+            "the toolchain root must be a definition: {:?}",
+            compiled.definitions
         );
     }
 

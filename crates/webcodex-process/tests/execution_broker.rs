@@ -32,7 +32,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 use webcodex_process::execution_broker::{
-    ExecutionBroker, NetworkPolicy, SandboxPlan, SpawnSpec, StreamPolicy,
+    ExecutionBroker, NetworkPolicy, SandboxPlan, SpawnSpec, StreamPolicy, TrustedToolchainRoot,
 };
 
 // ---------------------------------------------------------------------------
@@ -117,28 +117,29 @@ fn run(spec: &SpawnSpec) -> (Vec<u8>, Vec<u8>, i32) {
 
 /// Whether this host will apply a restrictive profile at all.
 ///
-/// Both probes must succeed. A profile that is merely *permissive* would pass
-/// the first check and tell us nothing, so narrowing is required for a
-/// `true` verdict.
+/// One probe only, and it is the one verified to work on a real Terminal:
+/// `(version 1)(allow default)(deny network*)`.
+///
+/// A second probe on `(allow default)(deny file-read*)` used to be required
+/// here. That was wrong. A blanket `deny file-read*` cuts off the system reads
+/// `/usr/bin/true` needs in order to start, so it fails with rc=134 even on a
+/// host that applies restrictive profiles perfectly well — which made the
+/// precondition report ENV_BLOCKED on capable hosts.
+///
+/// The precondition that actually matters is narrow: `sandbox-exec` exists, and
+/// a profile that narrows something *without preventing the target from
+/// starting* can be applied. Only a failure here means `sandbox_apply` itself
+/// failed.
 fn host_allows_restrictive_profiles() -> bool {
-    for profile in [
-        "(version 1)(allow default)(deny network*)",
-        "(version 1)(allow default)(deny file-read*)",
-    ] {
-        let ok = std::process::Command::new("/usr/bin/sandbox-exec")
-            .arg("-p")
-            .arg(profile)
-            .arg("/usr/bin/true")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
-        if !ok {
-            return false;
-        }
-    }
-    true
+    std::process::Command::new("/usr/bin/sandbox-exec")
+        .arg("-p")
+        .arg("(version 1)(allow default)(deny network*)")
+        .arg("/usr/bin/true")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 macro_rules! require_enforcement_capable_host {
@@ -212,10 +213,18 @@ fn test_b_external_read_is_denied() {
     let inside = sh_quote_path(&fx.inside_file);
 
     // The child proves it is running by reading something it *is* allowed to
-    // read, then attempts the forbidden read. If the marker never appears, the
-    // program did not start and the test is ENV_BLOCKED-shaped, not a denial.
-    let script =
-        format!(r#"cat "{inside}" > /dev/null && printf 'B_STARTED_OK' && cat "{outside}""#);
+    // read, then attempts the forbidden read — and *catches the denial itself*,
+    // exiting 0.
+    //
+    // This is the corrected oracle. The previous version appended a bare
+    // `cat "{outside}"` and required the process to exit 0, which is backwards:
+    // `cat` returns non-zero when it is denied, so correct enforcement produced
+    // a non-zero exit and the test FAILED. Letting the child report the denial
+    // separates "the sandbox denied it" from "the program could not start",
+    // which a non-zero exit cannot do.
+    let script = format!(
+        r#"cat "{inside}" > /dev/null && printf 'B_STARTED_OK' && if cat "{outside}" 2>/dev/null; then printf 'B_LEAK'; exit 1; else printf 'B_DENIED'; exit 0; fi"#
+    );
     let spec = SpawnSpec::new("/bin/sh", &fx.root, plan_workspace_only(&fx.workspace))
         .arg("-c")
         .arg(&script)
@@ -225,9 +234,11 @@ fn test_b_external_read_is_denied() {
     let (out, err, code) = run(&spec);
 
     assert_eq!(
-        code, 0,
-        "B: the process must run cleanly -- it does nothing but read an allowed \
-         file and then a denied one"
+        code,
+        0,
+        "B: the child must report the denial and exit 0; a non-zero exit means \
+         something other than enforcement went wrong. stderr={}",
+        String::from_utf8_lossy(&err)
     );
     let text = String::from_utf8_lossy(&out);
     assert!(
@@ -238,7 +249,11 @@ fn test_b_external_read_is_denied() {
         String::from_utf8_lossy(&err)
     );
     assert!(
-        !text.contains("OUTSIDE_SECRET"),
+        text.contains("B_DENIED"),
+        "B: the child must observe and report the denial; stdout was {text:?}"
+    );
+    assert!(
+        !text.contains("B_LEAK"),
         "B: the denied read must not return data: {text}"
     );
 }
@@ -261,11 +276,17 @@ fn test_c_descendant_inherits_the_profile_shell_to_python() {
     }
 
     // sh prints a marker (so we know the shell ran), then python3 runs as a
-    // descendant and attempts the denied read.
+    // descendant, catches the denial itself, and exits 0. See test B for why a
+    // non-zero exit must not be the oracle.
     let script = format!(
         r#"printf 'C_SHELL_OK'; python3 -c 'import sys
-d=open(sys.argv[1]).read()
-print("C_PYTHON_DENIED_LEAK:"+d)' "{outside}""#
+try:
+    d = open(sys.argv[1]).read()
+    print("C_LEAK:" + d)
+    sys.exit(1)
+except OSError:
+    print("C_DENIED")
+    sys.exit(0)' "{outside}""#
     );
     let spec = SpawnSpec::new("/bin/sh", &fx.root, plan_workspace_only(&fx.workspace))
         .arg("-c")
@@ -287,7 +308,11 @@ print("C_PYTHON_DENIED_LEAK:"+d)' "{outside}""#
         "C: the outer shell must have started; stdout={text:?}"
     );
     assert!(
-        !text.contains("C_PYTHON_DENIED_LEAK"),
+        text.contains("C_DENIED"),
+        "C: the descendant must observe and report the denial; stdout={text:?}"
+    );
+    assert!(
+        !text.contains("C_LEAK"),
         "C: the descendant must not read the denied file; stdout={text:?}"
     );
 }
@@ -308,8 +333,18 @@ fn test_c2_descendant_inherits_the_profile_shell_to_node() {
     };
     let _ = node;
 
+    // Same shape as C: the descendant catches the denial and exits 0. Braces
+    // are doubled because this is a `format!` template.
     let script = format!(
-        r#"printf 'C2_SHELL_OK'; node -e 'const fs=require("fs");process.stdout.write("C2_LEAK:"+fs.readFileSync(process.argv[1],"utf8"))' "{outside}""#
+        r#"printf 'C2_SHELL_OK'; node -e 'const fs=require("fs");
+try {{
+  const d = fs.readFileSync(process.argv[1], "utf8");
+  process.stdout.write("C2_LEAK:" + d);
+  process.exit(1);
+}} catch (e) {{
+  process.stdout.write("C2_DENIED");
+  process.exit(0);
+}}' "{outside}""#
     );
     let spec = SpawnSpec::new("/bin/sh", &fx.root, plan_workspace_only(&fx.workspace))
         .arg("-c")
@@ -328,6 +363,10 @@ fn test_c2_descendant_inherits_the_profile_shell_to_node() {
     assert!(
         text.contains("C2_SHELL_OK"),
         "C2: the outer shell must have started; stdout={text:?}"
+    );
+    assert!(
+        text.contains("C2_DENIED"),
+        "C2: the descendant must observe and report the denial; stdout={text:?}"
     );
     assert!(
         !text.contains("C2_LEAK"),
@@ -457,4 +496,78 @@ fn which(program: &str) -> Option<PathBuf> {
     std::env::split_paths(&path)
         .map(|dir| dir.join(program))
         .find(|candidate| candidate.is_file())
+}
+
+// ---------------------------------------------------------------------------
+// Toolchain grant authority
+//
+// This lives in an integration test on purpose. An integration test links the
+// library the way a *downstream crate* would, so it can only reach the public
+// API. If a caller could hand the broker an arbitrary directory as a toolchain
+// root, the test below would compile. It does not compile, because
+// `spawn_with_toolchain` takes `&[TrustedToolchainRoot]` and that type has no
+// public constructor.
+// ---------------------------------------------------------------------------
+
+/// **A production caller cannot obtain a whole-filesystem read grant.**
+///
+/// `/` is the sharpest case: it is absolute, it exists, and it is not inside
+/// `$HOME`, so every check the previous `&[PathBuf]` API performed would have
+/// passed it. The resulting profile would contain `(subpath "/")`.
+#[test]
+fn arbitrary_filesystem_root_cannot_be_requested_as_a_toolchain_grant() {
+    // The resolver is the only way to mint a grant, and it demands an
+    // executable inside a recognised prefix.
+    for bogus in ["/", "/usr", "/opt", "/System", "/private", "/Users"] {
+        assert!(
+            TrustedToolchainRoot::resolve(Path::new(bogus)).is_err(),
+            "{bogus} must be rejected as a toolchain root"
+        );
+    }
+
+    // A directory is not an interpreter, so pointing at one is rejected even
+    // when it sits inside a recognised prefix.
+    for dir in ["/opt", "/usr", "/usr/bin"] {
+        if Path::new(dir).is_dir() {
+            assert!(
+                TrustedToolchainRoot::resolve(Path::new(dir)).is_err(),
+                "{dir} is a directory and must not be accepted as an executable"
+            );
+        }
+    }
+
+    // And a file that is not in any recognised layout — here, a temporary file
+    // under the system temp dir, which on macOS is /var/folders/... — cannot be
+    // turned into a grant either.
+    let stray = tempfile::NamedTempFile::new().expect("temp file");
+    assert!(
+        TrustedToolchainRoot::resolve(stray.path()).is_err(),
+        "a file outside every recognised toolchain prefix must be rejected: {}",
+        stray.path().display()
+    );
+}
+
+/// A real executable in a recognised prefix *is* accepted, and yields a bounded
+/// prefix — so the restriction above is a real gate, not a blanket refusal.
+#[test]
+fn real_toolchain_executable_is_accepted_and_yields_a_bounded_prefix() {
+    let true_bin = Path::new("/usr/bin/true");
+    if !true_bin.is_file() {
+        eprintln!("SKIP_REASON: /usr/bin/true not present on this host");
+        return;
+    }
+    let root = TrustedToolchainRoot::resolve(true_bin).expect("system binary is trusted");
+    let granted = root.as_path().to_string_lossy().into_owned();
+    assert_ne!(granted, "/", "the resolver must never yield /");
+    assert!(
+        Path::new(&granted).is_dir(),
+        "the granted prefix must be a real directory: {granted}"
+    );
+
+    // The grant is a *prefix of the executable's location*, not the whole disk.
+    let exe = true_bin.canonicalize().expect("canonical");
+    assert!(
+        exe.starts_with(&granted),
+        "{exe:?} should live under the granted prefix {granted}"
+    );
 }

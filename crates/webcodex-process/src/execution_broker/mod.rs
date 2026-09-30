@@ -58,7 +58,7 @@ use crate::{ManagedChild, SpawnOptions};
 
 mod compiler;
 
-pub use compiler::{CompileError, CompiledProfile};
+pub use compiler::{CompileError, CompiledProfile, TrustedToolchainRoot};
 
 /// Codex-derived Seatbelt baseline, embedded verbatim.
 ///
@@ -363,7 +363,10 @@ impl SandboxPlan {
     /// kernel as argv parameters, never as profile text — see
     /// [`compiler`] for why that matters.
     #[cfg(target_os = "macos")]
-    pub fn compile(&self, toolchain_roots: &[PathBuf]) -> Result<CompiledProfile, CompileError> {
+    pub fn compile(
+        &self,
+        toolchain_roots: &[TrustedToolchainRoot],
+    ) -> Result<CompiledProfile, CompileError> {
         compiler::compile(self, toolchain_roots)
     }
 }
@@ -413,7 +416,7 @@ impl ExecutionBroker {
     pub(crate) fn build_command_with_toolchain(
         &self,
         spec: &SpawnSpec,
-        toolchain_roots: &[PathBuf],
+        toolchain_roots: &[TrustedToolchainRoot],
     ) -> Result<Command, BrokerError> {
         // Render first: an inexpressible plan must fail before anything exists.
         let compiled = spec
@@ -491,15 +494,28 @@ impl ExecutionBroker {
     /// fixed system prefixes — are not enough, and without this the action
     /// fails to start rather than running restricted.
     ///
-    /// The roots are validated by the compiler: each must be absolute, must
-    /// exist, and is **refused if it is inside the user's home directory**.
-    /// That refusal is the whole safety argument for this parameter — without
-    /// it, "let me run node" would be a way to say "read my home directory".
+    /// # The roots are [`TrustedToolchainRoot`], not paths
+    ///
+    /// This parameter widens what the action can read, past the roots the plan
+    /// named. It was previously `&[PathBuf]`, which meant a caller could pass
+    /// `"/"` and obtain a profile granting `(subpath "/")` — the whole
+    /// filesystem, readable. Every check that should have caught that passed,
+    /// because `/` is absolute and is not inside `$HOME`.
+    ///
+    /// The type removes the ability to express it. There is no public
+    /// constructor and the field is private, so a caller can only pass roots the
+    /// host derived from an executable it resolved, inside a recognised
+    /// toolchain prefix. To grant a prefix, resolve the executable:
+    ///
+    /// ```ignore
+    /// let node = TrustedToolchainRoot::resolve(Path::new("/opt/homebrew/bin/node"))?;
+    /// broker.spawn_with_toolchain(&spec, &[node])?;
+    /// ```
     #[cfg(target_os = "macos")]
     pub fn spawn_with_toolchain(
         &self,
         spec: &SpawnSpec,
-        toolchain_roots: &[PathBuf],
+        toolchain_roots: &[TrustedToolchainRoot],
     ) -> Result<ManagedChild, BrokerError> {
         let mut command = self.build_command_with_toolchain(spec, toolchain_roots)?;
         ManagedChild::spawn_with_options(&mut command, SpawnOptions::new())

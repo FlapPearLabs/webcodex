@@ -32,7 +32,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 use webcodex_process::execution_broker::{
-    ExecutionBroker, NetworkPolicy, SandboxPlan, SpawnSpec, StreamPolicy,
+    ExecutionBroker, NetworkPolicy, SandboxPlan, SpawnSpec, StreamPolicy, TrustedToolchainRoot,
 };
 
 // ---------------------------------------------------------------------------
@@ -89,28 +89,26 @@ fn which(program: &str) -> Option<PathBuf> {
 /// Read-only prefixes needed to *start* an interpreter on this machine.
 ///
 /// The Codex-derived platform defaults stop at fixed system prefixes, so a
-/// Homebrew-installed `node` is not executable under them. Each root found
-/// here is passed to the compiler, which refuses any root inside `$HOME`.
-fn toolchain_roots_for(program: &str) -> Vec<PathBuf> {
+/// Homebrew-installed `node` is not executable under them. Each root here is
+/// minted by `TrustedToolchainRoot::resolve`, which derives a **bounded**
+/// prefix from a real executable in a recognised toolchain layout. That is
+/// deliberate: this function looks up `node` on `PATH` and vouches for the
+/// prefix it lives in. It never accepts a caller-supplied directory, so there
+/// is no way to ask for `/` here — or anywhere else.
+fn toolchain_roots_for(program: &str) -> Vec<TrustedToolchainRoot> {
     let Some(path) = which(program) else {
         return Vec::new();
     };
-    let Ok(resolved) = path.canonicalize() else {
-        return Vec::new();
-    };
-    // Walk up to the prefix: .../bin/node -> .../Cellar/node/.../bin/node, and
-    // .../bin/node -> /opt/homebrew/bin/node. The prefix is the first segment
-    // that is not a bin/lib directory.
-    let mut roots = Vec::new();
-    for ancestor in resolved.ancestors().skip(1).take(4) {
-        let name = ancestor.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        if matches!(name, "bin" | "lib" | "Cellar" | "opt") {
-            continue;
+    // resolve() canonicalizes, requires a regular file, and refuses any prefix
+    // that is not a recognised toolchain layout. A failure is not fatal: the
+    // test that needs it will report why it could not start.
+    match TrustedToolchainRoot::resolve(&path) {
+        Ok(root) => vec![root],
+        Err(e) => {
+            eprintln!("note: no trusted toolchain root for {program} at {path:?}: {e}");
+            Vec::new()
         }
-        roots.push(ancestor.to_path_buf());
-        break;
     }
-    roots
 }
 
 // ---------------------------------------------------------------------------
@@ -123,7 +121,7 @@ struct Outcome {
     code: i32,
 }
 
-fn run(spec: &SpawnSpec, toolchain: &[PathBuf]) -> Result<Outcome, String> {
+fn run(spec: &SpawnSpec, toolchain: &[TrustedToolchainRoot]) -> Result<Outcome, String> {
     let broker = ExecutionBroker::new();
     let mut child = broker
         .spawn_with_toolchain(spec, toolchain)
@@ -149,7 +147,7 @@ fn sh_in(
     cwd: &Path,
     plan: SandboxPlan,
     script: &str,
-    toolchain: &[PathBuf],
+    toolchain: &[TrustedToolchainRoot],
 ) -> Result<Outcome, String> {
     let spec = SpawnSpec::new("/bin/sh", cwd, plan)
         .arg("-c")
@@ -302,16 +300,24 @@ fn main() {
     {
         let inside = q(&fx.inside_file);
         let outside = q(&fx.outside_file);
-        // The marker proves the program ran. Without it a "denial" could just
-        // mean the program never started.
-        let script =
-            format!(r#"cat "{inside}" > /dev/null && printf 'B_STARTED_OK' && cat "{outside}""#);
+        // The denial is caught by the *test program*, which then exits 0.
+        //
+        // An earlier version asserted on a non-zero exit, on the theory that a
+        // denied read must make the process fail. That is backwards: `cat`
+        // returns non-zero when it is denied, so correct enforcement produced a
+        // non-zero exit and the test FAILED. Having the child report the denial
+        // and exit cleanly is what separates "the sandbox denied it" from "the
+        // program could not start" — a non-zero exit cannot.
+        let script = format!(
+            r#"cat "{inside}" > /dev/null && printf 'B_STARTED_OK' && if cat "{outside}" 2>/dev/null; then printf 'B_LEAK'; exit 1; else printf 'B_DENIED'; exit 0; fi"#
+        );
         let o = sh_in(&fx.root, plan_for(&fx.workspace), &script, &[]);
         let ok = match &o {
             Ok(r) => {
                 r.code == 0
                     && r.stdout.contains("B_STARTED_OK")
-                    && !r.stdout.contains("OUTSIDE_SECRET")
+                    && r.stdout.contains("B_DENIED")
+                    && !r.stdout.contains("B_LEAK")
             }
             Err(_) => false,
         };
@@ -340,13 +346,25 @@ fn main() {
             results.push(("NATIVE_C", true));
         } else {
             let tc = toolchain_roots_for("python3");
+            // The shell proves it started; python catches the denial itself and
+            // exits 0, so a non-zero exit can only mean something else broke.
             let script = format!(
-                r#"printf 'C_SHELL_OK'; python3 -c 'import sys;print("C_LEAK:"+open(sys.argv[1]).read())' "{outside}""#
+                r#"printf 'C_SHELL_OK'; python3 -c 'import sys
+try:
+    d = open(sys.argv[1]).read()
+    print("C_LEAK:" + d)
+    sys.exit(1)
+except OSError:
+    print("C_DENIED")
+    sys.exit(0)' "{outside}""#
             );
             let o = sh_in(&fx.root, plan_for(&fx.workspace), &script, &tc);
             let ok = match &o {
                 Ok(r) => {
-                    r.code == 0 && r.stdout.contains("C_SHELL_OK") && !r.stdout.contains("C_LEAK")
+                    r.code == 0
+                        && r.stdout.contains("C_SHELL_OK")
+                        && r.stdout.contains("C_DENIED")
+                        && !r.stdout.contains("C_LEAK")
                 }
                 Err(_) => false,
             };
@@ -374,13 +392,27 @@ fn main() {
             results.push(("NATIVE_C2", true));
         } else {
             let tc = toolchain_roots_for("node");
+            // Same shape as C: the descendant catches the denial and exits 0.
+            // Braces are doubled because this is a `format!` template: a bare
+            // `{` in the JS would otherwise be read as a format placeholder.
             let script = format!(
-                r#"printf 'C2_SHELL_OK'; node -e 'const fs=require("fs");process.stdout.write("C2_LEAK:"+fs.readFileSync(process.argv[1],"utf8"))' "{outside}""#
+                r#"printf 'C2_SHELL_OK'; node -e 'const fs=require("fs");
+try {{
+  const d = fs.readFileSync(process.argv[1], "utf8");
+  process.stdout.write("C2_LEAK:" + d);
+  process.exit(1);
+}} catch (e) {{
+  process.stdout.write("C2_DENIED");
+  process.exit(0);
+}}' "{outside}""#
             );
             let o = sh_in(&fx.root, plan_for(&fx.workspace), &script, &tc);
             let ok = match &o {
                 Ok(r) => {
-                    r.code == 0 && r.stdout.contains("C2_SHELL_OK") && !r.stdout.contains("C2_LEAK")
+                    r.code == 0
+                        && r.stdout.contains("C2_SHELL_OK")
+                        && r.stdout.contains("C2_DENIED")
+                        && !r.stdout.contains("C2_LEAK")
                 }
                 Err(_) => false,
             };
@@ -494,22 +526,28 @@ fn emit(results: &[(&str, bool)]) {
 }
 
 fn host_allows_restrictive_profiles() -> bool {
-    for profile in [
-        "(version 1)(allow default)(deny network*)",
-        "(version 1)(allow default)(deny file-read*)",
-    ] {
-        let ok = std::process::Command::new("/usr/bin/sandbox-exec")
-            .arg("-p")
-            .arg(profile)
-            .arg("/usr/bin/true")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
-        if !ok {
-            return false;
-        }
-    }
-    true
+    // Only ONE probe, and it is the one verified to work on a real Terminal.
+    //
+    // An earlier version also required
+    //   (version 1)(allow default)(deny file-read*)
+    // to succeed. That was wrong: a blanket `deny file-read*` cuts off the
+    // system reads `/usr/bin/true` needs to start at all, so it fails with
+    // rc=134 (SIGABRT) even on a host that applies restrictive profiles
+    // perfectly well. Requiring it meant the probe reported ENV_BLOCKED on
+    // hosts that were in fact capable.
+    //
+    // The precondition we actually need is narrow: `sandbox-exec` exists, and a
+    // profile that narrows something *without preventing the target from
+    // starting* can be applied. `deny network*` is exactly that — it narrows,
+    // and `true` still runs. If this fails, `sandbox_apply` itself failed,
+    // which is the only condition that legitimately means ENV_BLOCKED.
+    std::process::Command::new("/usr/bin/sandbox-exec")
+        .arg("-p")
+        .arg("(version 1)(allow default)(deny network*)")
+        .arg("/usr/bin/true")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }

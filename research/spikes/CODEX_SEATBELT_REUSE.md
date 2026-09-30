@@ -97,8 +97,13 @@ The rules are deliberately not written into the static `.sbpl`: an undefined
 `(param)` makes `sandbox-exec` reject the whole profile (rc=65), which is
 fail-closed but would also break every profile that declares no toolchain.
 
-Toolchain roots are refused if they resolve inside `$HOME`. Without that check,
-"let this action run node" would be a way to say "read my home directory".
+Toolchain roots are **not** accepted as `PathBuf`. They are
+`TrustedToolchainRoot`: an opaque type with a private field and no public
+constructor, minted only by `TrustedToolchainRoot::resolve(executable)`, which
+requires a regular file inside a recognised toolchain layout. This is stricter
+than the previous round's "absolute, exists, outside `$HOME`" checks, because
+`/` passes all three of those and would have granted the whole filesystem as
+readable.
 
 ## Notice
 

@@ -59,6 +59,13 @@ say "process ancestry:  $ANCESTORS"
 # Ask the host directly whether it can apply a restrictive profile. This is the
 # only precondition that actually matters: if it cannot, every result below is
 # ENV_BLOCKED no matter what shell we are in.
+#
+# ONE probe, not two. A `(allow default)(deny file-read*)` probe used to be
+# required as well, which was wrong: a blanket deny-file-read cuts off the
+# system reads /usr/bin/true needs to start, so it fails with rc=134 even on a
+# host that applies restrictive profiles perfectly well. Requiring it made this
+# script report ENV_BLOCKED on capable hosts. `deny network*` narrows something
+# while still letting the target run, which is the property we need.
 probe_rc=0
 /usr/bin/sandbox-exec -p '(version 1)(allow default)(deny network*)' -- /usr/bin/true \
   >/dev/null 2>&1 || probe_rc=$?
