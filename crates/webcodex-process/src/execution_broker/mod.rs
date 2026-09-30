@@ -51,10 +51,26 @@
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use crate::{ManagedChild, SpawnOptions};
+
+mod compiler;
+
+pub use compiler::{CompileError, CompiledProfile};
+
+/// Codex-derived Seatbelt baseline, embedded verbatim.
+///
+/// Direct copy from `openai/codex` @ `69f7140559180269e2eb8f5be6e0c20eb37b0c85`
+/// (Apache-2.0). See `research/spikes/CODEX_SEATBELT_REUSE.md`.
+#[cfg(target_os = "macos")]
+const CODEX_BASE_POLICY: &str = include_str!("sbpl/codex_base_policy.sbpl");
+
+/// Codex-derived minimum system/runtime allowances, embedded verbatim.
+#[cfg(target_os = "macos")]
+const CODEX_READ_ONLY_PLATFORM_DEFAULTS: &str =
+    include_str!("sbpl/codex_read_only_platform_defaults.sbpl");
 
 /// Absolute path to Apple's profile-enforcing launcher.
 ///
@@ -111,10 +127,27 @@ impl BackendStatus {
 ///
 /// A `SandboxPlan` is a **value**, not a policy: it carries no decision about
 /// whether the action is allowed, only what the action may touch once it is.
+///
+/// # There is no unconfined variant
+///
+/// Round 2 of this spike carried a `UnconfinedForFidelityTesting` variant
+/// plus a public `spawn_unconfined_for_fidelity_testing` escape hatch, on the
+/// theory that refusing it inside `spawn` was enough. It was not: the variant
+/// and the method were both `pub`, so any production caller in any crate could
+/// obtain a completely unrestricted child by asking for one. A safety
+/// property that depends on a runtime check inside one function is not a
+/// safety property.
+///
+/// The variant is now **gone from the type**, not merely refused. Tests that
+/// need a permissive profile construct one through a `#[cfg(test)]`-only
+/// helper that does not exist in a release build, so the escape hatch is not
+/// rejected at runtime — it is *absent from the compiled program*. See
+/// `execution_broker::testing`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SandboxPlan {
     /// The real thing: an allow-list. Nothing is reachable except the roots
-    /// named here.
+    /// named here, on top of the minimum system allowances every process
+    /// needs in order to start.
     Confined {
         /// Subtrees the task may read **and** write.
         writable_roots: Vec<PathBuf>,
@@ -123,22 +156,6 @@ pub enum SandboxPlan {
         /// Whether the task may create sockets / reach the network.
         network: NetworkPolicy,
     },
-    /// A profile with **no restrictions at all** — renders to a bare
-    /// `(allow default)`.
-    ///
-    /// This exists for one reason: the command-fidelity tests must run for real
-    /// on a host whose kernel refuses restrictive profiles, and they must do so
-    /// through the same launcher, the same spec, and the same process handling
-    /// as a confined action. A fidelity test that skipped the broker would
-    /// establish nothing.
-    ///
-    /// It is deliberately **not reachable from the normal spawn path**:
-    /// [`ExecutionBroker::spawn`] refuses it. Only
-    /// [`ExecutionBroker::spawn_unconfined_for_fidelity_testing`] will honour
-    /// it, so no production caller can obtain an unconfined child by
-    /// constructing a plan. If a future test needs a real restriction it should
-    /// use [`SandboxPlan::Confined`] on a host that supports it.
-    UnconfinedForFidelityTesting,
 }
 
 /// Per-action network authority.
@@ -303,6 +320,9 @@ pub enum BrokerError {
     /// Refusing here is the point: an inexpressible plan must never fall back
     /// to an unconfined spawn.
     PlanRefused(&'static str),
+    /// The plan could not be compiled. Carries the compiler's own explanation
+    /// so the refusal names the actual root that failed.
+    PlanNotCompilable(String),
     /// The spec is internally inconsistent and cannot be executed as stated.
     SpecInvalid(&'static str),
     /// The launcher could not be started.
@@ -317,6 +337,7 @@ impl std::fmt::Display for BrokerError {
                 "no sandbox backend for this platform (spike supports macOS only)"
             ),
             Self::PlanRefused(why) => write!(f, "sandbox plan refused: {why}"),
+            Self::PlanNotCompilable(why) => write!(f, "sandbox plan refused: {why}"),
             Self::SpecInvalid(why) => write!(f, "invalid spawn spec: {why}"),
             Self::Launch(e) => write!(f, "sandbox launcher failed: {e}"),
         }
@@ -335,65 +356,16 @@ impl SandboxPlan {
         }
     }
 
-    /// Render this plan as an SBPL profile string.
+    /// Compile this plan into a profile and its launcher definitions.
     ///
-    /// A [`SandboxPlan::Confined`] plan renders an **allow-list**: nothing is
-    /// permitted except the roots it names, and everything else falls through
-    /// to the implicit deny. This is the property that makes per-action
-    /// profiles independent — a second plan naming a different root set cannot
-    /// read the first plan's data.
-    pub fn to_sbpl(&self) -> Result<String, BrokerError> {
-        let (writable_roots, readable_roots, network) = match self {
-            Self::Confined {
-                writable_roots,
-                readable_roots,
-                network,
-            } => (writable_roots, readable_roots, network),
-            Self::UnconfinedForFidelityTesting => {
-                return Ok(String::from("(version 1)\n(allow default)\n"))
-            }
-        };
-        if writable_roots.is_empty() && readable_roots.is_empty() {
-            // A plan with no roots would compile to "deny everything", which is
-            // a plausible-looking but almost certainly unintended action.
-            return Err(BrokerError::PlanRefused(
-                "plan grants no filesystem access; refusing rather than spawning a \
-                 process that can do nothing",
-            ));
-        }
-        let mut sbpl = String::from("(version 1)\n(allow default)\n(deny file-read*)\n");
-        for root in readable_roots.iter().chain(writable_roots.iter()) {
-            sbpl.push_str(&format!(
-                "(allow file-read* (subpath \"{}\"))\n",
-                escape(root)
-            ));
-        }
-        sbpl.push_str("(deny file-write*)\n");
-        for root in writable_roots {
-            sbpl.push_str(&format!(
-                "(allow file-write* (subpath \"{}\"))\n",
-                escape(root)
-            ));
-        }
-        match network {
-            NetworkPolicy::Deny => sbpl.push_str("(deny network*)\n"),
-            // No proxy backend exists, so an allow plan is refused rather than
-            // silently downgraded. Making this a hard error is what stops
-            // `Allow` from reading as "network works".
-            NetworkPolicy::Allow => {
-                return Err(BrokerError::PlanRefused(
-                    "network-allow plans require a proxy backend this spike does not implement",
-                ))
-            }
-        }
-        Ok(sbpl)
+    /// Thin re-export of [`compiler::compile`] so callers holding a plan do not
+    /// need to know the compiler is a separate module. Paths travel to the
+    /// kernel as argv parameters, never as profile text — see
+    /// [`compiler`] for why that matters.
+    #[cfg(target_os = "macos")]
+    pub fn compile(&self, toolchain_roots: &[PathBuf]) -> Result<CompiledProfile, CompileError> {
+        compiler::compile(self, toolchain_roots)
     }
-}
-
-fn escape(path: &Path) -> String {
-    path.to_string_lossy()
-        .replace('\\', "\\\\")
-        .replace('"', "\\\"")
 }
 
 fn stdio(policy: StreamPolicy) -> Stdio {
@@ -420,19 +392,47 @@ impl ExecutionBroker {
 
     /// Build the final `Command` for `spec` without spawning it.
     ///
-    /// Exposed so a caller (or a test) can inspect exactly what would be
-    /// executed. The broker owns command construction; this is the seam where
-    /// that ownership is observable.
+    /// Deliberately **`pub(crate)`, not `pub`**. Round 2 made this public so
+    /// tests could inspect it, which also made it a public primitive for
+    /// assembling a `sandbox-exec` invocation by hand — one more way to reach
+    /// an under-constrained child.
+    ///
+    /// It is also absent from a **release** build. Nothing in production calls
+    /// it: `spawn_with_toolchain` builds the command and immediately spawns it,
+    /// so there is no reason for the intermediate value to exist outside tests.
+    /// `#[cfg(test)]` is what makes that true rather than merely intended.
     #[cfg(target_os = "macos")]
-    pub fn build_command(&self, spec: &SpawnSpec) -> Result<Command, BrokerError> {
+    #[cfg(test)]
+    pub(crate) fn build_command(&self, spec: &SpawnSpec) -> Result<Command, BrokerError> {
+        self.build_command_with_toolchain(spec, &[])
+    }
+
+    /// As [`Self::build_command`], plus the extra read-only prefixes the action
+    /// needs *in order to start at all* — a Homebrew `node`, for instance.
+    #[cfg(target_os = "macos")]
+    pub(crate) fn build_command_with_toolchain(
+        &self,
+        spec: &SpawnSpec,
+        toolchain_roots: &[PathBuf],
+    ) -> Result<Command, BrokerError> {
         // Render first: an inexpressible plan must fail before anything exists.
-        let sbpl = spec.plan.to_sbpl()?;
+        let compiled = spec
+            .plan
+            .compile(toolchain_roots)
+            .map_err(|e| BrokerError::PlanNotCompilable(e.to_string()))?;
         if spec.program.as_os_str().is_empty() {
             return Err(BrokerError::SpecInvalid("program is empty"));
         }
 
         let mut command = Command::new(SANDBOX_EXEC);
-        command.arg("-p").arg(&sbpl).arg(&spec.program);
+        command.arg("-p").arg(&compiled.sbpl);
+        // Path parameters travel as argv, never as profile text.
+        for definition in &compiled.definitions {
+            command.arg(format!("-D{definition}"));
+        }
+        // `--` ends sandbox-exec's own option parsing so a program path that
+        // begins with `-` cannot be read as one of its flags.
+        command.arg("--").arg(&spec.program);
         command.args(&spec.args);
         command.current_dir(&spec.cwd);
 
@@ -474,43 +474,42 @@ impl ExecutionBroker {
     /// resulting child is a `ManagedChild` like any other, so process-group
     /// ownership, `wait`, and `terminate_tree` are unchanged.
     ///
-    /// A [`SandboxPlan::UnconfinedForFidelityTesting`] spec is **refused
-    /// here**. That variant exists only so the fidelity tests can exercise the
-    /// real launcher on a host that will not apply a restrictive profile, and
-    /// it must never be reachable from a production call site.
+    /// This is the **only** way to obtain a sandboxed child. There is no
+    /// unrestricted counterpart, and none can be added without a `#[cfg(test)]`
+    /// gate — see the note on [`SandboxPlan`].
     #[cfg(target_os = "macos")]
     pub fn spawn(&self, spec: &SpawnSpec) -> Result<ManagedChild, BrokerError> {
-        if matches!(spec.plan, SandboxPlan::UnconfinedForFidelityTesting) {
-            return Err(BrokerError::SpecInvalid(
-                "unconfined plans are for fidelity tests only; \
-                 use spawn_unconfined_for_fidelity_testing",
-            ));
-        }
-        let mut command = self.build_command(spec)?;
-        ManagedChild::spawn_with_options(&mut command, SpawnOptions::new())
-            .map_err(BrokerError::Launch)
+        self.spawn_with_toolchain(spec, &[])
     }
 
-    /// Spawn without restrictions, for the command-fidelity tests only.
+    /// As [`Self::spawn`], plus the read-only prefixes the action needs in
+    /// order to start.
     ///
-    /// This still goes through `/usr/bin/sandbox-exec` — with `(allow
-    /// default)` — so the child has a real launcher as its parent and the
-    /// process tree is real. Only the restrictions are absent. The name is
-    /// deliberately awkward: this is not a capability a caller should want, and
-    /// [`ExecutionBroker::spawn`] will not honour such a plan.
+    /// A deny-default profile must be able to *execute* the interpreter the
+    /// action asked for. On a machine whose toolchain lives in
+    /// `/opt/homebrew`, the Codex-derived platform defaults — which stop at
+    /// fixed system prefixes — are not enough, and without this the action
+    /// fails to start rather than running restricted.
+    ///
+    /// The roots are validated by the compiler: each must be absolute, must
+    /// exist, and is **refused if it is inside the user's home directory**.
+    /// That refusal is the whole safety argument for this parameter — without
+    /// it, "let me run node" would be a way to say "read my home directory".
     #[cfg(target_os = "macos")]
-    pub fn spawn_unconfined_for_fidelity_testing(
+    pub fn spawn_with_toolchain(
         &self,
         spec: &SpawnSpec,
+        toolchain_roots: &[PathBuf],
     ) -> Result<ManagedChild, BrokerError> {
-        let mut command = self.build_command(spec)?;
+        let mut command = self.build_command_with_toolchain(spec, toolchain_roots)?;
         ManagedChild::spawn_with_options(&mut command, SpawnOptions::new())
             .map_err(BrokerError::Launch)
     }
 
     /// No supported backend on this platform: refuse rather than spawn bare.
     #[cfg(not(target_os = "macos"))]
-    pub fn build_command(&self, _spec: &SpawnSpec) -> Result<Command, BrokerError> {
+    #[cfg(test)]
+    pub(crate) fn build_command(&self, _spec: &SpawnSpec) -> Result<Command, BrokerError> {
         Err(BrokerError::UnsupportedPlatform)
     }
 
@@ -519,13 +518,85 @@ impl ExecutionBroker {
     pub fn spawn(&self, _spec: &SpawnSpec) -> Result<ManagedChild, BrokerError> {
         Err(BrokerError::UnsupportedPlatform)
     }
+}
 
-    /// No supported backend on this platform: refuse rather than spawn bare.
-    #[cfg(not(target_os = "macos"))]
-    pub fn spawn_unconfined_for_fidelity_testing(
-        &self,
-        _spec: &SpawnSpec,
-    ) -> Result<ManagedChild, BrokerError> {
-        Err(BrokerError::UnsupportedPlatform)
+/// Test-only helpers.
+///
+/// The whole module is `#[cfg(test)]`, so nothing here exists in a release
+/// build: there is no function to call, no variant to construct, and no
+/// environment variable, flag, or secret handshake that unlocks an
+/// unrestricted spawn. A `cargo build --release` of this crate contains no
+/// unrestricted execution path at all.
+///
+/// This exists so the command-fidelity tests can run a real `sandbox-exec`
+/// child with a permissive profile on a host whose kernel refuses restrictive
+/// ones. Without it those tests would either be skipped on such a host — in
+/// which case they would establish nothing — or would bypass the broker, which
+/// is the thing under test.
+#[cfg(test)]
+pub(crate) mod testing {
+    use super::*;
+    use crate::execution_broker::compiler::CODEX_TEST_PERMISSIVE_PROFILE;
+
+    /// A profile that permits everything, for tests that are about command
+    /// construction rather than confinement.
+    ///
+    /// Compiled by the same code path as a real profile, so a fidelity test
+    /// still exercises the launcher, the argv assembly, and the process
+    /// lifecycle. Only the restrictions are absent.
+    pub(crate) const PERMISSIVE_PROFILE: &str = CODEX_TEST_PERMISSIVE_PROFILE;
+
+    /// Build a permissive launcher invocation, for fidelity tests only.
+    ///
+    /// `pub(crate)` **and** `#[cfg(test)]`: the second is what makes this
+    /// absent from a release build. The first keeps it out of the crate's
+    /// public API even in a test build of the library.
+    pub(crate) fn build_permissive_command(spec: &SpawnSpec) -> Result<Command, BrokerError> {
+        if spec.program.as_os_str().is_empty() {
+            return Err(BrokerError::SpecInvalid("program is empty"));
+        }
+        let mut command = Command::new(SANDBOX_EXEC);
+        command
+            .arg("-p")
+            .arg(PERMISSIVE_PROFILE)
+            .arg("--")
+            .arg(&spec.program);
+        command.args(&spec.args);
+        command.current_dir(&spec.cwd);
+
+        match spec.env {
+            EnvPolicy::Empty => {
+                command.env_clear();
+            }
+            EnvPolicy::Minimal => {
+                command.env_clear();
+                command.env("PATH", "/usr/bin:/bin");
+                command.env("HOME", &spec.cwd);
+            }
+            EnvPolicy::Inherit => {
+                for key in &spec.env_remove {
+                    command.env_remove(key);
+                }
+            }
+        }
+        for (key, value) in &spec.env_vars {
+            command.env(key, value);
+        }
+
+        command.stdin(stdio(spec.stdin));
+        command.stdout(stdio(spec.stdout));
+        command.stderr(stdio(spec.stderr));
+        Ok(command)
+    }
+
+    /// Spawn under the permissive profile, for fidelity tests only.
+    pub(crate) fn spawn_permissive(spec: &SpawnSpec) -> Result<ManagedChild, BrokerError> {
+        let mut command = build_permissive_command(spec)?;
+        ManagedChild::spawn_with_options(&mut command, SpawnOptions::new())
+            .map_err(BrokerError::Launch)
     }
 }
+
+#[cfg(test)]
+#[path = "fidelity_tests.rs"]
+mod fidelity_tests;

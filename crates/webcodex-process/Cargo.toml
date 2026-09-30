@@ -17,9 +17,18 @@ windows-sys = { version = "0.61.2", features = [
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+# The native enforcement probe generates its own fixtures under a temp dir
+# rather than depending on a fixed path, so `tempfile` is a real dependency of
+# that binary and not only of the test suite.
+tempfile = "3"
+
 [[bin]]
 name = "process-tree-helper"
 path = "src/bin/process_tree_helper.rs"
+
+[[bin]]
+name = "seatbelt-ae-probe"
+path = "src/bin/seatbelt_ae_probe.rs"
 
 [dev-dependencies]
 tempfile = "3"

@@ -1,56 +1,89 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Spike round 2 tests: does the broker preserve `Command` execution semantics?
+//! Enforcement tests A-E: does a Codex-informed profile actually confine?
 //!
-//! # Why these tests exist
+//! # What these assert, and what they deliberately do not
 //!
-//! Round 1's broker took a `&mut Command` and copied three fields out of it.
-//! Everything else the caller had configured — `stdin`/`stdout`/`stderr` and
-//! the entire environment — was silently discarded. A caller who wrote
-//! `cmd.stdout(Stdio::piped())` got a child whose stdout was not piped, and
-//! nothing reported an error.
+//! Each test answers one enforcement question with a **real** confined plan —
+//! no permissive profile, no test-only escape. If a plan is refused or fails
+//! to compile, that is a failure, not a skip.
 //!
-//! # Why they cannot be ENV_BLOCKED
+//! The one thing these cannot do on the spike host is *run*: this process tree
+//! is already inside a sandbox that refuses nested narrowing, so
+//! `sandbox_apply` fails before the profile has any effect. A denial observed
+//! here would prove nothing — the process never started. So each test first
+//! asks the host whether it can apply a restrictive profile at all, and reports
+//! `ENV_BLOCKED` when it cannot.
 //!
-//! Round 1's enforcement tests (A-E) were unverifiable on the spike host because
-//! the kernel refuses restrictive Seatbelt profiles. These fidelity tests do not
-//! need one. They run under a **permissive** plan, because what they check is
-//! the broker's command construction and process handling, not profile
-//! enforcement. If a future host accepts restrictive profiles, the A-E tests
-//! start asserting; these already assert either way.
+//! `ENV_BLOCKED` is **not** a pass and is never counted as one. The enforcing
+//! run is `research/spikes/native-seatbelt-ae.sh`, executed by a human in an
+//! ordinary Terminal, and only its output is allowed to move these to PASS.
 //!
-//! `(allow default)` is a real profile that really is applied by a real
-//! `sandbox-exec` process — the child really is launched through the broker's
-//! launcher, with the launcher as its parent. Only the *restrictions* are
-//! absent.
+//! # The distinction that makes B and C meaningful
+//!
+//! `DENIED_ACTION` and `PROCESS_COULD_NOT_START` are different outcomes. A
+//! `SIGABRT` from the dynamic loader, or rc=71 from `sandbox-exec` itself, means
+//! the program never ran — reporting that as "the read was correctly denied"
+//! would be a false pass. Test B and test C therefore assert the *positive*
+//! first: the process starts and does something observable. Only then is the
+//! denial accepted as enforcement.
 
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::time::Duration;
 
 use webcodex_process::execution_broker::{
-    BrokerError, EnvPolicy, ExecutionBroker, NetworkPolicy, SandboxPlan, SpawnSpec, StreamPolicy,
+    ExecutionBroker, NetworkPolicy, SandboxPlan, SpawnSpec, StreamPolicy,
 };
 
-const OUTSIDE: &str = "/tmp/webcodex-sandbox-spike/outside.txt";
+// ---------------------------------------------------------------------------
+// Self-generated fixtures
+//
+// No test may depend on a fixed path left behind by an earlier run. Each test
+// builds its own TEMP_ROOT with a workspace/ and an outside/ sibling, so a
+// stale /tmp/webcodex-sandbox-spike can never make a test pass or fail for the
+// wrong reason.
+// ---------------------------------------------------------------------------
 
-fn fixture_workspace() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../research/spikes/fixture")
+struct Fixture {
+    _dir: tempfile::TempDir,
+    root: PathBuf,
+    workspace: PathBuf,
+    outside: PathBuf,
+    inside_file: PathBuf,
+    outside_file: PathBuf,
 }
 
-fn tmpdir() -> PathBuf {
-    std::env::temp_dir()
+impl Fixture {
+    fn new() -> Self {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path().to_path_buf();
+        let workspace = root.join("workspace");
+        let outside = root.join("outside");
+        std::fs::create_dir_all(&workspace).expect("create workspace");
+        std::fs::create_dir_all(&outside).expect("create outside");
+
+        let inside_file = workspace.join("inside.txt");
+        let outside_file = outside.join("outside.txt");
+        std::fs::write(&inside_file, "WORKSPACE_INSIDE\n").expect("write inside");
+        std::fs::write(&outside_file, "OUTSIDE_SECRET\n").expect("write outside");
+
+        Self {
+            _dir: dir,
+            root,
+            workspace,
+            outside,
+            inside_file,
+            outside_file,
+        }
+    }
 }
 
-/// The plan used by command-fidelity tests.
-///
-/// These tests assert that the broker hands the caller the execution semantics
-/// it asked for — pipes, cwd, environment, exit status, lifecycle. They are not
-/// about confinement, and they must not be skipped on a host that refuses
-/// restrictive profiles, so they run under a bare `(allow default)` profile
-/// through the real launcher.
-fn fidelity_plan() -> SandboxPlan {
-    SandboxPlan::UnconfinedForFidelityTesting
+/// Absolute path, canonicalized, as a string for embedding in a shell script.
+fn sh_quote_path(p: &Path) -> String {
+    p.canonicalize()
+        .unwrap_or_else(|_| p.to_path_buf())
+        .to_string_lossy()
+        .into_owned()
 }
 
 fn read_stdout(child: &mut webcodex_process::ManagedChild) -> Vec<u8> {
@@ -69,12 +102,10 @@ fn read_stderr(child: &mut webcodex_process::ManagedChild) -> Vec<u8> {
     bytes
 }
 
-/// Run `spec` through the broker, returning (stdout, stderr, exit code).
 fn run(spec: &SpawnSpec) -> (Vec<u8>, Vec<u8>, i32) {
     let broker = ExecutionBroker::new();
-    match broker.spawn_unconfined_for_fidelity_testing(spec) {
-        Err(BrokerError::Launch(e)) => panic!("broker launch failed: {e}"),
-        Err(other) => panic!("unexpected broker error: {other}"),
+    match broker.spawn(spec) {
+        Err(e) => panic!("broker refused to spawn: {e}"),
         Ok(mut child) => {
             let out = read_stdout(&mut child);
             let err = read_stderr(&mut child);
@@ -84,322 +115,11 @@ fn run(spec: &SpawnSpec) -> (Vec<u8>, Vec<u8>, i32) {
     }
 }
 
-fn sh(script: &str) -> SpawnSpec {
-    SpawnSpec::new("/bin/sh", tmpdir(), fidelity_plan())
-        .arg("-c")
-        .arg(script)
-        .stdout(StreamPolicy::Piped)
-        .stderr(StreamPolicy::Piped)
-}
-
-// ---------------------------------------------------------------------------
-// F1-F8: command fidelity. These run for real on any host.
-// ---------------------------------------------------------------------------
-
-/// F1 — a requested stdout pipe reaches the child and comes back to the caller.
+/// Whether this host will apply a restrictive profile at all.
 ///
-/// This is the exact regression round 1 had: the pipe was requested on the
-/// caller's `Command` and dropped by the broker.
-#[test]
-fn f1_stdout_pipe_preserved() {
-    let spec = sh("printf 'F1_MARKER'");
-    assert_eq!(
-        spec.stdout,
-        StreamPolicy::Piped,
-        "spec must request the pipe"
-    );
-    let (out, _, code) = run(&spec);
-    assert_eq!(code, 0, "child must exit cleanly");
-    assert_eq!(
-        String::from_utf8_lossy(&out).trim(),
-        "F1_MARKER",
-        "stdout must survive the broker"
-    );
-}
-
-/// F2 — stderr is a separate stream and is not merged into stdout.
-#[test]
-fn f2_stderr_pipe_preserved() {
-    let spec = sh("printf 'TO_STDERR' 1>&2");
-    let (out, err, code) = run(&spec);
-    assert_eq!(code, 0);
-    assert_eq!(String::from_utf8_lossy(&err).trim(), "TO_STDERR");
-    assert!(
-        out.is_empty(),
-        "stderr must not leak into stdout: {}",
-        String::from_utf8_lossy(&out)
-    );
-}
-
-/// F3 — stdin is piped and the parent can write to it.
-#[test]
-fn f3_stdin_pipe_preserved() {
-    let broker = ExecutionBroker::new();
-    let spec = SpawnSpec::new("/bin/cat", tmpdir(), fidelity_plan())
-        .arg("-")
-        .stdin(StreamPolicy::Piped)
-        .stdout(StreamPolicy::Piped)
-        .stderr(StreamPolicy::Piped);
-    let mut child = broker
-        .spawn_unconfined_for_fidelity_testing(&spec)
-        .expect("spawn");
-    {
-        use std::io::Write as _;
-        let mut stdin = child.child_mut().stdin.take().expect("stdin pipe");
-        stdin.write_all(b"F3_THROUGH_STDIN").expect("write stdin");
-    } // dropped -> EOF so `cat` terminates
-    let out = read_stdout(&mut child);
-    let code = child.wait().expect("wait").code().unwrap_or(-1);
-    assert_eq!(code, 0, "cat must exit cleanly");
-    assert_eq!(
-        String::from_utf8_lossy(&out),
-        "F3_THROUGH_STDIN",
-        "bytes written to the child's stdin must come back on stdout"
-    );
-}
-
-/// F4 — the working directory the caller asked for is the directory the child
-/// actually runs in. The `sandbox-exec` launcher sits between, so this is not
-/// automatic.
-#[test]
-fn f4_cwd_preserved() {
-    let probe = tmpdir();
-    let spec = SpawnSpec::new("/bin/sh", probe.clone(), fidelity_plan())
-        .arg("-c")
-        .arg("pwd")
-        .stdout(StreamPolicy::Piped)
-        .stderr(StreamPolicy::Piped);
-    let (out, _, code) = run(&spec);
-    assert_eq!(code, 0);
-    let reported = String::from_utf8_lossy(&out).trim().to_string();
-    // macOS reports /private/var for /var; accept either form.
-    let expected = probe
-        .canonicalize()
-        .unwrap_or_else(|_| probe.clone())
-        .to_string_lossy()
-        .to_string();
-    assert!(
-        reported == probe.to_string_lossy() || reported == expected,
-        "cwd mismatch: child reported {reported}, spec asked for {}",
-        probe.to_string_lossy()
-    );
-}
-
-/// F5 — an explicitly requested variable reaches the child.
-#[test]
-fn f5_explicit_env_propagated() {
-    let spec = sh("printf '%s' \"$F5_VAR\"").env_var("F5_VAR", "F5_VALUE");
-    let (out, _, code) = run(&spec);
-    assert_eq!(code, 0);
-    assert_eq!(String::from_utf8_lossy(&out), "F5_VALUE");
-}
-
-/// F6 — a secret in the *broker's* environment does not reach the child under
-/// the default env policy.
-///
-/// This is the property that makes the default safe: a sandboxed action must
-/// not inherit the runner's credentials merely because the caller did not
-/// mention them.
-#[test]
-fn f6_runner_secret_env_not_inherited_by_default() {
-    // The variable name is unique to this test; the value is a literal in this
-    // file, not a real credential.
-    std::env::set_var("F6_RUNNER_SECRET", "F6_LEAKED");
-    let spec = sh("printf '%s' \"${F6_RUNNER_SECRET:-ABSENT}\"");
-    assert_eq!(spec.env, EnvPolicy::Minimal, "default must be Minimal");
-    let (out, _, code) = run(&spec);
-    assert_eq!(code, 0);
-    assert_eq!(
-        String::from_utf8_lossy(&out),
-        "ABSENT",
-        "the runner's environment must not leak into a brokered child"
-    );
-    std::env::remove_var("F6_RUNNER_SECRET");
-}
-
-/// F6b — `EnvPolicy::Inherit` is the explicit opt-in, and it does carry the
-/// variable across. Without this, F6 could pass for the wrong reason.
-#[test]
-fn f6b_inherit_is_explicit_opt_in() {
-    std::env::set_var("F6B_MARKER", "F6B_PRESENT");
-    let spec = sh("printf '%s' \"${F6B_MARKER:-ABSENT}\"").env(EnvPolicy::Inherit);
-    let (out, _, code) = run(&spec);
-    assert_eq!(code, 0);
-    assert_eq!(String::from_utf8_lossy(&out), "F6B_PRESENT");
-    std::env::remove_var("F6B_MARKER");
-}
-
-/// F7 — the child's exit status is reported unchanged.
-#[test]
-fn f7_exit_status_preserved() {
-    let spec = sh("exit 42");
-    let (_, _, code) = run(&spec);
-    assert_eq!(
-        code, 42,
-        "exit status must pass through the launcher unchanged"
-    );
-}
-
-/// F8 — `ManagedChild` lifecycle still works: the child is observable while
-/// running, and `terminate_tree` reaches it through the `sandbox-exec` layer.
-#[test]
-fn f8_process_lifecycle_unchanged() {
-    let broker = ExecutionBroker::new();
-    let spec = SpawnSpec::new("/bin/sleep", tmpdir(), fidelity_plan())
-        .arg("30")
-        .stdout(StreamPolicy::Null)
-        .stderr(StreamPolicy::Null);
-
-    let mut child = broker
-        .spawn_unconfined_for_fidelity_testing(&spec)
-        .expect("spawn");
-    assert!(child.id() > 0, "managed child must expose a pid");
-    assert!(
-        child.try_wait().expect("try_wait").is_none(),
-        "child must still be running"
-    );
-    child.terminate_tree().expect("terminate_tree");
-    let exited = child
-        .wait_tree_exit(Duration::from_secs(10))
-        .expect("wait_tree_exit");
-    assert!(
-        exited,
-        "process tree must actually exit after terminate_tree"
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Broker-owned command construction
-// ---------------------------------------------------------------------------
-
-/// The broker builds the command; the caller cannot smuggle configuration in
-/// behind its back. This is the structural difference from round 1.
-#[test]
-fn broker_owns_command_construction() {
-    let broker = ExecutionBroker::new();
-    let spec = SpawnSpec::new("/bin/echo", tmpdir(), fidelity_plan()).arg("hello");
-    let command = broker.build_command(&spec).expect("build");
-    let rendered: Vec<String> = command
-        .get_args()
-        .map(|a| a.to_string_lossy().to_string())
-        .collect();
-    // sandbox-exec -p <profile> /bin/echo hello
-    assert_eq!(command.get_program(), "/usr/bin/sandbox-exec");
-    assert_eq!(rendered.first().map(String::as_str), Some("-p"));
-    assert_eq!(
-        rendered.get(2).map(String::as_str),
-        Some("/bin/echo"),
-        "program must be forwarded after the profile"
-    );
-    assert_eq!(rendered.last().map(String::as_str), Some("hello"));
-}
-
-/// A refused plan must fail before any process exists.
-#[test]
-fn refused_plan_never_reaches_spawn() {
-    let broker = ExecutionBroker::new();
-    let plan = SandboxPlan::read_write_in(&[]);
-    let spec = SpawnSpec::new("/bin/echo", tmpdir(), plan).arg("THIS_MUST_NOT_RUN");
-    let err = broker.spawn(&spec).expect_err("must refuse");
-    assert!(matches!(err, BrokerError::PlanRefused(_)), "got {err}");
-}
-
-/// A network-allow plan is a hard error, never a silent downgrade to deny.
-#[test]
-fn network_allow_plan_is_refused_because_no_proxy_exists() {
-    let plan = SandboxPlan::Confined {
-        writable_roots: vec![PathBuf::from("/tmp")],
-        readable_roots: Vec::new(),
-        network: NetworkPolicy::Allow,
-    };
-    assert!(matches!(plan.to_sbpl(), Err(BrokerError::PlanRefused(_))));
-}
-
-/// Path quoting is escaped, and the rule count proves no rule was injected.
-#[test]
-fn quotes_in_paths_are_escaped_not_injected() {
-    let plan = SandboxPlan::read_write_in(&[PathBuf::from("/tmp/a\" (allow default) \"b")]);
-    let sbpl = plan.to_sbpl().expect("render");
-    assert!(
-        sbpl.contains(r#"subpath "/tmp/a\" (allow default) \"b""#),
-        "{sbpl}"
-    );
-    let rule_lines = sbpl.lines().filter(|l| l.starts_with('(')).count();
-    assert_eq!(
-        rule_lines, 7,
-        "unexpected rule count, injection likely: {sbpl}"
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Per-action independence and control-plane separation (structural)
-// ---------------------------------------------------------------------------
-
-#[test]
-fn two_plans_are_independent_at_profile_level() {
-    let a = SandboxPlan::read_write_in(&[PathBuf::from("/tmp/workspace")]);
-    let b = SandboxPlan::read_write_in(&[PathBuf::from(OUTSIDE)]);
-    let sbpl_a = a.to_sbpl().unwrap();
-    let sbpl_b = b.to_sbpl().unwrap();
-    assert!(
-        !sbpl_a.contains(OUTSIDE),
-        "profile A must not grant the outside fixture"
-    );
-    assert!(
-        sbpl_b.contains(OUTSIDE),
-        "profile B must grant the outside fixture"
-    );
-    assert_ne!(sbpl_a, sbpl_b);
-}
-
-#[test]
-fn control_plane_can_issue_different_plans_and_is_never_consumed() {
-    let broker = ExecutionBroker::new();
-    let ws = PathBuf::from("/tmp/workspace");
-
-    let a = broker
-        .build_command(&SpawnSpec::new(
-            "/bin/true",
-            ws.clone(),
-            SandboxPlan::read_write_in(&[ws.clone()]),
-        ))
-        .expect("A builds");
-    let sbpl_a = a.get_args().nth(1).unwrap().to_string_lossy().to_string();
-    assert!(
-        !sbpl_a.contains(OUTSIDE),
-        "plan A must not reach the outside fixture"
-    );
-
-    let b = broker
-        .build_command(&SpawnSpec::new(
-            "/bin/true",
-            ws.clone(),
-            SandboxPlan::read_write_in(&[ws.clone(), PathBuf::from(OUTSIDE)]),
-        ))
-        .expect("B builds");
-    let sbpl_b = b.get_args().nth(1).unwrap().to_string_lossy().to_string();
-    assert!(sbpl_b.contains(OUTSIDE), "plan B must reach it");
-
-    // Still usable: the broker is a value and a spawn does not consume it.
-    let c = broker
-        .build_command(&SpawnSpec::new(
-            "/bin/true",
-            ws,
-            SandboxPlan::read_write_in(&[PathBuf::from("/tmp/other")]),
-        ))
-        .expect("C builds");
-    assert_eq!(c.get_program(), "/usr/bin/sandbox-exec");
-}
-
-// ---------------------------------------------------------------------------
-// Round 1 enforcement experiments A-E.
-//
-// Status on the spike host: the kernel refuses every restrictive Seatbelt
-// profile with `sandbox_apply: Operation not permitted`, so these cannot
-// measure anything here. They are retained and report ENV_BLOCKED via a
-// runtime probe, so they start asserting on a host that allows narrowing.
-// ---------------------------------------------------------------------------
-
+/// Both probes must succeed. A profile that is merely *permissive* would pass
+/// the first check and tell us nothing, so narrowing is required for a
+/// `true` verdict.
 fn host_allows_restrictive_profiles() -> bool {
     for profile in [
         "(version 1)(allow default)(deny network*)",
@@ -421,97 +141,320 @@ fn host_allows_restrictive_profiles() -> bool {
     true
 }
 
+macro_rules! require_enforcement_capable_host {
+    ($label:literal) => {
+        if !host_allows_restrictive_profiles() {
+            eprintln!(
+                "ENV_BLOCKED[{}]: this host refuses restrictive Seatbelt profiles at \
+                 sandbox_apply, so enforcement is unmeasurable here. NOT a pass. \
+                 Run research/spikes/native-seatbelt-ae.sh from an ordinary Terminal.",
+                $label
+            );
+            return;
+        }
+    };
+}
+
+/// Plan A: the workspace is readable and writable, nothing else, no network.
+fn plan_workspace_only(ws: &Path) -> SandboxPlan {
+    SandboxPlan::read_write_in(&[ws.to_path_buf()])
+}
+
+// ---------------------------------------------------------------------------
+// A — workspace read/write
+// ---------------------------------------------------------------------------
+
 #[test]
 fn test_a_workspace_read_write() {
-    if !host_allows_restrictive_profiles() {
-        eprintln!("ENV_BLOCKED: host refuses restrictive Seatbelt profiles; A not measurable");
-        return;
-    }
-    let ws = fixture_workspace();
-    let spec = SpawnSpec::new(
-        "/bin/cat",
-        ws.clone(),
-        SandboxPlan::read_write_in(&[ws.clone()]),
-    )
-    .arg(ws.join("inside.txt").to_str().unwrap())
-    .stdout(StreamPolicy::Piped);
-    let (out, _, code) = run(&spec);
-    assert_eq!(code, 0, "reading inside the workspace must succeed");
-    assert!(String::from_utf8_lossy(&out).contains("WORKSPACE_INSIDE"));
+    require_enforcement_capable_host!("A");
+
+    let fx = Fixture::new();
+    let ws = sh_quote_path(&fx.workspace);
+    let inside = sh_quote_path(&fx.inside_file);
+    let new_file = sh_quote_path(&fx.workspace.join("new.txt"));
+
+    // One process performs both actions, so a single rc distinguishes
+    // "workspace usable" from "workspace unusable".
+    let script = format!(
+        r#"cat "{inside}" > /dev/null && printf 'CREATED' > "{new_file}" && cat "{new_file}""#
+    );
+    let spec = SpawnSpec::new("/bin/sh", &fx.workspace, plan_workspace_only(&fx.workspace))
+        .arg("-c")
+        .arg(&script)
+        .stdout(StreamPolicy::Piped)
+        .stderr(StreamPolicy::Piped);
+
+    let (out, err, code) = run(&spec);
+    assert_eq!(
+        code,
+        0,
+        "A: workspace read+write must succeed; stderr={}",
+        String::from_utf8_lossy(&err)
+    );
+    assert_eq!(String::from_utf8_lossy(&out).trim(), "CREATED");
+    assert!(
+        fx.workspace.join("new.txt").exists(),
+        "the write must be visible outside the sandbox"
+    );
+    let _ = ws;
 }
+
+// ---------------------------------------------------------------------------
+// B — external read is denied, and the process demonstrably started
+// ---------------------------------------------------------------------------
 
 #[test]
 fn test_b_external_read_is_denied() {
-    if !host_allows_restrictive_profiles() {
-        eprintln!("ENV_BLOCKED: host refuses restrictive Seatbelt profiles; B not measurable");
+    require_enforcement_capable_host!("B");
+
+    let fx = Fixture::new();
+    let outside = sh_quote_path(&fx.outside_file);
+    let inside = sh_quote_path(&fx.inside_file);
+
+    // The child proves it is running by reading something it *is* allowed to
+    // read, then attempts the forbidden read. If the marker never appears, the
+    // program did not start and the test is ENV_BLOCKED-shaped, not a denial.
+    let script =
+        format!(r#"cat "{inside}" > /dev/null && printf 'B_STARTED_OK' && cat "{outside}""#);
+    let spec = SpawnSpec::new("/bin/sh", &fx.root, plan_workspace_only(&fx.workspace))
+        .arg("-c")
+        .arg(&script)
+        .stdout(StreamPolicy::Piped)
+        .stderr(StreamPolicy::Piped);
+
+    let (out, err, code) = run(&spec);
+
+    assert_eq!(
+        code, 0,
+        "B: the process must run cleanly -- it does nothing but read an allowed \
+         file and then a denied one"
+    );
+    let text = String::from_utf8_lossy(&out);
+    assert!(
+        text.contains("B_STARTED_OK"),
+        "B: SANDBOX_APPLIED_AND_ACTION_DENIED requires proof the process started; \
+         stdout was {:?}, stderr was {:?}",
+        text,
+        String::from_utf8_lossy(&err)
+    );
+    assert!(
+        !text.contains("OUTSIDE_SECRET"),
+        "B: the denied read must not return data: {text}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// C — descendants inherit the profile
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_c_descendant_inherits_the_profile_shell_to_python() {
+    require_enforcement_capable_host!("C");
+
+    let fx = Fixture::new();
+    let inside = sh_quote_path(&fx.inside_file);
+    let outside = sh_quote_path(&fx.outside_file);
+
+    if which("python3").is_none() {
+        eprintln!("SKIP_REASON[C]: python3 not present on this host");
         return;
     }
-    let ws = fixture_workspace();
-    let spec = SpawnSpec::new("/bin/cat", tmpdir(), SandboxPlan::read_write_in(&[ws]))
-        .arg(OUTSIDE)
-        .stdout(StreamPolicy::Piped);
-    let (_, _, code) = run(&spec);
-    assert_ne!(code, 0, "reading outside the workspace must be denied");
+
+    // sh prints a marker (so we know the shell ran), then python3 runs as a
+    // descendant and attempts the denied read.
+    let script = format!(
+        r#"printf 'C_SHELL_OK'; python3 -c 'import sys
+d=open(sys.argv[1]).read()
+print("C_PYTHON_DENIED_LEAK:"+d)' "{outside}""#
+    );
+    let spec = SpawnSpec::new("/bin/sh", &fx.root, plan_workspace_only(&fx.workspace))
+        .arg("-c")
+        .arg(&script)
+        .stdout(StreamPolicy::Piped)
+        .stderr(StreamPolicy::Piped);
+    let _ = inside;
+
+    let (out, err, code) = run(&spec);
+    let text = String::from_utf8_lossy(&out);
+    assert_eq!(
+        code,
+        0,
+        "C: shell and python must both start; stderr={}",
+        String::from_utf8_lossy(&err)
+    );
+    assert!(
+        text.contains("C_SHELL_OK"),
+        "C: the outer shell must have started; stdout={text:?}"
+    );
+    assert!(
+        !text.contains("C_PYTHON_DENIED_LEAK"),
+        "C: the descendant must not read the denied file; stdout={text:?}"
+    );
 }
 
 #[test]
-fn test_c_process_tree_inherits_the_profile_shell_to_python() {
-    if !host_allows_restrictive_profiles() {
-        eprintln!("ENV_BLOCKED: host refuses restrictive Seatbelt profiles; C not measurable");
-        return;
-    }
-    let spec = sh(&format!("python3 -c 'open(\"{OUTSIDE}\").read()'"));
-    let (_, _, code) = run(&spec);
-    assert_ne!(code, 0, "grandchild must inherit the deny");
+fn test_c2_descendant_inherits_the_profile_shell_to_node() {
+    require_enforcement_capable_host!("C2");
+
+    let fx = Fixture::new();
+    let outside = sh_quote_path(&fx.outside_file);
+
+    let node = match which("node") {
+        Some(n) => n,
+        None => {
+            eprintln!("SKIP_REASON[C2]: node not present on this host");
+            return;
+        }
+    };
+    let _ = node;
+
+    let script = format!(
+        r#"printf 'C2_SHELL_OK'; node -e 'const fs=require("fs");process.stdout.write("C2_LEAK:"+fs.readFileSync(process.argv[1],"utf8"))' "{outside}""#
+    );
+    let spec = SpawnSpec::new("/bin/sh", &fx.root, plan_workspace_only(&fx.workspace))
+        .arg("-c")
+        .arg(&script)
+        .stdout(StreamPolicy::Piped)
+        .stderr(StreamPolicy::Piped);
+
+    let (out, err, code) = run(&spec);
+    let text = String::from_utf8_lossy(&out);
+    assert_eq!(
+        code,
+        0,
+        "C2: shell and node must both start; stderr={}",
+        String::from_utf8_lossy(&err)
+    );
+    assert!(
+        text.contains("C2_SHELL_OK"),
+        "C2: the outer shell must have started; stdout={text:?}"
+    );
+    assert!(
+        !text.contains("C2_LEAK"),
+        "C2: the descendant must not read the denied file; stdout={text:?}"
+    );
 }
+
+// ---------------------------------------------------------------------------
+// D — same action, different plan, different outcome
+// ---------------------------------------------------------------------------
 
 #[test]
 fn test_d_same_action_differs_between_profiles() {
-    if !host_allows_restrictive_profiles() {
-        eprintln!("ENV_BLOCKED: host refuses restrictive Seatbelt profiles; D not measurable");
-        return;
-    }
-    let ws = fixture_workspace();
-    let a = SpawnSpec::new(
-        "/bin/cat",
-        tmpdir(),
-        SandboxPlan::read_write_in(&[ws.clone()]),
-    )
-    .arg(OUTSIDE)
-    .stdout(StreamPolicy::Piped);
-    let b = SpawnSpec::new(
-        "/bin/cat",
-        tmpdir(),
-        SandboxPlan::Confined {
-            writable_roots: vec![ws, PathBuf::from(OUTSIDE)],
-            readable_roots: Vec::new(),
-            network: NetworkPolicy::Deny,
-        },
-    )
-    .arg(OUTSIDE)
-    .stdout(StreamPolicy::Piped);
-    let (_, _, code_a) = run(&a);
-    let (_, _, code_b) = run(&b);
-    assert_ne!(code_a, 0, "profile A must deny");
-    assert_eq!(code_b, 0, "profile B must allow");
+    require_enforcement_capable_host!("D");
+
+    let fx = Fixture::new();
+    let outside = sh_quote_path(&fx.outside_file);
+
+    let attempt = |plan: SandboxPlan| {
+        let spec = SpawnSpec::new("/bin/cat", &fx.root, plan)
+            .arg(&outside)
+            .stdout(StreamPolicy::Piped)
+            .stderr(StreamPolicy::Piped);
+        run(&spec)
+    };
+
+    // Plan A: workspace only -> denied.
+    let (out_a, _err_a, code_a) = attempt(plan_workspace_only(&fx.workspace));
+    assert_ne!(code_a, 0, "D: plan A must deny the outside read");
+    assert!(
+        !String::from_utf8_lossy(&out_a).contains("OUTSIDE_SECRET"),
+        "D: plan A returned the secret"
+    );
+
+    // Plan B: same action, but the outside fixture is explicitly readable.
+    let (out_b, err_b, code_b) = attempt(SandboxPlan::Confined {
+        writable_roots: vec![fx.workspace.clone()],
+        readable_roots: vec![fx.outside.clone()],
+        network: NetworkPolicy::Deny,
+    });
+    assert_eq!(
+        code_b,
+        0,
+        "D: plan B must allow the same read; stderr={}",
+        String::from_utf8_lossy(&err_b)
+    );
+    assert!(
+        String::from_utf8_lossy(&out_b).contains("OUTSIDE_SECRET"),
+        "D: plan B must actually return the data"
+    );
 }
+
+// ---------------------------------------------------------------------------
+// E — network is denied, and the listener provably exists
+// ---------------------------------------------------------------------------
 
 #[test]
 fn test_e_network_denied() {
-    if !host_allows_restrictive_profiles() {
-        eprintln!("ENV_BLOCKED: host refuses restrictive Seatbelt profiles; E not measurable");
+    require_enforcement_capable_host!("E");
+
+    if which("python3").is_none() {
+        eprintln!("SKIP_REASON[E]: python3 not present on this host");
         return;
     }
-    // Listener bound OUTSIDE the sandbox, so a denial is attributable to the
-    // profile and not to a missing server.
+
+    // Listener is created and bound by this process, OUTSIDE the sandbox, so a
+    // connection failure is attributable to the profile and not to a missing
+    // server. `peer_addr` succeeding proves the socket is live before the child
+    // runs, which is the part round 2 could not distinguish.
     let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
-    let port = listener.local_addr().unwrap().port();
-    let script = format!(
-        "python3 -c 'import socket;s=socket.socket();s.settimeout(2); \
-         s.connect((\"127.0.0.1\",{port}));print(\"CONNECTED\")'"
+    let port = listener.local_addr().expect("local addr").port();
+    assert!(
+        listener.local_addr().is_ok(),
+        "listener must be bound before the child runs"
     );
-    let spec = sh(&script);
-    let (out, _, code) = run(&spec);
-    assert_ne!(code, 0, "network must be denied");
-    assert!(!String::from_utf8_lossy(&out).contains("CONNECTED"));
+
+    let script = format!(
+        r#"printf 'E_STARTED_OK'; python3 -c 'import socket,sys
+s=socket.socket(); s.settimeout(3)
+try:
+    s.connect(("127.0.0.1",{port})); print("E_CONNECTED")
+except OSError as e:
+    print("E_DENIED:"+type(e).__name__)' "#
+    );
+    let spec = SpawnSpec::new(
+        "/bin/sh",
+        &fx_workspace(),
+        SandboxPlan::read_write_in(&[std::env::temp_dir()]),
+    )
+    .arg("-c")
+    .arg(&script)
+    .stdout(StreamPolicy::Piped)
+    .stderr(StreamPolicy::Piped);
+
+    let (out, err, code) = run(&spec);
+    let text = String::from_utf8_lossy(&out);
+    assert_eq!(
+        code,
+        0,
+        "E: the child must start and report; stderr={}",
+        String::from_utf8_lossy(&err)
+    );
+    assert!(
+        text.contains("E_STARTED_OK"),
+        "E: the child must have started; stdout={text:?}"
+    );
+    assert!(
+        !text.contains("E_CONNECTED"),
+        "E: the connection must be denied; stdout={text:?}"
+    );
+    assert!(
+        text.contains("E_DENIED:"),
+        "E: the denial must be an OS-level error, not a silent hang; stdout={text:?}"
+    );
+}
+
+/// Absolute temp dir, canonicalized: E's plan must name a real, existing root.
+fn fx_workspace() -> PathBuf {
+    std::env::temp_dir()
+        .canonicalize()
+        .unwrap_or_else(|_| std::env::temp_dir())
+}
+
+/// Locate an executable on the host's PATH, for SKIP_REASON reporting.
+fn which(program: &str) -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path)
+        .map(|dir| dir.join(program))
+        .find(|candidate| candidate.is_file())
 }
