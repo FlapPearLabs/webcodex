@@ -1,4 +1,26 @@
 //! Bounded process execution for validation adapters.
+//!
+//! # P1 scope: deliberately not routed through the execution broker
+//!
+//! `RUNTIME_COMPATIBILITY_TODO` — this file still spawns validation tools with
+//! a plain `Command`, outside the P1 [`ExecutionBroker`]. It is named here
+//! rather than left to be discovered, because it is one of the local,
+//! model-triggered execution surfaces P1 was supposed to cover.
+//!
+//! It is not routed in this round for a concrete reason, not for convenience:
+//! the tools reached from here are interpreter-based (pyright is Node,
+//! other adapters are Python), and their runtimes live outside any recognised
+//! toolchain prefix on the hosts this product runs on. Putting them under the
+//! current broker would mean either granting read reach to an interpreter's
+//! whole installation or refusing to start them at all. Choosing between those
+//! is a policy decision about toolchain authority, and P1's scope explicitly
+//! excludes new policy — there is no approval, no ASK, no session grant yet.
+//!
+//! So the honest position is: **this surface is enumerated as a known P1
+//! exception**, tracked by this marker, and it must not be silently reclassified
+//! as normalized. A structural test
+//! (`normalization_p1_tests::i_validation_execute_is_declared_unrouted_with_a_runtime_todo`)
+//! fails if this file starts routing without the marker being revisited.
 
 use crate::validation_bridge::{
     sanitize_bridge_text, MAX_VALIDATION_STDERR_CAPTURE_BYTES, MAX_VALIDATION_STDERR_SUMMARY_CHARS,

@@ -2,6 +2,7 @@
 
 pub mod file_read_normalize;
 pub mod file_read_range;
+pub(crate) mod git_broker;
 pub mod path_policy;
 pub mod project_context;
 pub mod project_overview;

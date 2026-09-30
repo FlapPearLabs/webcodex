@@ -2,9 +2,8 @@ use crate::path_policy::sensitive_path;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::Output;
 
 const MAX_DIFF_BYTES: usize = 1024 * 1024;
 const MAX_STATUS_BYTES: usize = 256 * 1024;
@@ -342,75 +341,65 @@ fn bounded_git_text(
     Ok(text)
 }
 
+/// Run `git <args>` in the trusted project root through the P1 execution broker.
+///
+/// `git apply` reaches this with model-supplied patch bytes on stdin and writes
+/// workspace state, so it is the highest-value target in this module. Routing it
+/// through the broker means the git process tree inherits a workspace-confined
+/// profile, and a refusal to establish that profile fails before any process
+/// exists rather than silently running git unconfined.
 fn git_output(
     root: &Path,
     args: &[&str],
     input: Option<&[u8]>,
     check: bool,
 ) -> Result<Output, Value> {
-    let mut command = Command::new("git");
-    command.args(args).current_dir(root);
-    if input.is_some() {
-        command.stdin(Stdio::piped());
-    }
-    command.stdout(Stdio::piped()).stderr(Stdio::piped());
-    let mut child = command
-        .spawn()
-        .map_err(|err| fail("git_exec_failed", err.to_string()))?;
-    if let Some(input) = input {
-        child
-            .stdin
-            .as_mut()
-            .ok_or_else(|| fail("git_exec_failed", "git stdin unavailable"))?
-            .write_all(input)
-            .map_err(|err| fail("git_exec_failed", err.to_string()))?;
-    }
-    let output = child
-        .wait_with_output()
-        .map_err(|err| fail("git_exec_failed", err.to_string()))?;
-    if check && !output.status.success() {
+    let result = crate::git_broker::run_git(root, args, input, None).map_err(|refusal| {
+        fail_extra(
+            "git_exec_failed",
+            format!("git {} was not started: {refusal}", args.join(" ")),
+            vec![("refusal_code", json!(refusal.code))],
+        )
+    })?;
+
+    if check && !result.status.success() {
         return Err(fail_extra(
             "git_failed",
             format!("git {} failed", args.join(" ")),
             vec![
-                ("exit_code", json!(output.status.code().unwrap_or(-1))),
-                ("stderr", json!(bounded_lossy(&output.stderr, 4000))),
+                ("exit_code", json!(result.status.code().unwrap_or(-1))),
+                ("stderr", json!(bounded_lossy(&result.stderr, 4000))),
             ],
         ));
     }
-    Ok(output)
+
+    // The brokered run already produced a real `ExitStatus`, so the caller's
+    // `Output`-shaped surface is reconstructed without re-deriving the code.
+    Ok(Output {
+        status: result.status,
+        stdout: result.stdout,
+        stderr: result.stderr,
+    })
 }
 
+/// Apply `patch` to the workspace with `git apply`, under the broker.
+///
+/// Git patch semantics are untouched: the same argv, the same stdin payload, the
+/// same success/failure interpretation. Only the process's confinement changed.
 fn git_apply(root: &Path, args: &[&str], patch: &str) -> Result<(), String> {
     if patch.is_empty() {
         return Ok(());
     }
-    let mut command = Command::new("git");
-    command
-        .arg("apply")
-        .args(args)
-        .arg("-")
-        .current_dir(root)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    let mut child = command
-        .spawn()
-        .map_err(|err| format!("git apply failed to start: {err}"))?;
-    child
-        .stdin
-        .as_mut()
-        .ok_or_else(|| "git apply stdin unavailable".to_string())?
-        .write_all(patch.as_bytes())
-        .map_err(|err| format!("failed to write git apply input: {err}"))?;
-    let output = child
-        .wait_with_output()
-        .map_err(|err| format!("failed to wait for git apply: {err}"))?;
-    if !output.status.success() {
+    let mut argv = vec!["apply"];
+    argv.extend_from_slice(args);
+    argv.push("-");
+    let result = crate::git_broker::run_git(root, &argv, Some(patch.as_bytes()), None)
+        .map_err(|refusal| format!("git apply failed to start: {refusal}"))?;
+    if !result.status.success() {
         return Err(format!(
             "git apply {} failed: {}",
             args.join(" "),
-            bounded_lossy(&output.stderr, 4000)
+            bounded_lossy(&result.stderr, 4000)
         ));
     }
     Ok(())

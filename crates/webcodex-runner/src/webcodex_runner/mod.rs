@@ -14,9 +14,12 @@ pub(crate) mod exit_diagnostics;
 pub(crate) mod external_tools;
 pub(crate) mod files;
 pub(crate) mod job_manager;
+pub(crate) mod local_execution;
 pub(crate) mod lsp;
 pub(crate) mod managed_ssh;
 pub(crate) mod mcp_gateway;
+#[cfg(test)]
+mod normalization_p1_tests;
 pub(crate) mod output;
 pub(crate) mod output_text;
 pub(crate) mod patches;
@@ -25,6 +28,7 @@ pub(crate) mod plugin;
 pub(crate) mod projects;
 pub(crate) mod runner_instructions;
 pub(crate) mod runner_skills;
+pub(crate) mod sandbox_authority;
 // Remote persistent shells always run POSIX sh/bash on the SSH target. Their
 // local child ownership is platform-specific: Unix uses a private process group,
 // while Windows owns ssh.exe through ManagedChild's Job Object.

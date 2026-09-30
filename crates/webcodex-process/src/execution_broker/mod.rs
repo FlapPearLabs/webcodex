@@ -41,12 +41,21 @@
 //!
 //! # What is NOT claimed
 //!
-//! - **No production code calls this yet.** It is a seam proposal, exercised by
-//!   tests only. `run_shell` is not sandboxed by this branch.
 //! - The macOS backend is `/usr/bin/sandbox-exec`, which is **not a supported
 //!   third-party API** — see [`BACKEND_STATUS`].
-//! - Restrictive-profile enforcement could not be measured on the spike host;
-//!   see `research/spikes/EXECUTION_BROKER_SPIKE_2_RESULTS.md`.
+//! - **Normalization is P1 and partial.** P1 routes the highest-value local,
+//!   model-triggered execution surfaces through this broker; SSH, browser/CDP,
+//!   MCP and plugin provider processes, the coding-agent child, LSP, persistent
+//!   interactive shells, self-update and the CLI controller are deliberately
+//!   **not** routed and remain a later round. The correct claim after P1 is
+//!   `LOCAL_EXECUTION_P1_NORMALIZED` plus an exact remaining-surface list — not
+//!   "all execution is sandboxed".
+//! - There is still no SecurityBroker: no ALLOW/ASK/DENY, no approval, no
+//!   session grants. P1 normalizes execution first, so that a future policy
+//!   layer cannot be bypassed by a spawn site that skipped the broker.
+//! - Sandbox *roots* come from trusted server-side project context only, via
+//!   [`WorkspaceAuthority`]. A model may choose command, args and cwd; it can
+//!   never choose the workspace root, the toolchain root, or network reach.
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -57,8 +66,10 @@ use std::process::{Command, Stdio};
 use crate::{ManagedChild, SpawnOptions};
 
 mod compiler;
+mod workspace_authority;
 
 pub use compiler::{CompileError, CompiledProfile, TrustedToolchainRoot};
+pub use workspace_authority::{AuthorityError, WorkspaceAuthority};
 
 /// Codex-derived Seatbelt baseline, embedded verbatim.
 ///

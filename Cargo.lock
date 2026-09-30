@@ -5726,6 +5726,7 @@ dependencies = [
  "sha2",
  "tempfile",
  "webcodex-core",
+ "webcodex-process",
 ]
 
 [[package]]

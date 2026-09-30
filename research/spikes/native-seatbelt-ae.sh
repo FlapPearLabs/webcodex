@@ -176,14 +176,22 @@ for key in RUNTIME_PYTHON RUNTIME_NODE; do
   fi
 done
 
+# Capture every runtime verdict *before* the run log is removed. The
+# interpreter note below used to call `emit` after `rm -f "$RUN_LOG"`, so it
+# silently compared two empty strings and printed nothing: a missing
+# interpreter read as "no note needed" instead of "not runnable". Reading a
+# deleted file cannot be allowed to look like a passing check.
+PY_RUNTIME_VERDICT="$(emit RUNTIME_PYTHON)"
+NODE_RUNTIME_VERDICT="$(emit RUNTIME_NODE)"
+
 rm -f "$RUN_LOG"
 
 if [ "$ALL" = "NATIVE_SECURITY_ALL_PASS=true" ]; then
   say ""
   say "VERDICT: READY_FOR_NORMALIZATION=true"
   say "The Codex-informed profile confines as designed on this host: A-E all pass."
-  if [ "$(emit RUNTIME_PYTHON)" != "RUNTIME_PYTHON=PASS" ] || \
-     [ "$(emit RUNTIME_NODE)" != "RUNTIME_NODE=PASS" ]; then
+  if [ "$PY_RUNTIME_VERDICT" != "RUNTIME_PYTHON=PASS" ] || \
+     [ "$NODE_RUNTIME_VERDICT" != "RUNTIME_NODE=PASS" ]; then
     say ""
     say "NOTE: at least one non-system interpreter is not runnable under this"
     say "profile on this host. That is a runtime-compatibility fact and does NOT"

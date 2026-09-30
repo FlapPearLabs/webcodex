@@ -5775,8 +5775,9 @@ fn job_manager_stop_all_clears_queue_and_requests_running_stop() {
     let ssh = SshConfig::default();
     let jobs = JobManager::new(1);
     let stop_requested = Arc::new(AtomicBool::new(false));
-    let mut running_command =
-        configured_shell_job_command(&ShellConfig::default(), "sleep 60").unwrap();
+    let mut running_command = configured_shell_job_command(&ShellConfig::default(), "sleep 60")
+        .unwrap()
+        .into_command();
     running_command
         .current_dir(tmp.path())
         .stdout(Stdio::null())

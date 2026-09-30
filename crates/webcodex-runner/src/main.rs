@@ -2286,11 +2286,15 @@ fn validation_module_available(
     const PROBE: &str =
         "import importlib.util,sys;sys.exit(0 if importlib.util.find_spec(sys.argv[1]) else 42)";
     let args = ["-I", "-c", PROBE, module].map(str::to_string);
-    let Ok(mut command) =
+    let Ok(blueprint) =
         configured_validation_job_command(shell, profile, &step.program, &args, cwd)
     else {
         return false;
     };
+    // Control-plane capability probe, not user execution: the payload is a
+    // fixed Runner-authored import check, never a model-supplied command. It
+    // intentionally stays outside the P1 sandbox path.
+    let mut command = blueprint.into_command();
     command
         .current_dir(cwd)
         .stdin(Stdio::null())

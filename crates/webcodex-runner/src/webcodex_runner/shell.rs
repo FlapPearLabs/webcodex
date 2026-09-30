@@ -23,7 +23,10 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use webcodex_core::workflow_session_contract::ExecutionShell;
+use webcodex_process::execution_broker::StreamPolicy;
 use webcodex_process::{GracefulTermination, ManagedChild};
+
+use super::local_execution::{snapshot_env, spawn_local_action, CommandBlueprint, LocalEnv};
 
 #[path = "process_command.rs"]
 mod process_command;
@@ -255,18 +258,21 @@ fn prepared_shell_command_text(dialect: ShellDialect, command: &str) -> String {
     }
 }
 
-fn apply_shell_environment(cmd: &mut Command, shell: &ShellConfig) -> Result<(), String> {
+/// Build the environment rule for a configured shell, as data.
+///
+/// The sensitive-key removal and `path_prepend` merge that used to be applied
+/// directly to a `Command` are now stated as a value, so the broker path can
+/// rebuild the same environment from a blueprint instead of inheriting whatever
+/// a `Command` happened to carry. Rust's Windows environment handling is
+/// case-insensitive, so removing the canonical sensitive spellings also removes
+/// mixed-case variants such as `WebCodex_Token`.
+fn shell_environment_rule(shell: &ShellConfig) -> Result<LocalEnv, String> {
     if shell.environment_mode == ShellEnvironmentMode::Isolated {
         let env = base_shell_env(shell, &ShellProfileConfig::default())?;
-        apply_env_snapshot(cmd, &env);
-        return Ok(());
+        return Ok(snapshot_env(&env));
     }
-    // Rust's Windows env handling is case-insensitive (like the OS itself), so
-    // removing the canonical spellings also removes mixed-case variants such
-    // as `WebCodex_Token`.
-    for key in SENSITIVE_ENV_KEYS {
-        cmd.env_remove(key);
-    }
+    let mut overrides: std::collections::BTreeMap<String, String> =
+        std::collections::BTreeMap::new();
     if !shell.path_prepend.is_empty() {
         let mut paths = shell.path_prepend.clone();
         if let Some(current) = std::env::var_os("PATH") {
@@ -274,14 +280,20 @@ fn apply_shell_environment(cmd: &mut Command, shell: &ShellConfig) -> Result<(),
         }
         let joined = std::env::join_paths(paths)
             .map_err(|e| format!("failed to build shell PATH from shell.path_prepend: {}", e))?;
-        cmd.env("PATH", joined);
+        overrides.insert("PATH".to_string(), joined.to_string_lossy().into_owned());
     }
     for (key, value) in &shell.env {
         if !is_sensitive_env_key(key) {
-            cmd.env(key, value);
+            overrides.insert(key.clone(), value.clone());
         }
     }
-    Ok(())
+    Ok(LocalEnv::Inherit {
+        overrides,
+        remove: SENSITIVE_ENV_KEYS
+            .iter()
+            .map(|key| (*key).to_string())
+            .collect(),
+    })
 }
 
 fn apply_env_snapshot(cmd: &mut Command, env_snapshot: &HashMap<String, String>) {
@@ -316,36 +328,38 @@ fn resolved_shell_program(program: &str) -> String {
     program.to_string()
 }
 
-fn configured_shell_command(shell: &ShellConfig, command: &str) -> Result<Command, String> {
+fn configured_shell_command(
+    shell: &ShellConfig,
+    command: &str,
+) -> Result<CommandBlueprint, String> {
     validate_shell_config(shell)?;
     let dialect = resolve_dialect(&shell.program, shell.dialect);
     let program = resolved_shell_program(&shell.program);
-    let mut cmd = Command::new(program);
+    let mut blueprint = CommandBlueprint::new(program, shell_environment_rule(shell)?);
     for arg in &shell.args {
-        cmd.arg(arg);
+        blueprint.arg(arg);
     }
-    cmd.arg(shell_command_text(shell, dialect, command));
-    // The shell execution path owns its process tree through ManagedChild; do
-    // not add a process-group pre_exec here. ManagedChild creates the private
-    // process group (Unix) / Job Object (Windows) at spawn time.
-    apply_shell_environment(&mut cmd, shell)?;
-    Ok(cmd)
+    // The shell execution path owns its process tree through the broker's
+    // ManagedChild; do not add a process-group pre_exec here. ManagedChild
+    // creates the private process group (Unix) / Job Object (Windows) at spawn
+    // time.
+    blueprint.arg(shell_command_text(shell, dialect, command));
+    Ok(blueprint)
 }
 
 fn configured_prepared_shell_command(
     profile: &PreparedShellProfile,
     command: &str,
-) -> Result<Command, String> {
-    let mut cmd = Command::new(&profile.program);
+) -> Result<CommandBlueprint, String> {
+    let mut blueprint =
+        CommandBlueprint::new(&profile.program, snapshot_env(&profile.env_snapshot));
     for arg in &profile.args {
-        cmd.arg(arg);
+        blueprint.arg(arg);
     }
-    cmd.arg(prepared_shell_command_text(profile.dialect, command));
-    // The shell execution path owns its process tree through ManagedChild; do
-    // not add a process-group pre_exec here. ManagedChild creates the private
-    // process group (Unix) / Job Object (Windows) at spawn time.
-    apply_env_snapshot(&mut cmd, &profile.env_snapshot);
-    Ok(cmd)
+    // The shell execution path owns its process tree through the broker's
+    // ManagedChild; do not add a process-group pre_exec here.
+    blueprint.arg(prepared_shell_command_text(profile.dialect, command));
+    Ok(blueprint)
 }
 
 /// Build one raw-shell command using the caller-selected semantic POSIX shell
@@ -357,7 +371,7 @@ pub(crate) fn configured_explicit_shell_command(
     selection: ExecutionShell,
     login: bool,
     command: &str,
-) -> Result<Command, String> {
+) -> Result<CommandBlueprint, String> {
     if login && selection != ExecutionShell::Bash {
         return Err("bash login mode requires shell=bash".to_string());
     }
@@ -366,46 +380,46 @@ pub(crate) fn configured_explicit_shell_command(
         ExecutionShell::Bash => ShellScriptLanguage::Bash,
     };
     let program = configured_script_interpreter(shell, profile, language)?;
-    let mut cmd = Command::new(program);
-    cmd.arg(if login { "-lc" } else { "-c" }).arg(command);
-    match profile {
-        Some(profile) => apply_env_snapshot(&mut cmd, &profile.env_snapshot),
-        None => apply_shell_environment(&mut cmd, shell)?,
-    }
-    Ok(cmd)
+    let flag = if login { "-lc" } else { "-c" };
+    let env = match profile {
+        Some(profile) => snapshot_env(&profile.env_snapshot),
+        None => shell_environment_rule(shell)?,
+    };
+    let mut blueprint = CommandBlueprint::new(program, env);
+    blueprint.arg(flag).arg(command);
+    Ok(blueprint)
 }
 
 pub(crate) fn configured_shell_job_command(
     shell: &ShellConfig,
     command: &str,
-) -> Result<Command, String> {
+) -> Result<CommandBlueprint, String> {
     validate_shell_config(shell)?;
     let dialect = resolve_dialect(&shell.program, shell.dialect);
     let program = resolved_shell_program(&shell.program);
-    let mut cmd = Command::new(program);
+    let mut blueprint = CommandBlueprint::new(program, shell_environment_rule(shell)?);
     for arg in &shell.args {
-        cmd.arg(arg);
+        blueprint.arg(arg);
     }
-    cmd.arg(shell_command_text(shell, dialect, command));
-    // JobManager owns this process tree through ManagedChild; do not add
-    // the legacy setsid pre_exec here. ManagedChild creates the private group.
-    apply_shell_environment(&mut cmd, shell)?;
-    Ok(cmd)
+    // JobManager owns this process tree through the broker's ManagedChild; do
+    // not add the legacy setsid pre_exec here.
+    blueprint.arg(shell_command_text(shell, dialect, command));
+    Ok(blueprint)
 }
 
 pub(crate) fn configured_prepared_shell_job_command(
     profile: &PreparedShellProfile,
     command: &str,
-) -> Result<Command, String> {
-    let mut cmd = Command::new(&profile.program);
+) -> Result<CommandBlueprint, String> {
+    let mut blueprint =
+        CommandBlueprint::new(&profile.program, snapshot_env(&profile.env_snapshot));
     for arg in &profile.args {
-        cmd.arg(arg);
+        blueprint.arg(arg);
     }
-    cmd.arg(prepared_shell_command_text(profile.dialect, command));
-    // JobManager owns this process tree through ManagedChild; do not add
-    // the legacy setsid pre_exec here. ManagedChild creates the private group.
-    apply_env_snapshot(&mut cmd, &profile.env_snapshot);
-    Ok(cmd)
+    // JobManager owns this process tree through the broker's ManagedChild; do
+    // not add the legacy setsid pre_exec here.
+    blueprint.arg(prepared_shell_command_text(profile.dialect, command));
+    Ok(blueprint)
 }
 
 pub(crate) fn configured_validation_job_command(
@@ -414,7 +428,7 @@ pub(crate) fn configured_validation_job_command(
     program: &str,
     args: &[String],
     cwd: &Path,
-) -> Result<Command, String> {
+) -> Result<CommandBlueprint, String> {
     if profile.is_none() {
         validate_shell_config(shell)?;
     }
@@ -427,16 +441,22 @@ fn configured_process_command(
     program: &str,
     args: &[String],
     cwd: Option<&Path>,
-) -> Result<Command, String> {
+) -> Result<CommandBlueprint, String> {
     let resolved_program = resolve_process_program(shell, profile, program, cwd)?;
-    let mut cmd = structured_process_command(&resolved_program, args, cwd)?;
+    // Validate the Windows batch argv contract before anything is launched, so
+    // an unsupported batch invocation is refused as a definite pre-start error.
+    let _ = structured_process_command(&resolved_program, args, cwd)?;
+    let env = match profile {
+        Some(profile) => snapshot_env(&profile.env_snapshot),
+        None => shell_environment_rule(shell)?,
+    };
     // ManagedChild (or JobManager for structured validation) owns this process
     // tree. Native argv stays literal; batch conversion belongs to the helper.
-    match profile {
-        Some(profile) => apply_env_snapshot(&mut cmd, &profile.env_snapshot),
-        None => apply_shell_environment(&mut cmd, shell)?,
+    let mut blueprint = CommandBlueprint::new(resolved_program, env);
+    for arg in args {
+        blueprint.arg(arg);
     }
-    Ok(cmd)
+    Ok(blueprint)
 }
 
 fn resolve_process_program(
@@ -696,20 +716,22 @@ pub(crate) fn run_windows_native_single_file_search_with_profiles(
         return None;
     };
 
-    let mut command = Command::new(program);
-    command.args(&spec.args);
-    match profile.as_deref() {
-        Some(profile) => apply_env_snapshot(&mut command, &profile.env_snapshot),
-        None => {
-            if apply_shell_environment(&mut command, shell).is_err() {
-                return None;
-            }
-        }
+    let env = match profile.as_deref() {
+        Some(profile) => snapshot_env(&profile.env_snapshot),
+        None => match shell_environment_rule(shell) {
+            Ok(env) => env,
+            Err(_) => return None,
+        },
+    };
+    let mut blueprint = CommandBlueprint::new(program, env);
+    for arg in &spec.args {
+        blueprint.arg(arg);
     }
     let start = Instant::now();
     let mut result = execute_configured_command(
         policy,
-        command,
+        blueprint,
+        Some(project_registry_dir),
         &cwd_path,
         None,
         timeout_secs,
@@ -900,17 +922,15 @@ fn fixed_script_prefix_args(language: ShellScriptLanguage) -> Vec<OsString> {
 }
 
 fn apply_script_environment(
-    command: &mut Command,
+    blueprint: CommandBlueprint,
     shell: &ShellConfig,
     profile: Option<&PreparedShellProfile>,
-) -> Result<(), String> {
-    match profile {
-        Some(profile) => {
-            apply_env_snapshot(command, &profile.env_snapshot);
-            Ok(())
-        }
-        None => apply_shell_environment(command, shell),
-    }
+) -> Result<CommandBlueprint, String> {
+    let env = match profile {
+        Some(profile) => snapshot_env(&profile.env_snapshot),
+        None => shell_environment_rule(shell)?,
+    };
+    Ok(blueprint.with_env(env))
 }
 
 fn typescript_node_probe_error(error: String) -> String {
@@ -933,11 +953,21 @@ fn configured_script_runtime_plan(
     let program = configured_script_interpreter(shell, profile, language)?;
     let mut prefix_args = fixed_script_prefix_args(language);
     if language == ShellScriptLanguage::Typescript {
-        let mut probe = Command::new(&program);
+        let probe_env = match profile {
+            Some(profile) => snapshot_env(&profile.env_snapshot),
+            None => shell_environment_rule(shell)?,
+        };
+        // This Runner-owned `node --version` capability probe is control-plane
+        // process creation, not user execution: its payload is a fixed
+        // Runner-authored argv, never a model-supplied command. It therefore
+        // keeps the direct spawn path and is deliberately out of P1's
+        // normalization scope.
+        let mut probe_blueprint = CommandBlueprint::new(&program, probe_env);
+        probe_blueprint.arg("--version");
+        let mut probe = probe_blueprint.into_command();
         // This Runner-owned probe has no input contract. In particular, never
         // inherit the Runner's parent-liveness stdin or consume its input.
-        probe.arg("--version").current_dir(cwd).stdin(Stdio::null());
-        apply_script_environment(&mut probe, shell, profile)?;
+        probe.current_dir(cwd).stdin(Stdio::null());
         let probe_result =
             run_prepare_command(probe, TYPESCRIPT_NODE_VERSION_PROBE_TIMEOUT, stop_requested);
         let (status, stdout, _stderr) = probe_result.map_err(typescript_node_probe_error)?;
@@ -959,10 +989,25 @@ fn configured_script_runtime_plan(
     })
 }
 
-fn build_script_command(plan: &ScriptRuntimePlan, script_path: &Path, args: &[String]) -> Command {
-    let mut command = Command::new(&plan.program);
-    command.args(&plan.prefix_args).arg(script_path).args(args);
-    command
+fn build_script_command(
+    plan: &ScriptRuntimePlan,
+    script_path: &Path,
+    args: &[String],
+) -> CommandBlueprint {
+    let mut blueprint = CommandBlueprint::new(
+        &plan.program,
+        // Replaced by `apply_script_environment` before launch; this keeps the
+        // builder total so the env decision stays at one place.
+        LocalEnv::Snapshot(std::collections::BTreeMap::new()),
+    );
+    for arg in &plan.prefix_args {
+        blueprint.arg(arg);
+    }
+    blueprint.arg(script_path);
+    for arg in args {
+        blueprint.arg(arg);
+    }
+    blueprint
 }
 
 fn script_setup_error(action: &str, error: &std::io::Error) -> String {
@@ -972,21 +1017,38 @@ fn script_setup_error(action: &str, error: &std::io::Error) -> String {
     )
 }
 
-fn create_temporary_script(
+/// Write the Runner-owned script payload inside the action's working directory.
+///
+/// The directory is the workspace itself, not the system temp dir. P1's plan
+/// grants read+write on the workspace and denies everything else, so a script
+/// written to `/var/folders/...` would be unreachable by the sandboxed child and
+/// the interpreter would fail to start. Placing it in the cwd keeps the payload
+/// inside the authority the plan already granted, and the file is removed again
+/// once the result is known.
+///
+/// The name is still unguessable (uuid-based `webcodex-script-` prefix), and the
+/// directory is a workspace the user already owns.
+fn create_temporary_script_in(
     payload: &ShellScriptPayload,
-) -> Result<(tempfile::TempPath, PathBuf, PathBuf), String> {
-    let mut builder = tempfile::Builder::new();
-    builder
+    dir: &Path,
+) -> Result<(tempfile::TempDir, PathBuf, PathBuf), String> {
+    let tempdir = tempfile::Builder::new()
         .prefix("webcodex-script-")
-        .suffix(payload.language.file_extension());
-    let mut file = builder
-        .tempfile()
+        .tempdir_in(dir)
         .map_err(|error| script_setup_error("create", &error))?;
+    // The payload extension still selects the interpreter's own file type, so
+    // a language whose interpreter dispatches on the suffix keeps working.
+    let path = tempdir.path().join(format!(
+        "webcodex-script-{}{}",
+        uuid::Uuid::new_v4().simple(),
+        payload.language.file_extension()
+    ));
+    let mut file =
+        std::fs::File::create(&path).map_err(|error| script_setup_error("create", &error))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        file.as_file()
-            .set_permissions(std::fs::Permissions::from_mode(0o600))
+        file.set_permissions(std::fs::Permissions::from_mode(0o600))
             .map_err(|error| script_setup_error("secure", &error))?;
     }
     if payload.language == ShellScriptLanguage::Powershell {
@@ -1000,17 +1062,21 @@ fn create_temporary_script(
     file.write_all(payload.script.as_bytes())
         .and_then(|_| file.flush())
         .map_err(|error| script_setup_error("write", &error))?;
-    let original_path = file.path().to_path_buf();
+    drop(file);
+
+    let original_path = path.clone();
     // Avoid `canonicalize` here: on Windows it commonly adds a `\\?\` prefix
     // that Windows PowerShell 5.1 does not reliably accept for `-File`.
-    let absolute_path = if file.path().is_absolute() {
-        file.path().to_path_buf()
+    let absolute_path = if path.is_absolute() {
+        path
     } else {
         std::env::current_dir()
-            .map(|cwd| cwd.join(file.path()))
+            .map(|cwd| cwd.join(&path))
             .map_err(|error| script_setup_error("resolve", &error))?
     };
-    Ok((file.into_temp_path(), original_path, absolute_path))
+    // `TempDir` owns the directory, so dropping it removes both the script file
+    // and its parent directory.
+    Ok((tempdir, original_path, absolute_path))
 }
 
 fn redact_temporary_script_path(result: &mut ShellCommandResult, paths: &[&Path]) {
@@ -2373,6 +2439,7 @@ pub(crate) fn run_process_with_profiles_and_execution_state_with_start_hook(
     execute_configured_command(
         policy,
         cmd,
+        Some(project_registry_dir),
         &cwd_path,
         stdin,
         timeout_secs,
@@ -2554,12 +2621,11 @@ fn run_internal_posix_script_impl(
                     })
                 }
             };
-        let mut command = Command::new(interpreter);
-        command.arg("-s");
-        match profile.as_deref() {
-            Some(profile) => apply_env_snapshot(&mut command, &profile.env_snapshot),
-            None => {
-                if let Err(error) = apply_shell_environment(&mut command, shell) {
+        let env = match profile.as_deref() {
+            Some(profile) => snapshot_env(&profile.env_snapshot),
+            None => match shell_environment_rule(shell) {
+                Ok(env) => env,
+                Err(error) => {
                     return ShellCommandResult::not_started(CommandResult {
                         exit_code: None,
                         stdout: None,
@@ -2568,8 +2634,10 @@ fn run_internal_posix_script_impl(
                         error: Some(error),
                     });
                 }
-            }
-        }
+            },
+        };
+        let mut blueprint = CommandBlueprint::new(interpreter, env);
+        blueprint.arg("-s");
         let script = if search_compat {
             // WSL/Git-Bash interop may expose a host ripgrep binary as `rg.exe`
             // rather than `rg`. Keep the existing search script and its rg-first
@@ -2590,7 +2658,8 @@ fn run_internal_posix_script_impl(
 
         execute_configured_command(
             policy,
-            command,
+            blueprint,
+            Some(project_registry_dir),
             &cwd_path,
             Some(&script),
             timeout_secs,
@@ -2712,8 +2781,22 @@ pub(crate) fn run_script_with_profiles_and_execution_state_with_start_hook(
             })
         }
     };
-    let (temporary_path, original_path, absolute_path) = match create_temporary_script(payload) {
-        Ok(temporary) => temporary,
+    let (temporary_path, original_path, absolute_path) =
+        match create_temporary_script_in(payload, &cwd_path) {
+            Ok(temporary) => temporary,
+            Err(error) => {
+                return ShellCommandResult::not_started(CommandResult {
+                    exit_code: None,
+                    stdout: None,
+                    stderr: None,
+                    duration_ms: Some(start.elapsed().as_millis() as u64),
+                    error: Some(error),
+                })
+            }
+        };
+    let blueprint = build_script_command(&runtime_plan, &absolute_path, &payload.args);
+    let blueprint = match apply_script_environment(blueprint, shell, profile.as_deref()) {
+        Ok(blueprint) => blueprint,
         Err(error) => {
             return ShellCommandResult::not_started(CommandResult {
                 exit_code: None,
@@ -2724,19 +2807,10 @@ pub(crate) fn run_script_with_profiles_and_execution_state_with_start_hook(
             })
         }
     };
-    let mut command = build_script_command(&runtime_plan, &absolute_path, &payload.args);
-    if let Err(error) = apply_script_environment(&mut command, shell, profile.as_deref()) {
-        return ShellCommandResult::not_started(CommandResult {
-            exit_code: None,
-            stdout: None,
-            stderr: None,
-            duration_ms: Some(start.elapsed().as_millis() as u64),
-            error: Some(error),
-        });
-    }
     let mut result = execute_configured_command(
         policy,
-        command,
+        blueprint,
+        Some(project_registry_dir),
         &cwd_path,
         stdin,
         timeout_secs,
@@ -2890,6 +2964,10 @@ fn run_shell_impl(
     let timeout_secs = timeout_secs.min(policy.max_timeout_secs).max(1);
     let start = Instant::now();
     let mut prepared_profile_name = None;
+    // The registry directory is trusted server-side state, so it is captured
+    // alongside the profile resolution and reused for sandbox-authority
+    // derivation. It is never taken from the request.
+    let registry_dir = profiles.map(|(_, registry_dir, _)| registry_dir);
     let cmd = match profiles {
         Some((generation, project_registry_dir, cache)) => match resolve_prepared_shell_profile(
             generation,
@@ -2988,6 +3066,7 @@ fn run_shell_impl(
     execute_configured_command(
         policy,
         cmd,
+        registry_dir,
         &cwd_path,
         stdin,
         timeout_secs,
@@ -3001,7 +3080,8 @@ fn run_shell_impl(
 #[allow(clippy::too_many_arguments)]
 fn execute_configured_command(
     policy: &RunnerPolicy,
-    mut cmd: Command,
+    blueprint: CommandBlueprint,
+    project_registry_dir: Option<&Path>,
     cwd_path: &Path,
     stdin: Option<&str>,
     timeout_secs: u64,
@@ -3010,33 +3090,34 @@ fn execute_configured_command(
     spawn_error_prefix: &str,
     on_started: Option<&dyn Fn()>,
 ) -> ShellCommandResult {
-    cmd.current_dir(cwd_path)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    if stdin.is_some() {
-        cmd.stdin(Stdio::piped());
-    } else {
-        // Never leak the Runner's own stdin into user subprocesses. Desktop
-        // deliberately keeps the Runner stdin pipe open as its parent-liveness
-        // lease; inheriting that handle lets grandchildren retain the lease and
-        // also gives ordinary no-input commands a long-lived parent pipe instead
-        // of an explicit EOF source. Structured commands with no stdin contract
-        // receive a closed/null input handle instead.
-        cmd.stdin(Stdio::null());
-    }
-    // ManagedChild owns the whole process tree: a private process group on
-    // Unix, a kill-on-close Job Object on Windows. `child_mut()` below only
-    // accesses pipe handles; every termination still uses the managed tree.
-    let spawn = ManagedChild::spawn(&mut cmd);
-    let mut child = match spawn {
+    // P1 routing point. Every model-triggered local action reaches a process
+    // through `spawn_local_action`, which resolves the trusted workspace
+    // authority first and refuses before any process exists. There is no
+    // unconfined branch here to fall back to.
+    //
+    // stdin policy mirrors the previous Command-level wiring exactly: an
+    // explicit payload is piped, and its absence is an explicit null/EOF
+    // source. The Runner's own parent-liveness stdin is never inherited, and
+    // the workspace-derived HOME set by the broker is what the child sees.
+    let request = blueprint
+        .into_request(cwd_path.to_path_buf())
+        .stdin(if stdin.is_some() {
+            StreamPolicy::Piped
+        } else {
+            StreamPolicy::Null
+        })
+        .stdout(StreamPolicy::Piped)
+        .stderr(StreamPolicy::Piped);
+
+    let mut child = match spawn_local_action(policy, project_registry_dir, request) {
         Ok(child) => child,
-        Err(error) => {
+        Err(refusal) => {
             return ShellCommandResult::not_started(CommandResult {
                 exit_code: None,
                 stdout: None,
                 stderr: None,
                 duration_ms: Some(start.elapsed().as_millis() as u64),
-                error: Some(format!("{spawn_error_prefix}: {error}")),
+                error: Some(format!("{spawn_error_prefix}: {refusal}")),
             });
         }
     };

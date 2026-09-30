@@ -9,6 +9,7 @@ use super::detached_job::{
     handoff_detached_job, snapshot_from_detached_record, DetachedHandoffOutcome, DetachedJobStore,
     DetachedLaunchSpec, DetachedStartRequest,
 };
+use super::local_execution::spawn_local_action;
 use super::output_text::OutputTextSource;
 use super::runner_skills::run_skill_resource_with_profiles_and_execution_state;
 use super::shell::{
@@ -41,6 +42,7 @@ use webcodex_core::runner_protocol::{
     VALIDATION_STEP_SPAWN_FAILED_CODE, VALIDATION_TOOL_UNAVAILABLE_CODE,
 };
 use webcodex_core::workflow_session_contract::ExecutionShell;
+use webcodex_process::execution_broker::StreamPolicy;
 use webcodex_process::ManagedChild;
 // Existing process-I/O / execution helpers deliberately remain at their current
 // owner. Extracting those independent facilities is outside this refactor.
@@ -2921,31 +2923,46 @@ impl JobManager {
                     },
                 }
             };
-            let mut command = match configured {
-                Ok(command) => command,
+            let mut blueprint = match configured {
+                Ok(blueprint) => blueprint,
                 Err(error) => {
                     self.fail_job(&operation, error, None);
                     return;
                 }
             };
             if validation {
-                command.envs(
-                    steps[index]
-                        .env
-                        .iter()
-                        .map(|(key, value)| (key.as_str(), value.as_str())),
-                );
+                let overrides: std::collections::BTreeMap<String, String> = steps[index]
+                    .env
+                    .iter()
+                    .map(|(key, value)| (key.clone(), value.clone()))
+                    .collect();
+                blueprint = match blueprint.env().clone() {
+                    super::local_execution::LocalEnv::Snapshot(_) => {
+                        blueprint.with_env(super::local_execution::LocalEnv::Snapshot(overrides))
+                    }
+                    super::local_execution::LocalEnv::Inherit {
+                        overrides: existing,
+                        remove,
+                    } => {
+                        let mut merged = existing;
+                        merged.extend(overrides);
+                        blueprint.with_env(super::local_execution::LocalEnv::Inherit {
+                            overrides: merged,
+                            remove,
+                        })
+                    }
+                };
             }
             // Raw Shell Jobs and every validation step have no stdin payload.
             // Never inherit the Runner's parent-liveness pipe: it stays open
             // while Desktop is alive and can stall native commands or let a
             // child consume input owned by the Runner. Match the sync path.
-            command
-                .current_dir(&cwd_path)
-                .stdin(Stdio::null())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped());
-            commands.push_back(command);
+            let request = blueprint
+                .into_request(cwd_path.clone())
+                .stdin(StreamPolicy::Null)
+                .stdout(StreamPolicy::Piped)
+                .stderr(StreamPolicy::Piped);
+            commands.push_back(request);
         }
         let stop_requested = {
             let _lifecycle = lock_unpoison(&self.lifecycle);
@@ -2977,8 +2994,11 @@ impl JobManager {
             return;
         }
         let start = Instant::now();
-        let mut command = commands.pop_front().expect("validated non-empty plan");
-        let spawn = ManagedChild::spawn(&mut command);
+        let command = commands.pop_front().expect("validated non-empty plan");
+        // P1: local Job execution goes through the broker like every other
+        // model-triggered local action. A refusal here is a pre-start failure,
+        // so the job is failed without any child ever existing.
+        let spawn = spawn_local_action(&policy, Some(&project_registry_dir), command);
         let mut child = match spawn {
             Ok(child) => child,
             Err(e) => {
@@ -3240,10 +3260,13 @@ impl JobManager {
                             );
                         }
                     }
-                    let mut next_command = commands
+                    let next_command = commands
                         .pop_front()
                         .expect("one command per validation step");
-                    let spawn = ManagedChild::spawn(&mut next_command);
+                    // Each validation step is its own local action, so each one
+                    // derives its own plan and refuses independently.
+                    let spawn =
+                        spawn_local_action(&policy, Some(&project_registry_dir), next_command);
                     let mut next = match spawn {
                         Ok(child) => child,
                         Err(_error) => {

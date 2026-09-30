@@ -10,6 +10,7 @@ workspace-checkpoints = []
 
 [dependencies]
 webcodex-core = { path = "../webcodex-core" }
+webcodex-process = { path = "../webcodex-process" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"

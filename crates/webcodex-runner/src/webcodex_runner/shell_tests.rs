@@ -746,7 +746,12 @@ fn known_process_timeout_is_timed_out() {
 
 #[test]
 fn post_spawn_missing_output_pipe_is_outcome_unknown() {
-    let mut command = configured_shell_command(&ShellConfig::default(), "exit 0").unwrap();
+    // Test fixture, not a P1 model-triggered path: this case is about what the
+    // Runner does when a pipe vanishes *after* a child exists, so it must build
+    // the child directly rather than go through the broker.
+    let mut command = configured_shell_command(&ShellConfig::default(), "exit 0")
+        .unwrap()
+        .into_command();
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = ManagedChild::spawn(&mut command).unwrap();
     drop(child.child_mut().stdout.take());
@@ -1736,24 +1741,37 @@ fn powershell_plan_uses_ps1_file_and_never_command_text_mode() {
 
 #[test]
 fn javascript_temp_file_uses_mjs_and_exact_script_bytes() {
+    let workspace = tempfile::tempdir().unwrap();
     let payload = ShellScriptPayload {
         language: ShellScriptLanguage::Javascript,
         script: "import { readFile } from 'node:fs/promises';\nawait Promise.resolve(readFile);"
             .to_string(),
         args: Vec::new(),
     };
-    let (temporary_path, _original, absolute) = create_temporary_script(&payload).unwrap();
+    // P1: the script lives inside the workspace, because the P1 plan grants no
+    // reach outside it and a script in the system temp directory would be
+    // unreachable by the sandboxed interpreter.
+    let (tempdir, original, absolute) =
+        create_temporary_script_in(&payload, workspace.path()).unwrap();
     assert_eq!(
         absolute.extension().and_then(|ext| ext.to_str()),
         Some("mjs")
     );
     assert_eq!(std::fs::read(&absolute).unwrap(), payload.script.as_bytes());
-    temporary_path.close().unwrap();
+    assert_eq!(original, absolute);
+    assert!(
+        absolute.starts_with(workspace.path()),
+        "the script must live inside the workspace: {}",
+        absolute.display()
+    );
+    drop(tempdir);
+    assert!(!absolute.exists(), "the script must be cleaned up on drop");
 }
 
 #[test]
 fn python_script_uses_runner_resolved_interpreter_and_py_file() {
     use std::ffi::OsStr;
+    let workspace = tempfile::tempdir().unwrap();
     let temp = crate::tests::executable_tempdir();
     let candidate = if cfg!(windows) { "python" } else { "python3" };
     let interpreter = temp
@@ -1781,7 +1799,8 @@ fn python_script_uses_runner_resolved_interpreter_and_py_file() {
         script: "print('雪')\n".to_string(),
         args: vec!["two words".to_string(), "$(literal)".to_string()],
     };
-    let (temporary_path, _original, absolute) = create_temporary_script(&payload).unwrap();
+    let (_tempdir, _original, absolute) =
+        create_temporary_script_in(&payload, workspace.path()).unwrap();
     assert_eq!(
         absolute.extension().and_then(|value| value.to_str()),
         Some("py")
@@ -1797,7 +1816,6 @@ fn python_script_uses_runner_resolved_interpreter_and_py_file() {
             OsStr::new("$(literal)")
         ]
     );
-    temporary_path.close().unwrap();
 }
 
 #[test]
@@ -1843,7 +1861,8 @@ fn explicit_bash_login_reads_isolated_profile() {
             login,
             "printf '%s' \"${WEBCODEX_LOGIN_FIXTURE:-absent}\"; shopt -q login_shell",
         )
-        .unwrap();
+        .unwrap()
+        .into_command();
         let output = command
             .current_dir(temp.path())
             .stdin(Stdio::null())
@@ -1859,18 +1878,20 @@ fn explicit_bash_login_reads_isolated_profile() {
 
 #[test]
 fn typescript_temp_file_uses_mts_and_exact_script_bytes() {
+    let workspace = tempfile::tempdir().unwrap();
     let payload = ShellScriptPayload {
         language: ShellScriptLanguage::Typescript,
         script: "interface Item { value: string }\nconst item: Item = { value: 'ok' };\nconsole.log(item.value);\n".to_string(),
         args: Vec::new(),
     };
-    let (temporary_path, _original, absolute) = create_temporary_script(&payload).unwrap();
+    let (tempdir, _original, absolute) =
+        create_temporary_script_in(&payload, workspace.path()).unwrap();
     assert_eq!(
         absolute.extension().and_then(|ext| ext.to_str()),
         Some("mts")
     );
     assert_eq!(std::fs::read(&absolute).unwrap(), payload.script.as_bytes());
-    temporary_path.close().unwrap();
+    drop(tempdir);
 }
 
 #[test]
@@ -1980,16 +2001,18 @@ fn runner_real_process_typescript_probe_receives_eof_instead_of_runner_stdin() {
 
 #[test]
 fn phase_f_powershell_temp_file_uses_utf8_bom_without_script_preamble() {
+    let workspace = tempfile::tempdir().unwrap();
     let payload = ShellScriptPayload {
         language: ShellScriptLanguage::Powershell,
         script: "param([string]$Value)\nWrite-Output $Value".to_string(),
         args: Vec::new(),
     };
-    let (temporary_path, _original, absolute) = create_temporary_script(&payload).unwrap();
+    let (tempdir, _original, absolute) =
+        create_temporary_script_in(&payload, workspace.path()).unwrap();
     let bytes = std::fs::read(&absolute).unwrap();
     assert_eq!(&bytes[..3], &[0xEF, 0xBB, 0xBF]);
     assert_eq!(&bytes[3..], payload.script.as_bytes());
-    temporary_path.close().unwrap();
+    drop(tempdir);
 }
 #[test]
 fn powershell_runtime_executes_from_file_when_available() {
