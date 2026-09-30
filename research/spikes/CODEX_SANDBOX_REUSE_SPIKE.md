@@ -214,34 +214,58 @@ important thing this stage learned: the spike's *design* is validated, its
 
 | Route | Compiles | Added deps | New/Vendored LOC | Codex coupling | Maintenance | License | Result |
 |---|---|---|---|---|---|---|---|
-| **B1** pinned git dep | **NO** | 15+ direct, tokio | 0 | total: every type is Codex-owned | n/a | Apache-2.0 | **REJECTED** — `workspace = true` deps unresolvable externally (`tokio-tungstenite` `proxy` feature) |
+| **B1** pinned git dep | **NO** | 15+ direct, tokio | 0 | total: every type is Codex-owned | n/a | Apache-2.0 | **REJECTED** — see round 2: 3 upstream fork patches + rustc 1.96 + a broken `rama-core 0.3.0-alpha.4` |
 | **B2** bounded vendor | not attempted | 5 codex/external crates | ~2,900 measured | high: policy model + AbsolutePathBuf | high | Apache-2.0 + NOTICE (Ratatui/MIT) | **REJECTED** — "bounded" is illusory; the builder consumes the policy model |
-| **B3** subprocess adapter | **YES** | **0** | **228** | none (SBPL is a public OS interface) | **low** | n/a (no code copied) | **SELECTED** |
+| **B3** subprocess adapter | **YES** | **0** | **228** | none (SBPL needs no Codex code) | **low** locally, **high** in platform terms — see below | n/a (no code copied) | **SELECTED (provisional)** |
 
 ---
 
-## CODEX_SANDBOX_REUSE = SUBPROCESS_ADAPTER
+## CODEX_SANDBOX_REUSE = SUBPROCESS_ADAPTER (provisional, not FINAL)
+
+> **Corrected in round 2.** The claim below that `sandbox-exec` and SBPL are
+> "documented macOS interfaces" was **wrong**. They are not a supported
+> third-party API. Apple has deprecated the Seatbelt profile language, documents
+> no support for third-party policy use, and offers no replacement for
+> restricting a child process. Codex uses it anyway as a pragmatic backend.
+>
+> ```
+> DEPRECATED                                  = YES
+> UNSUPPORTED_FOR_THIRD_PARTY_CUSTOM_POLICY   = YES
+> USED_BY_CODEX_AS_PRAGMATIC_BACKEND          = YES
+> REPLACEMENT_AVAILABLE                       = NO
+> ```
+>
+> This does not by itself disqualify the backend, but it is entered as
+> **maintenance risk**: a security boundary would depend on a deprecated
+> interface with no replacement. The B3 advantage over B1 is that this risk is
+> *ours* and visible, rather than inherited through 671 crates we do not control.
+> Full treatment: `EXECUTION_BROKER_SPIKE_2_RESULTS.md` §3.
 
 One route is selected, not "any of them".
 
 **Why B3 despite the enforcement limitation on this host:**
 
-1. It is the only route that compiles. B1 is blocked structurally; B2 was not
-   compiled because measurement showed the port is not bounded.
+1. It is the only route that compiles. B1 is blocked — round 2 established this
+   is worse than first reported: clearing the `tokio-tungstenite` blocker
+   requires replicating three OpenAI fork patches, then a raised MSRV, and then
+   fails on a broken pre-release. B2 was not compiled because measurement showed
+   the port is not bounded.
 2. It copies **zero** lines from Codex, so it creates no license obligation and
    no maintenance surface tied to an upstream we do not control.
-3. `/usr/bin/sandbox-exec` and SBPL are **documented macOS interfaces**, not a
-   Codex invention. The reuse that matters — the platform facility — is
-   already available to us directly.
+3. `/usr/bin/sandbox-exec` requires no Codex code to use — it is a facility
+   already present on the host. (It is *not* a documented or supported
+   interface; see the correction above.)
 4. 228 lines with zero dependencies is small enough to be reviewed as a whole,
    which is what let this spike find and fix two of its own bugs.
 
 **What selecting B3 does not claim:** it does not claim the enforcement works
-on this host. That is `PARTIAL` and is recorded as such. B3 is selected as the
-*route*, on *design* grounds, with enforcement pending a host where allow-list
-profiles can be applied.
+on this host, or on any host yet tested. That is `PARTIAL`. B3 is selected as
+the *route*, on *design* grounds, with enforcement pending a host where
+restrictive profiles can be applied — see round 2's blocker C, which is
+unresolved.
 
 **What would change this answer:** if a future Codex exposes a stable,
 workspace-resolvable sandbox crate, B1 becomes preferable to a hand-written
 profile builder, because the hard-won policy details in B2 would then be
-available without porting them.
+available without porting them. Note this is a low-probability path: round 2
+found the pinned tree does not build externally at all.

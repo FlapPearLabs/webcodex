@@ -67,24 +67,34 @@ leave `git apply` unconfined. Full method and per-site table:
 
 ## 2. Question B — which Codex sandbox reuse route?
 
-**B = SUBPROCESS ADAPTER (B3).**
+**B = SUBPROCESS ADAPTER (B3), provisional.**
 
 | Route | Compiles | Deps | LOC | Result |
 |---|---|---|---|---|
-| B1 pinned git dep | **NO** | 15+ | 0 | **FAIL** — `workspace = true` unresolvable externally (`tokio-tungstenite` `proxy`) |
+| B1 pinned git dep | **NO** | 15+ | 0 | **FAIL** — see round 2: 3 fork patches + rustc 1.96 + broken `rama-core` |
 | B2 bounded vendor | not attempted | 5 | ~2,894 | **REJECTED** — not bounded; consumes Codex's policy model |
-| B3 subprocess adapter | **YES** | **0** | **228** | **SELECTED** |
+| B3 subprocess adapter | **YES** | **0** | **228** | **SELECTED (provisional)** |
 
 ```
-CODEX_SANDBOX_REUSE = SUBPROCESS_ADAPTER
+CODEX_SANDBOX_REUSE = SUBPROCESS_ADAPTER   (provisional — not FINAL)
 ```
+
+> **Superseded in two places by round 2** (`EXECUTION_BROKER_SPIKE_2_RESULTS.md`):
+> - B1's blocker is worse than "a workspace-resolution problem no external crate
+>   can fix". Replicating Codex's three `[patch.crates-io]` entries clears it and
+>   reveals a raised MSRV, then a `rama-core 0.3.0-alpha.4` that does not compile
+>   against its own published sibling crate.
+> - `sandbox-exec` / SBPL are **not** a documented or supported macOS interface.
+>   The sentence below is wrong and is corrected here: Apple has deprecated the
+>   Seatbelt language and offers no third-party replacement. It remains the
+>   pragmatic route, with the platform dependency entered as maintenance risk.
 
 Reasoning, evidence, and the rejected routes in full:
 `CODEX_SANDBOX_REUSE_SPIKE.md`. The one-line version: B1 is blocked by a
-workspace-resolution problem no external crate can fix, B2's reusable entry
-point takes Codex's `FileSystemSandbeltPolicy` and so drags the policy model
-with it, and B3 talks to `/usr/bin/sandbox-exec`, which is a documented macOS
-interface rather than a Codex invention — so it copies nothing and owes nothing.
+workspace-resolution problem that replicating the upstream patches only moves
+deeper, B2's reusable entry point takes Codex's `FileSystemSandbeltPolicy` and
+so drags the policy model with it, and B3 needs no Codex code at all — it calls
+a facility already present on the host, so it copies nothing and owes nothing.
 
 ---
 
