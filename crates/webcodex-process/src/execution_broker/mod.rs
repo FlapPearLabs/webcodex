@@ -325,6 +325,18 @@ pub enum BrokerError {
     PlanNotCompilable(String),
     /// The spec is internally inconsistent and cannot be executed as stated.
     SpecInvalid(&'static str),
+    /// The requested working directory is not inside the authority the plan
+    /// granted.
+    ///
+    /// This is a **fail-closed refusal before any process exists**, not a
+    /// warning. See [`ExecutionBroker::check_cwd`] for why the broker refuses
+    /// rather than quietly widening the profile to include the cwd.
+    CwdOutsideSandboxRoots {
+        /// The working directory as the caller stated it.
+        cwd: PathBuf,
+        /// Why it is not covered by the plan.
+        reason: String,
+    },
     /// The launcher could not be started.
     Launch(io::Error),
 }
@@ -339,6 +351,12 @@ impl std::fmt::Display for BrokerError {
             Self::PlanRefused(why) => write!(f, "sandbox plan refused: {why}"),
             Self::PlanNotCompilable(why) => write!(f, "sandbox plan refused: {why}"),
             Self::SpecInvalid(why) => write!(f, "invalid spawn spec: {why}"),
+            Self::CwdOutsideSandboxRoots { cwd, reason } => write!(
+                f,
+                "spawn refused: working directory {} is outside this action's \
+                 sandbox roots: {reason}",
+                cwd.display()
+            ),
             Self::Launch(e) => write!(f, "sandbox launcher failed: {e}"),
         }
     }
@@ -393,6 +411,96 @@ impl ExecutionBroker {
         Self
     }
 
+    /// Refuse a spec whose working directory the plan does not cover.
+    ///
+    /// # The invariant
+    ///
+    /// A confined action may only `chdir` into a directory its own profile can
+    /// reach: the canonicalized `cwd` must be inside a **writable** root or a
+    /// **readable** root. Anything else is refused, before any process exists.
+    ///
+    /// # Why the broker refuses instead of widening the profile
+    ///
+    /// The obvious "fix" — append the cwd to `readable_roots` so `chdir` can
+    /// succeed — is exactly the authority widening this module exists to
+    /// prevent. A cwd is attacker-influenced in the general case (it can come
+    /// from a model-authored action, or from a path the user merely mentioned),
+    /// and a directory need only *exist* for the grant to be minted. Turning
+    /// "the action asked for a directory" into "the action may read that
+    /// directory and everything under it" is a read grant nobody reviewed.
+    ///
+    /// The failure this prevents is observable: `sandbox-exec` sets the child's
+    /// cwd *after* the profile is applied, so a child launched in a directory
+    /// outside every root starts successfully and then operates in a directory
+    /// it is not allowed to read — reporting
+    /// `getcwd: cannot access parent directories` from every tool that tries to
+    /// resolve its own path.
+    ///
+    /// # Why canonicalization, not string prefix matching
+    ///
+    /// On macOS `/tmp` is a symlink to `/private/tmp`, so a literal prefix
+    /// comparison against a non-canonical root both misses legitimate matches
+    /// and, worse, can be defeated by a symlink whose *literal* path is inside a
+    /// root while its *target* is outside it. Both sides are canonicalized and
+    /// then compared component-wise, so the check asks "is this the same
+    /// directory", not "does this string start with that string".
+    pub fn check_cwd(&self, spec: &SpawnSpec) -> Result<(), BrokerError> {
+        let cwd = spec
+            .cwd
+            .canonicalize()
+            .map_err(|e| BrokerError::CwdOutsideSandboxRoots {
+                cwd: spec.cwd.clone(),
+                reason: format!("working directory does not resolve to a real directory: {e}"),
+            })?;
+
+        if !cwd.is_dir() {
+            return Err(BrokerError::CwdOutsideSandboxRoots {
+                cwd: spec.cwd.clone(),
+                reason: "working directory is not a directory".to_string(),
+            });
+        }
+
+        let (writable, readable) = match &spec.plan {
+            SandboxPlan::Confined {
+                writable_roots,
+                readable_roots,
+                ..
+            } => (writable_roots, readable_roots),
+        };
+
+        let covered = writable
+            .iter()
+            .chain(readable.iter())
+            .filter_map(|root| root.canonicalize().ok())
+            .any(|root| cwd == root || cwd.starts_with(&root));
+
+        if covered {
+            return Ok(());
+        }
+
+        // Name the roots that were tried. An error that only says "outside" is
+        // an error the caller cannot act on without guessing.
+        let mut tried: Vec<String> = Vec::new();
+        for (label, roots) in [("writable", writable), ("readable", readable)] {
+            for root in roots {
+                let shown = root.canonicalize().unwrap_or_else(|_| root.clone());
+                tried.push(format!("{label} {}", shown.display()));
+            }
+        }
+        Err(BrokerError::CwdOutsideSandboxRoots {
+            cwd: spec.cwd.clone(),
+            reason: if tried.is_empty() {
+                "the plan grants no filesystem roots at all".to_string()
+            } else {
+                format!(
+                    "resolved to {}, which is not inside any of: {}",
+                    cwd.display(),
+                    tried.join(", ")
+                )
+            },
+        })
+    }
+
     /// Build the final `Command` for `spec` without spawning it.
     ///
     /// Deliberately **`pub(crate)`, not `pub`**. Round 2 made this public so
@@ -426,6 +534,10 @@ impl ExecutionBroker {
         if spec.program.as_os_str().is_empty() {
             return Err(BrokerError::SpecInvalid("program is empty"));
         }
+        // Then the cwd invariant, still before any process exists. Order
+        // matters only in that an inexpressible plan is the more fundamental
+        // complaint; both fail closed.
+        self.check_cwd(spec)?;
 
         let mut command = Command::new(SANDBOX_EXEC);
         command.arg("-p").arg(&compiled.sbpl);

@@ -264,6 +264,127 @@ Each test builds its own `TEMP_ROOT` with `workspace/` and `outside/`. Nothing
 depends on a fixed `/tmp/webcodex-sandbox-spike/outside.txt` left by an earlier
 run.
 
+## Round 4 fix: the native gate is now runtime-independent
+
+### What the previous native run actually proved
+
+Run by hand from Terminal.app on the spike host:
+
+```text
+NATIVE_T0=true   NATIVE_T1=true   NATIVE_T2=false  NATIVE_T3=false
+NATIVE_A=true    NATIVE_B=true    NATIVE_C=false   NATIVE_C2=false
+NATIVE_D=true    NATIVE_E=false
+```
+
+**A, B and D are genuine passes.** They are the three filesystem-enforcement
+claims, and they establish that the Codex-informed profile really confines on a
+real Terminal: workspace read/write works, an external read is denied, and the
+same action under a different plan gets different authority.
+
+**T2 / T3 / C / C2 / E were not sandbox failures.** They were interpreter and
+`PATH` facts:
+
+- `/usr/bin/python3` on this host is an `xcode-select` stub, so `python3 -c`
+  fails before the profile is even relevant.
+- The working `python3` and `node` both live under
+  `~/.workbuddy/binaries/…`, which `EnvPolicy::Minimal` does not put on `PATH`
+  (`PATH=/usr/bin:/bin`) and which `TrustedToolchainRoot::resolve` correctly
+  refuses — it is inside `$HOME` and in no recognised toolchain layout.
+
+Letting those count in a single `NATIVE_ALL_PASS` meant a host with no usable
+interpreter could only ever report the security gate as failed. That is the
+worst possible failure direction: a real confinement regression would have been
+lost in the noise, and the noise would have looked like the finding.
+
+### The cwd invariant (production change)
+
+The native run also printed, from many tests:
+
+```text
+getcwd: cannot access parent directories
+```
+
+Cause: `SpawnSpec.cwd` was `TEMP_ROOT`, while the plan granted only
+`TEMP_ROOT/workspace`. `sandbox-exec` sets the child's cwd *after* applying the
+profile, so the child started successfully and then ran in a directory it was
+not allowed to read.
+
+`ExecutionBroker::check_cwd` now enforces, on the **production spawn path**:
+
+> the canonicalized `cwd` must be inside a writable root or a readable root;
+> otherwise the spawn is refused before any process exists.
+
+```text
+BrokerError::CwdOutsideSandboxRoots { cwd, reason }
+```
+
+Three deliberate properties:
+
+1. **It refuses rather than widening.** Appending the cwd to `readable_roots` so
+   `chdir` succeeds would mint a read grant from a caller-supplied path — the
+   exact authority-widening class this module exists to prevent. A directory need
+   only *exist* for the grant to be minted.
+2. **It canonicalizes both sides.** On macOS `/tmp` → `/private/tmp`, so a
+   literal prefix check both misses legitimate matches and is defeated by a
+   symlink whose literal path is inside a root while its target is outside it.
+   The symlink-escape test covers exactly that bypass.
+3. **It distinguishes "missing" from "outside"** in the error text, because the
+   two need different caller responses.
+
+Seven new integration tests cover: cwd in a writable root (accepted), cwd in a
+readable-only root (accepted), cwd in the parent of every root (refused), cwd
+behind an escaping symlink (refused), cwd that does not exist (refused), cwd that
+is a file (refused), and the spawn path itself (refused before a process exists,
+with a positive case so the test is a gate rather than a blanket refusal).
+
+### Security gate vs. runtime compatibility
+
+The gate is now **system-only**: `/bin/sh`, `/bin/cat`, `/usr/bin/nc`. No
+interpreter, no toolchain grant, no `PATH` dependency. That is what makes a
+result mean "the profile confines" rather than "this host has a working python".
+
+- **C** is now two levels of descendant, all system binaries:
+  `/bin/sh → /bin/sh → /bin/cat outside.txt`, requiring
+  `C_OUTER_STARTED`, `C_INNER_STARTED`, `C_DENIED`, no `C_LEAK`, rc=0. One level
+  of inheritance would not rule out the profile being re-applied only to direct
+  children.
+- **E** now uses `/usr/bin/nc`, with a mandatory **out-of-sandbox positive
+  control**: unsandboxed `nc` connects to the same loopback listener first. If
+  that fails, the test reports a precondition failure rather than a pass — a
+  sandboxed connect failure with nothing listening proves nothing.
+
+The interpreters moved out of the gate entirely:
+
+```text
+NATIVE_A / NATIVE_B / NATIVE_C / NATIVE_D / NATIVE_E
+NATIVE_SECURITY_ALL_PASS     <- the only thing that decides the verdict
+RUNTIME_PYTHON = PASS | UNAVAILABLE | FAIL
+RUNTIME_NODE    = PASS | UNAVAILABLE | FAIL
+```
+
+`RUNTIME_*` is reported and never gated. On this host both are expected to be
+`FAIL`, because both interpreters live under `~/.workbuddy/binaries/` — inside
+`$HOME`, which the toolchain resolver refuses by design. Fixing that is a
+toolchain-placement decision for a later ticket; widening the allow-list to make
+a test green would reintroduce exactly the grant this spike closed.
+
+Only `NATIVE_SECURITY_ALL_PASS=true` sets `READY_FOR_NORMALIZATION=true`.
+
+### Local verification
+
+```text
+cargo fmt --check                                     FMT_OK
+cargo check -p webcodex-process                       clean
+cargo test  -p webcodex-process --lib                 30 passed, 0 failed
+cargo test  -p webcodex-process --test execution_broker  15 passed, 0 failed
+bash -n research/spikes/native-seatbelt-ae.sh         SCRIPT_OK
+git diff --cached --check                             WHITESPACE_OK
+```
+
+The A–E enforcement tests still print `ENV_BLOCKED` from inside WorkBuddy — that
+is the host refusing nested narrowing, not a pass. Only the Terminal run moves
+them.
+
 ## The remaining step, and why it is not optional
 
 ```bash
@@ -271,17 +392,19 @@ bash /Users/songshiyao/Desktop/Projects/webcodex/research/spikes/native-seatbelt
 ```
 
 Run from Terminal.app. The script refuses to continue if the host cannot apply
-a restrictive profile (exit 3), builds `seatbelt-ae-probe`, runs T0–T3 and A–E
-through the **production** broker and compiler, and prints
-`NATIVE_T0=… NATIVE_ALL_PASS=…`.
+a restrictive profile (exit 3), builds `seatbelt-ae-probe`, runs the security
+gate A–E and the runtime probes through the **production** broker and compiler,
+and prints:
 
-There is no permissive path in that binary. If it reports a pass, the profile
-that produced it is the profile WebCodex would ship.
+```text
+NATIVE_A=true … NATIVE_SECURITY_ALL_PASS=true
+RUNTIME_PYTHON=FAIL  RUNTIME_NODE=FAIL
+```
 
-T0–T3 exist because of P2/P5: they check that the base policy does not cut off
-the program it is supposed to run. T2 and T3 report `SKIP_REASON` if `python3`
-or `node` is absent, and toolchain roots are resolved from `PATH` and passed
-through the compiler's home-directory check.
+There is no permissive path in that binary, and every confined action is rooted
+in the fixture workspace, so the production cwd invariant is exercised on every
+run. If it reports a pass, the profile that produced it is the profile WebCodex
+would ship.
 
 ## Not done, deliberately
 
@@ -294,6 +417,8 @@ through the compiler's home-directory check.
   backend.
 - No spawn normalization. This round makes the sandbox *correct*; it does not
   make it *used*.
+- No toolchain allow-list change. The `~/.workbuddy/binaries` interpreter
+  problem is recorded, not worked around.
 
 `READY_FOR_NORMALIZATION = PENDING_NATIVE_TEST` — and it should stay there until
-a real Terminal run says the profile confines.
+a real Terminal run says `NATIVE_SECURITY_ALL_PASS=true`.

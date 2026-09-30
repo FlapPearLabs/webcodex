@@ -73,8 +73,8 @@ if [ "$probe_rc" -ne 0 ]; then
   say "restrictive profile probe: rc=$probe_rc (host refuses narrowing)"
   say ""
   say "This host cannot apply a restrictive Seatbelt profile, so A-E cannot be"
-  say "measured here. This is NOT a pass. Do not report NATIVE_A..E as anything"
-  say "other than unmeasured."
+  say "measured here. This is NOT a pass. Do not report NATIVE_A..E or"
+  say "READY_FOR_NORMALIZATION as anything other than unmeasured."
   exit 3
 fi
 say "restrictive profile probe: rc=0 (host accepts narrowing)"
@@ -121,7 +121,7 @@ say ""
 # ---------------------------------------------------------------------------
 # 3. Run the suite
 # ---------------------------------------------------------------------------
-say "--- running T0-T3 and A-E ---"
+say "--- running security gate A-E and runtime compatibility probes ---"
 say ""
 
 RUN_LOG="$(mktemp -t webcodex-ae-run.XXXXXX)"
@@ -144,8 +144,9 @@ hr
 
 emit() { grep -E "^$1=" "$RUN_LOG" | tail -1 || true; }
 
-for key in NATIVE_T0 NATIVE_T1 NATIVE_T2 NATIVE_T3 \
-           NATIVE_A NATIVE_B NATIVE_C NATIVE_C2 NATIVE_D NATIVE_E; do
+# Security gate. A-E use only system binaries (/bin/sh, /bin/cat, /usr/bin/nc),
+# so these results are about confinement and nothing else.
+for key in NATIVE_A NATIVE_B NATIVE_C NATIVE_D NATIVE_E; do
   line="$(emit "$key")"
   if [ -z "$line" ]; then
     say "$key=NOT_REPORTED"
@@ -154,22 +155,45 @@ for key in NATIVE_T0 NATIVE_T1 NATIVE_T2 NATIVE_T3 \
   fi
 done
 
-ALL="$(emit NATIVE_ALL_PASS)"
+ALL="$(emit NATIVE_SECURITY_ALL_PASS)"
 if [ -z "$ALL" ]; then
-  say "NATIVE_ALL_PASS=NOT_REPORTED"
+  say "NATIVE_SECURITY_ALL_PASS=NOT_REPORTED"
   rm -f "$RUN_LOG"
   exit 1
 fi
 
 say "$ALL"
+
+# Runtime compatibility. Reported, never gated: whether a non-system
+# interpreter runs under this profile is a fact about the host's interpreter
+# layout, not about whether the sandbox confines.
+for key in RUNTIME_PYTHON RUNTIME_NODE; do
+  line="$(emit "$key")"
+  if [ -z "$line" ]; then
+    say "$key=NOT_REPORTED"
+  else
+    say "$line"
+  fi
+done
+
 rm -f "$RUN_LOG"
 
-if [ "$ALL" = "NATIVE_ALL_PASS=true" ]; then
+if [ "$ALL" = "NATIVE_SECURITY_ALL_PASS=true" ]; then
   say ""
-  say "VERDICT: the Codex-informed profile confines as designed on this host."
+  say "VERDICT: READY_FOR_NORMALIZATION=true"
+  say "The Codex-informed profile confines as designed on this host: A-E all pass."
+  if [ "$(emit RUNTIME_PYTHON)" != "RUNTIME_PYTHON=PASS" ] || \
+     [ "$(emit RUNTIME_NODE)" != "RUNTIME_NODE=PASS" ]; then
+    say ""
+    say "NOTE: at least one non-system interpreter is not runnable under this"
+    say "profile on this host. That is a runtime-compatibility fact and does NOT"
+    say "affect the security verdict above; it must be resolved before any"
+    say "product decision that assumes those interpreters are available."
+  fi
   exit 0
 fi
 
 say ""
-say "VERDICT: at least one check failed. See the per-test output above."
+say "VERDICT: READY_FOR_NORMALIZATION=false"
+say "At least one security check failed. See the per-test output above."
 exit 1

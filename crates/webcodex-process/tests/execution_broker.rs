@@ -32,7 +32,8 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 use webcodex_process::execution_broker::{
-    ExecutionBroker, NetworkPolicy, SandboxPlan, SpawnSpec, StreamPolicy, TrustedToolchainRoot,
+    BrokerError, ExecutionBroker, NetworkPolicy, SandboxPlan, SpawnSpec, StreamPolicy,
+    TrustedToolchainRoot,
 };
 
 // ---------------------------------------------------------------------------
@@ -162,6 +163,220 @@ fn plan_workspace_only(ws: &Path) -> SandboxPlan {
 }
 
 // ---------------------------------------------------------------------------
+// The cwd invariant
+//
+// These are pure refusals: they never launch anything, so they run for real
+// on any host, nested sandbox or not. They live in the integration test
+// because the invariant is a property of the **public** API — a downstream
+// caller must not be able to obtain a confined action rooted outside its own
+// authority by naming a different `cwd`.
+// ---------------------------------------------------------------------------
+
+/// A cwd inside a writable root is accepted.
+///
+/// The positive case matters as much as the refusals: an invariant that rejects
+/// everything would also refuse everything, and would look correct for the
+/// wrong reason.
+#[test]
+fn cwd_inside_a_writable_root_is_accepted() {
+    let fx = Fixture::new();
+    let nested = fx.workspace.join("nested");
+    std::fs::create_dir_all(&nested).expect("create nested");
+
+    let broker = ExecutionBroker::new();
+    let spec = SpawnSpec::new("/bin/true", &nested, plan_workspace_only(&fx.workspace));
+    assert!(
+        broker.check_cwd(&spec).is_ok(),
+        "a cwd nested inside a writable root must be accepted, got {:?}",
+        broker.check_cwd(&spec).err()
+    );
+}
+
+/// A cwd that is *itself* a readable-only root is accepted.
+///
+/// A read-only root must be usable as a working directory: refusing it would
+/// force every read-only action to also be granted write access to its own
+/// working directory, which is authority nobody asked for.
+#[test]
+fn cwd_inside_a_readable_only_root_is_accepted() {
+    let fx = Fixture::new();
+    let nested = fx.outside.join("nested");
+    std::fs::create_dir_all(&nested).expect("create nested");
+
+    let broker = ExecutionBroker::new();
+    let plan = SandboxPlan::Confined {
+        writable_roots: vec![fx.workspace.clone()],
+        readable_roots: vec![fx.outside.clone()],
+        network: NetworkPolicy::Deny,
+    };
+    let spec = SpawnSpec::new("/bin/true", &nested, plan);
+    assert!(
+        broker.check_cwd(&spec).is_ok(),
+        "a readable-only root must be a legal working directory, got {:?}",
+        broker.check_cwd(&spec).err()
+    );
+}
+
+/// A cwd that is a **sibling** of every root is refused.
+///
+/// This is the case the native probe actually hit: `cwd = TEMP_ROOT` while the
+/// plan granted only `TEMP_ROOT/workspace`. `/tmp` is a symlink to
+/// `/private/tmp` on macOS, so a literal prefix check against the workspace
+/// would not catch the parent — only canonicalization does.
+#[test]
+fn cwd_in_the_parent_of_every_root_is_refused() {
+    let fx = Fixture::new();
+    let broker = ExecutionBroker::new();
+    let spec = SpawnSpec::new("/bin/true", &fx.root, plan_workspace_only(&fx.workspace));
+    let err = broker
+        .check_cwd(&spec)
+        .expect_err("parent of the root must be refused");
+    assert!(
+        matches!(err, BrokerError::CwdOutsideSandboxRoots { .. }),
+        "got {err:?}"
+    );
+    let text = err.to_string();
+    assert!(
+        text.contains("not inside any of"),
+        "the refusal must name the roots it tried, got: {text}"
+    );
+    assert!(
+        text.contains("workspace"),
+        "the refusal must name the writable root, got: {text}"
+    );
+}
+
+/// A cwd that is a symlink escaping every root is refused.
+///
+/// Without canonicalization this is the bypass: the literal path
+/// `workspace/escape` is *inside* the root, so a string comparison would accept
+/// it, while the directory the child actually lands in is `outside/`. This is
+/// the case a "just check the string" implementation gets wrong.
+#[test]
+fn cwd_behind_a_symlink_that_escapes_every_root_is_refused() {
+    let fx = Fixture::new();
+    let link = fx.workspace.join("escape");
+    std::os::unix::fs::symlink(&fx.outside, &link).expect("symlink");
+
+    let broker = ExecutionBroker::new();
+    // The literal path is inside the writable root; its target is not.
+    assert!(
+        link.starts_with(&fx.workspace),
+        "precondition: the symlink is lexically inside the root"
+    );
+    let spec = SpawnSpec::new("/bin/true", &link, plan_workspace_only(&fx.workspace));
+    let err = broker
+        .check_cwd(&spec)
+        .expect_err("a symlink escape must be refused");
+    assert!(
+        matches!(err, BrokerError::CwdOutsideSandboxRoots { .. }),
+        "got {err:?}"
+    );
+    assert!(
+        err.to_string().contains("not inside any of"),
+        "the refusal must report the resolved target, got: {err}"
+    );
+}
+
+/// A cwd that does not exist is refused, with a reason that says so.
+///
+/// Canonicalization failing is a refusal, not a silent fall back to the
+/// broker's own directory: "run it somewhere else" is not a decision this
+/// layer is allowed to make.
+#[test]
+fn cwd_that_does_not_exist_is_refused() {
+    let fx = Fixture::new();
+    let missing = fx.workspace.join("no-such-directory");
+    let broker = ExecutionBroker::new();
+    let spec = SpawnSpec::new("/bin/true", &missing, plan_workspace_only(&fx.workspace));
+    let err = broker
+        .check_cwd(&spec)
+        .expect_err("a missing cwd must be refused");
+    assert!(
+        matches!(err, BrokerError::CwdOutsideSandboxRoots { .. }),
+        "got {err:?}"
+    );
+    assert!(
+        err.to_string().contains("does not resolve"),
+        "the refusal must distinguish 'missing' from 'outside', got: {err}"
+    );
+}
+
+/// A cwd that is a **file** is refused.
+///
+/// `chdir` into a file fails, but only inside the child — after a profile has
+/// been applied and a process exists. Catching it here keeps the failure where
+/// it can still be reported as a refusal.
+#[test]
+fn cwd_that_is_a_file_is_refused() {
+    let fx = Fixture::new();
+    let broker = ExecutionBroker::new();
+    let spec = SpawnSpec::new(
+        "/bin/true",
+        &fx.inside_file,
+        plan_workspace_only(&fx.workspace),
+    );
+    let err = broker
+        .check_cwd(&spec)
+        .expect_err("a file must not be a working directory");
+    assert!(
+        matches!(err, BrokerError::CwdOutsideSandboxRoots { .. }),
+        "got {err:?}"
+    );
+    assert!(err.to_string().contains("not a directory"), "got {err}");
+}
+
+/// The invariant is enforced on the **spawn** path, not only on the checker.
+///
+/// Calling `check_cwd` directly proves the rule exists. This proves nothing
+/// can route around it: `spawn` refuses before a process exists.
+#[test]
+fn spawn_refuses_a_cwd_outside_the_plan_before_any_process_exists() {
+    let fx = Fixture::new();
+    let broker = ExecutionBroker::new();
+    let plan = plan_workspace_only(&fx.workspace);
+
+    // cwd = the parent of every root. This is the exact shape the native probe
+    // used to launch with, and the reason every confined child printed
+    // `getcwd: cannot access parent directories`.
+    let spec = SpawnSpec::new("/bin/sh", &fx.root, plan.clone())
+        .arg("-c")
+        .arg("pwd")
+        .stdout(StreamPolicy::Piped)
+        .stderr(StreamPolicy::Piped);
+    let err = broker.spawn(&spec).expect_err("spawn must refuse");
+    assert!(
+        matches!(err, BrokerError::CwdOutsideSandboxRoots { .. }),
+        "got {err:?}"
+    );
+
+    // And a cwd inside the plan still spawns for real, so the test above is a
+    // gate and not a blanket refusal. Run without a sandbox-capability gate:
+    // if this host refuses restrictive profiles, the *spawn* fails — which is
+    // still not a refusal, and must not be read as one.
+    let ok_spec = SpawnSpec::new("/bin/sh", &fx.workspace, plan)
+        .arg("-c")
+        .arg("pwd")
+        .stdout(StreamPolicy::Piped)
+        .stderr(StreamPolicy::Piped);
+    match broker.spawn(&ok_spec) {
+        Ok(mut child) => {
+            let _ = read_stdout(&mut child);
+            let _ = read_stderr(&mut child);
+            let _ = child.wait();
+        }
+        Err(BrokerError::CwdOutsideSandboxRoots { .. }) => {
+            panic!("a cwd inside the plan must not be refused by the cwd invariant")
+        }
+        Err(other) => eprintln!(
+            "note: host could not apply the profile ({}); the positive case is \
+             covered by the refusal assertions above",
+            other
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // A — workspace read/write
 // ---------------------------------------------------------------------------
 
@@ -225,7 +440,7 @@ fn test_b_external_read_is_denied() {
     let script = format!(
         r#"cat "{inside}" > /dev/null && printf 'B_STARTED_OK' && if cat "{outside}" 2>/dev/null; then printf 'B_LEAK'; exit 1; else printf 'B_DENIED'; exit 0; fi"#
     );
-    let spec = SpawnSpec::new("/bin/sh", &fx.root, plan_workspace_only(&fx.workspace))
+    let spec = SpawnSpec::new("/bin/sh", &fx.workspace, plan_workspace_only(&fx.workspace))
         .arg("-c")
         .arg(&script)
         .stdout(StreamPolicy::Piped)
@@ -260,118 +475,153 @@ fn test_b_external_read_is_denied() {
 
 // ---------------------------------------------------------------------------
 // C — descendants inherit the profile
+//
+// **System-only, and deliberately so.**
+//
+// This test previously ran `sh -> python3 -> open(outside.txt)`. It failed on
+// hosts where `/usr/bin/python3` is only an `xcode-select` stub, and it failed
+// on hosts where a working `python3` lives in a toolchain prefix outside
+// `EnvPolicy::Minimal`'s `PATH=/usr/bin:/bin`.
+//
+// Both of those failures say something about *interpreter availability*, not
+// about whether a grandchild inherits its parent's Seatbelt profile. Conflating
+// them meant the security property could only ever be reported as "failed" for
+// reasons that had nothing to do with confinement — which is how a real
+// enforcement bug would have been lost in the noise.
+//
+// The security claim ("a descendant two levels down is still confined") needs no
+// interpreter at all: `/bin/sh -> /bin/sh -> /bin/cat` exercises exactly the
+// inheritance edge under test, using only binaries the profile already permits.
+// Whether a host's python3 or node happens to be runnable is a separate,
+// separately-reported fact — see the `RUNTIME_*` probes below.
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_c_descendant_inherits_the_profile_shell_to_python() {
+fn test_c_descendant_inherits_the_profile_two_levels_deep() {
     require_enforcement_capable_host!("C");
 
     let fx = Fixture::new();
     let inside = sh_quote_path(&fx.inside_file);
     let outside = sh_quote_path(&fx.outside_file);
 
-    if which("python3").is_none() {
-        eprintln!("SKIP_REASON[C]: python3 not present on this host");
-        return;
-    }
-
-    // sh prints a marker (so we know the shell ran), then python3 runs as a
-    // descendant, catches the denial itself, and exits 0. See test B for why a
-    // non-zero exit must not be the oracle.
+    // Two levels of descendant, all system binaries:
+    //   outer /bin/sh  ->  inner /bin/sh  ->  /bin/cat outside.txt
+    //
+    // The outer shell proves it started. The inner shell proves the profile is
+    // inherited by a *grandchild* — one level of inheritance would not rule out
+    // the profile being re-applied only to direct children. `cat` performs the
+    // denied read and reports the denial itself, exiting 0, for the reason
+    // spelled out in test B.
     let script = format!(
-        r#"printf 'C_SHELL_OK'; python3 -c 'import sys
-try:
-    d = open(sys.argv[1]).read()
-    print("C_LEAK:" + d)
-    sys.exit(1)
-except OSError:
-    print("C_DENIED")
-    sys.exit(0)' "{outside}""#
+        r#"cat "{inside}" > /dev/null && printf 'C_OUTER_STARTED' && /bin/sh -c '
+if /bin/cat "{outside}" 2>/dev/null; then
+  printf "C_LEAK"
+  exit 1
+else
+  printf "C_INNER_STARTED C_DENIED"
+  exit 0
+fi'"#
     );
-    let spec = SpawnSpec::new("/bin/sh", &fx.root, plan_workspace_only(&fx.workspace))
+    let spec = SpawnSpec::new("/bin/sh", &fx.workspace, plan_workspace_only(&fx.workspace))
         .arg("-c")
         .arg(&script)
         .stdout(StreamPolicy::Piped)
         .stderr(StreamPolicy::Piped);
-    let _ = inside;
 
     let (out, err, code) = run(&spec);
     let text = String::from_utf8_lossy(&out);
     assert_eq!(
         code,
         0,
-        "C: shell and python must both start; stderr={}",
+        "C: the shells must run and report; stderr={}",
         String::from_utf8_lossy(&err)
     );
     assert!(
-        text.contains("C_SHELL_OK"),
+        text.contains("C_OUTER_STARTED"),
         "C: the outer shell must have started; stdout={text:?}"
     );
     assert!(
+        text.contains("C_INNER_STARTED"),
+        "C: the inner shell (a grandchild) must have started; stdout={text:?}"
+    );
+    assert!(
         text.contains("C_DENIED"),
-        "C: the descendant must observe and report the denial; stdout={text:?}"
+        "C: the grandchild must observe and report the denial; stdout={text:?}"
     );
     assert!(
         !text.contains("C_LEAK"),
-        "C: the descendant must not read the denied file; stdout={text:?}"
+        "C: the grandchild must not read the denied file; stdout={text:?}"
     );
 }
 
+/// **Runtime compatibility, not enforcement.**
+///
+/// Whether a non-system interpreter can start under this profile is a real
+/// question about the design — the toolchain grant exists precisely to answer
+/// it — but it is a question about the *host's* interpreter layout, not about
+/// whether the profile confines. It is reported separately and never folded into
+/// the security verdict, because a host with no usable `node` would otherwise
+/// make an unrelated enforcement regression invisible.
 #[test]
-fn test_c2_descendant_inherits_the_profile_shell_to_node() {
-    require_enforcement_capable_host!("C2");
-
+fn runtime_node_can_start_under_a_trusted_toolchain_grant() {
     let fx = Fixture::new();
-    let outside = sh_quote_path(&fx.outside_file);
 
     let node = match which("node") {
         Some(n) => n,
         None => {
-            eprintln!("SKIP_REASON[C2]: node not present on this host");
+            eprintln!("RUNTIME_NODE=UNAVAILABLE (node not present on this host)");
             return;
         }
     };
-    let _ = node;
+    let toolchain = match webcodex_process::execution_broker::TrustedToolchainRoot::resolve(&node) {
+        Ok(root) => vec![root],
+        Err(e) => {
+            eprintln!(
+                "RUNTIME_NODE=UNAVAILABLE ({} is not in a recognised toolchain \
+                 layout: {e})",
+                node.display()
+            );
+            return;
+        }
+    };
 
-    // Same shape as C: the descendant catches the denial and exits 0. Braces
-    // are doubled because this is a `format!` template.
-    let script = format!(
-        r#"printf 'C2_SHELL_OK'; node -e 'const fs=require("fs");
-try {{
-  const d = fs.readFileSync(process.argv[1], "utf8");
-  process.stdout.write("C2_LEAK:" + d);
-  process.exit(1);
-}} catch (e) {{
-  process.stdout.write("C2_DENIED");
-  process.exit(0);
-}}' "{outside}""#
-    );
-    let spec = SpawnSpec::new("/bin/sh", &fx.root, plan_workspace_only(&fx.workspace))
+    let broker = ExecutionBroker::new();
+    let spec = SpawnSpec::new("/bin/sh", &fx.workspace, plan_workspace_only(&fx.workspace))
         .arg("-c")
-        .arg(&script)
+        .arg("node -e 'process.stdout.write(\"NODE_OK\")'")
         .stdout(StreamPolicy::Piped)
         .stderr(StreamPolicy::Piped);
 
-    let (out, err, code) = run(&spec);
-    let text = String::from_utf8_lossy(&out);
-    assert_eq!(
-        code,
-        0,
-        "C2: shell and node must both start; stderr={}",
-        String::from_utf8_lossy(&err)
-    );
-    assert!(
-        text.contains("C2_SHELL_OK"),
-        "C2: the outer shell must have started; stdout={text:?}"
-    );
-    assert!(
-        text.contains("C2_DENIED"),
-        "C2: the descendant must observe and report the denial; stdout={text:?}"
-    );
-    assert!(
-        !text.contains("C2_LEAK"),
-        "C2: the descendant must not read the denied file; stdout={text:?}"
-    );
+    let outcome = match broker.spawn_with_toolchain(&spec, &toolchain) {
+        Ok(mut child) => {
+            let out = read_stdout(&mut child);
+            let err = read_stderr(&mut child);
+            let status = child.wait().expect("wait");
+            (
+                String::from_utf8_lossy(&out).into_owned(),
+                String::from_utf8_lossy(&err).into_owned(),
+                status.code().unwrap_or(-1),
+            )
+        }
+        // A host that cannot apply the profile at all: unmeasurable, not failed.
+        Err(BrokerError::CwdOutsideSandboxRoots { .. }) => {
+            panic!("node probe used a cwd outside the plan")
+        }
+        Err(e) => {
+            eprintln!("RUNTIME_NODE=UNAVAILABLE (broker refused: {e})");
+            return;
+        }
+    };
+
+    let (out, err, code) = outcome;
+    if code == 0 && out.contains("NODE_OK") {
+        eprintln!("RUNTIME_NODE=PASS");
+    } else {
+        eprintln!(
+            "RUNTIME_NODE=FAIL (rc={code} stdout={out:?} stderr={err:?}); \
+             this is an interpreter-availability result, NOT an enforcement result"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -386,7 +636,7 @@ fn test_d_same_action_differs_between_profiles() {
     let outside = sh_quote_path(&fx.outside_file);
 
     let attempt = |plan: SandboxPlan| {
-        let spec = SpawnSpec::new("/bin/cat", &fx.root, plan)
+        let spec = SpawnSpec::new("/bin/cat", &fx.workspace, plan)
             .arg(&outside)
             .stdout(StreamPolicy::Piped)
             .stderr(StreamPolicy::Piped);
@@ -420,46 +670,64 @@ fn test_d_same_action_differs_between_profiles() {
 }
 
 // ---------------------------------------------------------------------------
-// E — network is denied, and the listener provably exists
+// E — network is denied, with an out-of-sandbox positive control
+//
+// **System-only.** `nc` replaces a python socket here for the same reason C
+// stopped using python: a missing or stubbed interpreter must not be able to
+// fail a network-enforcement test.
+//
+// The positive control is what makes the negative result meaningful. Without
+// it, "the connect failed" has two indistinguishable causes — the profile
+// denied it, or nothing was listening. The control connects to the *same*
+// listener from *outside* the profile first; if that succeeds, a later failure
+// under the profile is attributable to the profile.
 // ---------------------------------------------------------------------------
+
+/// Path to the system `nc`, which is the only network client this test uses.
+const SYSTEM_NC: &str = "/usr/bin/nc";
 
 #[test]
 fn test_e_network_denied() {
     require_enforcement_capable_host!("E");
 
-    if which("python3").is_none() {
-        eprintln!("SKIP_REASON[E]: python3 not present on this host");
+    if !Path::new(SYSTEM_NC).is_file() {
+        eprintln!("BLOCKED[E]: {SYSTEM_NC} not present on this host");
         return;
     }
 
-    // Listener is created and bound by this process, OUTSIDE the sandbox, so a
-    // connection failure is attributable to the profile and not to a missing
-    // server. `peer_addr` succeeding proves the socket is live before the child
-    // runs, which is the part round 2 could not distinguish.
+    // Bound by this process, OUTSIDE the sandbox. `local_addr` succeeding is
+    // the proof that a denial is attributable to the profile rather than to a
+    // missing server.
     let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
     let port = listener.local_addr().expect("local addr").port();
+
+    // ---- positive control: unsandboxed nc, same listener -----------------
+    let control = std::process::Command::new(SYSTEM_NC)
+        .args(["-w", "2", "127.0.0.1", &port.to_string()])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .expect("run unsandboxed nc");
     assert!(
-        listener.local_addr().is_ok(),
-        "listener must be bound before the child runs"
+        control.success(),
+        "E: PRECONDITION FAILED — unsandboxed {SYSTEM_NC} could not reach the \
+         listener on 127.0.0.1:{port}, so a sandboxed failure would prove nothing"
     );
 
+    // The listener accepted the control connection; drain it so the socket is
+    // in a clean state for the sandboxed attempt.
+    drop(listener.accept());
+
+    let fx = Fixture::new();
     let script = format!(
-        r#"printf 'E_STARTED_OK'; python3 -c 'import socket,sys
-s=socket.socket(); s.settimeout(3)
-try:
-    s.connect(("127.0.0.1",{port})); print("E_CONNECTED")
-except OSError as e:
-    print("E_DENIED:"+type(e).__name__)' "#
+        r#"printf 'E_STARTED_OK'; if {SYSTEM_NC} -w 2 127.0.0.1 {port} < /dev/null; then printf 'E_CONNECTED'; else printf 'E_DENIED'; fi; exit 0"#
     );
-    let spec = SpawnSpec::new(
-        "/bin/sh",
-        &fx_workspace(),
-        SandboxPlan::read_write_in(&[std::env::temp_dir()]),
-    )
-    .arg("-c")
-    .arg(&script)
-    .stdout(StreamPolicy::Piped)
-    .stderr(StreamPolicy::Piped);
+    let spec = SpawnSpec::new("/bin/sh", &fx.workspace, plan_workspace_only(&fx.workspace))
+        .arg("-c")
+        .arg(&script)
+        .stdout(StreamPolicy::Piped)
+        .stderr(StreamPolicy::Piped);
 
     let (out, err, code) = run(&spec);
     let text = String::from_utf8_lossy(&out);
@@ -478,16 +746,9 @@ except OSError as e:
         "E: the connection must be denied; stdout={text:?}"
     );
     assert!(
-        text.contains("E_DENIED:"),
-        "E: the denial must be an OS-level error, not a silent hang; stdout={text:?}"
+        text.contains("E_DENIED"),
+        "E: the denial must be observed by the child, not a silent hang; stdout={text:?}"
     );
-}
-
-/// Absolute temp dir, canonicalized: E's plan must name a real, existing root.
-fn fx_workspace() -> PathBuf {
-    std::env::temp_dir()
-        .canonicalize()
-        .unwrap_or_else(|_| std::env::temp_dir())
 }
 
 /// Locate an executable on the host's PATH, for SKIP_REASON reporting.

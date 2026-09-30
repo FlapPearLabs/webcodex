@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Native enforcement probe: T0-T3 plus A-E, for a human-run Terminal.
+//! Native enforcement probe: A-E plus runtime compatibility, for a
+//! human-run Terminal.
 //!
 //! # Why this binary exists
 //!
@@ -11,23 +12,43 @@
 //! `research/spikes/native-seatbelt-ae.sh`.
 //!
 //! It uses the production [`ExecutionBroker`] and the production profile
-//! compiler. There is no permissive path and no test-only shortcut here — if
-//! this binary reports a pass, the profile that produced it is the profile
-//! WebCodex would ship.
+//! compiler — including the production **cwd invariant**: every confined action
+//! is rooted in `fixture.workspace`, the only directory the plan grants. There
+//! is no permissive path and no test-only shortcut here. If this binary reports
+//! a pass, the profile that produced it is the profile WebCodex would ship.
+//!
+//! # Security gate vs. runtime compatibility
+//!
+//! The gate (`NATIVE_A..E`, `NATIVE_SECURITY_ALL_PASS`) answers exactly one
+//! question: **does the Codex-informed profile confine a system-binary action?**
+//! It uses only `/bin/sh`, `/bin/cat`, and `/usr/bin/nc` — interpreters the
+//! profile already permits, with no toolchain grant and no `PATH` dependency.
+//!
+//! The runtime lines (`RUNTIME_PYTHON`, `RUNTIME_NODE`) answer a *different*
+//! question — whether a non-system interpreter happens to be runnable on this
+//! host's layout — and are reported **separately**. They never enter the
+//! security verdict. A host whose `python3` is only an `xcode-select` stub must
+//! not be able to fail a filesystem-enforcement test, which is how a real
+//! confinement regression would have been hidden in the noise.
 //!
 //! # Output contract
 //!
-//! A machine-readable block at the end, one `KEY=true|false` per line, so the
+//! A machine-readable block at the end, one `KEY=value` per line, so the
 //! wrapper script never has to parse prose:
 //!
 //! ```text
-//! NATIVE_T0=true
-//! NATIVE_T1=true
-//! ...
-//! NATIVE_ALL_PASS=true
+//! NATIVE_A=true
+//! NATIVE_B=true
+//! NATIVE_C=true
+//! NATIVE_D=true
+//! NATIVE_E=true
+//! NATIVE_SECURITY_ALL_PASS=true
+//! RUNTIME_PYTHON=PASS
+//! RUNTIME_NODE=FAIL
 //! ```
 
 use std::io::Read;
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
@@ -35,13 +56,15 @@ use webcodex_process::execution_broker::{
     ExecutionBroker, NetworkPolicy, SandboxPlan, SpawnSpec, StreamPolicy, TrustedToolchainRoot,
 };
 
+/// The only network client this probe uses for the security gate.
+const SYSTEM_NC: &str = "/usr/bin/nc";
+
 // ---------------------------------------------------------------------------
 // Fixture: generated per run, never a fixed /tmp path
 // ---------------------------------------------------------------------------
 
 struct Fixture {
     _dir: tempfile::TempDir,
-    root: PathBuf,
     workspace: PathBuf,
     outside: PathBuf,
     inside_file: PathBuf,
@@ -62,7 +85,6 @@ impl Fixture {
         std::fs::write(&outside_file, "OUTSIDE_SECRET\n").expect("write outside");
         Self {
             _dir: dir,
-            root,
             workspace,
             outside,
             inside_file,
@@ -89,19 +111,20 @@ fn which(program: &str) -> Option<PathBuf> {
 /// Read-only prefixes needed to *start* an interpreter on this machine.
 ///
 /// The Codex-derived platform defaults stop at fixed system prefixes, so a
-/// Homebrew-installed `node` is not executable under them. Each root here is
+/// Homebrew-installed `node` is not executable under them, and a host
+/// `python3` that lives outside `/usr/bin` is not either. Each root here is
 /// minted by `TrustedToolchainRoot::resolve`, which derives a **bounded**
 /// prefix from a real executable in a recognised toolchain layout. That is
-/// deliberate: this function looks up `node` on `PATH` and vouches for the
-/// prefix it lives in. It never accepts a caller-supplied directory, so there
-/// is no way to ask for `/` here — or anywhere else.
+/// deliberate: this function looks up the interpreter on `PATH` and vouches for
+/// the prefix it lives in. It never accepts a caller-supplied directory, so
+/// there is no way to ask for `/` here — or anywhere else.
 fn toolchain_roots_for(program: &str) -> Vec<TrustedToolchainRoot> {
     let Some(path) = which(program) else {
         return Vec::new();
     };
     // resolve() canonicalizes, requires a regular file, and refuses any prefix
     // that is not a recognised toolchain layout. A failure is not fatal: the
-    // test that needs it will report why it could not start.
+    // runtime check that needs it will report why it could not start.
     match TrustedToolchainRoot::resolve(&path) {
         Ok(root) => vec![root],
         Err(e) => {
@@ -143,13 +166,16 @@ fn run(spec: &SpawnSpec, toolchain: &[TrustedToolchainRoot]) -> Result<Outcome, 
     })
 }
 
+/// Confined action rooted in `fixture.workspace` — the only directory the plan
+/// grants. This is the fix for the previous run's `getcwd: cannot access parent
+/// directories` noise: the cwd is never the fixture's parent.
 fn sh_in(
-    cwd: &Path,
+    workspace: &Path,
     plan: SandboxPlan,
     script: &str,
     toolchain: &[TrustedToolchainRoot],
 ) -> Result<Outcome, String> {
-    let spec = SpawnSpec::new("/bin/sh", cwd, plan)
+    let spec = SpawnSpec::new("/bin/sh", workspace, plan)
         .arg("-c")
         .arg(script)
         .stdout(StreamPolicy::Piped)
@@ -180,97 +206,40 @@ fn main() {
         std::process::exit(2);
     }
 
-    let mut results: Vec<(&str, bool)> = Vec::new();
     let fx = Fixture::new();
 
-    // ---- T0-T3: can a normal process start at all? ----------------------
+    // ---- Precondition: a confined process can start at all ---------------
+    // This folds the old T0/T1 into a single gate on the production path. It is
+    // run with `cwd = fixture.workspace` like every other confined action, so
+    // it exercises the cwd invariant too.
     {
-        let o = sh_in(&fx.root, plan_for(&fx.workspace), "true", &[]);
-        let ok = matches!(&o, Ok(r) if r.code == 0);
-        let detail = match &o {
-            Ok(r) => format!("rc={} stderr={}", r.code, r.stderr.trim()),
-            Err(e) => e.clone(),
-        };
-        report("T0 /usr/bin/true", ok, &detail);
-        results.push(("NATIVE_T0", ok));
-    }
-    {
-        let o = sh_in(&fx.root, plan_for(&fx.workspace), "echo OK", &[]);
-        let ok = matches!(&o, Ok(r) if r.code == 0 && r.stdout.trim() == "OK");
-        let detail = match &o {
-            Ok(r) => format!(
-                "rc={} stdout={:?} stderr={}",
-                r.code,
-                r.stdout.trim(),
-                r.stderr.trim()
-            ),
-            Err(e) => e.clone(),
-        };
-        report("T1 /bin/sh -c 'echo OK'", ok, &detail);
-        results.push(("NATIVE_T1", ok));
-    }
-    {
-        if which("python3").is_none() {
-            report(
-                "T2 python3",
-                true,
-                "SKIP_REASON: python3 not present on this host",
-            );
-            results.push(("NATIVE_T2", true));
-        } else {
-            let tc = toolchain_roots_for("python3");
-            let o = sh_in(
-                &fx.root,
-                plan_for(&fx.workspace),
-                "python3 -c 'print(\"OK\")'",
-                &tc,
-            );
-            let ok = matches!(&o, Ok(r) if r.code == 0 && r.stdout.trim() == "OK");
-            let detail = match &o {
-                Ok(r) => {
-                    let mut d = format!("rc={} stdout={:?}", r.code, r.stdout.trim());
-                    if !ok {
-                        d.push_str(&format!(" stderr={}", r.stderr.trim()));
-                    }
-                    d
-                }
-                Err(e) => e.clone(),
-            };
-            report("T2 python3 -c print", ok, &detail);
-            results.push(("NATIVE_T2", ok));
+        let o = sh_in(
+            &fx.workspace,
+            plan_for(&fx.workspace),
+            "printf 'PRECOND_OK'",
+            &[],
+        );
+        match &o {
+            Ok(r) if r.code == 0 && r.stdout.contains("PRECOND_OK") => {
+                report("precondition /bin/sh starts under the profile", true, "");
+            }
+            other => {
+                let detail = match other {
+                    Ok(r) => format!("rc={} stdout={:?} stderr={}", r.code, r.stdout, r.stderr),
+                    Err(e) => e.clone(),
+                };
+                report(
+                    "precondition /bin/sh starts under the profile",
+                    false,
+                    &detail,
+                );
+                eprintln!("FATAL: a confined process cannot start; the A-E gate is meaningless.");
+                std::process::exit(2);
+            }
         }
     }
-    {
-        if which("node").is_none() {
-            report(
-                "T3 node",
-                true,
-                "SKIP_REASON: node not present on this host",
-            );
-            results.push(("NATIVE_T3", true));
-        } else {
-            let tc = toolchain_roots_for("node");
-            let o = sh_in(
-                &fx.root,
-                plan_for(&fx.workspace),
-                "node -e 'console.log(\"OK\")'",
-                &tc,
-            );
-            let ok = matches!(&o, Ok(r) if r.code == 0 && r.stdout.trim() == "OK");
-            let detail = match &o {
-                Ok(r) => {
-                    let mut d = format!("rc={} stdout={:?}", r.code, r.stdout.trim());
-                    if !ok {
-                        d.push_str(&format!(" stderr={}", r.stderr.trim()));
-                    }
-                    d
-                }
-                Err(e) => e.clone(),
-            };
-            report("T3 node -e console.log", ok, &detail);
-            results.push(("NATIVE_T3", ok));
-        }
-    }
+
+    let mut security: Vec<(&str, bool)> = Vec::new();
 
     // ---- A: workspace read + write --------------------------------------
     {
@@ -293,7 +262,7 @@ fn main() {
             Err(e) => e.clone(),
         };
         report("A workspace read+write", ok, &detail);
-        results.push(("NATIVE_A", ok));
+        security.push(("NATIVE_A", ok));
     }
 
     // ---- B: external read denied, process demonstrably started ----------
@@ -311,7 +280,7 @@ fn main() {
         let script = format!(
             r#"cat "{inside}" > /dev/null && printf 'B_STARTED_OK' && if cat "{outside}" 2>/dev/null; then printf 'B_LEAK'; exit 1; else printf 'B_DENIED'; exit 0; fi"#
         );
-        let o = sh_in(&fx.root, plan_for(&fx.workspace), &script, &[]);
+        let o = sh_in(&fx.workspace, plan_for(&fx.workspace), &script, &[]);
         let ok = match &o {
             Ok(r) => {
                 r.code == 0
@@ -331,116 +300,73 @@ fn main() {
             Err(e) => e.clone(),
         };
         report("B external read denied", ok, &detail);
-        results.push(("NATIVE_B", ok));
+        security.push(("NATIVE_B", ok));
     }
 
-    // ---- C: descendants inherit (shell -> python, shell -> node) --------
+    // ---- C: descendants inherit, two levels deep, system-only -----------
     {
+        let inside = q(&fx.inside_file);
         let outside = q(&fx.outside_file);
-        if which("python3").is_none() {
-            report(
-                "C descendant inheritance",
-                true,
-                "SKIP_REASON: python3 not present",
-            );
-            results.push(("NATIVE_C", true));
-        } else {
-            let tc = toolchain_roots_for("python3");
-            // The shell proves it started; python catches the denial itself and
-            // exits 0, so a non-zero exit can only mean something else broke.
-            let script = format!(
-                r#"printf 'C_SHELL_OK'; python3 -c 'import sys
-try:
-    d = open(sys.argv[1]).read()
-    print("C_LEAK:" + d)
-    sys.exit(1)
-except OSError:
-    print("C_DENIED")
-    sys.exit(0)' "{outside}""#
-            );
-            let o = sh_in(&fx.root, plan_for(&fx.workspace), &script, &tc);
-            let ok = match &o {
-                Ok(r) => {
-                    r.code == 0
-                        && r.stdout.contains("C_SHELL_OK")
-                        && r.stdout.contains("C_DENIED")
-                        && !r.stdout.contains("C_LEAK")
-                }
-                Err(_) => false,
-            };
-            let detail = match &o {
-                Ok(r) => format!(
-                    "rc={} stdout={:?} stderr={}",
-                    r.code,
-                    r.stdout.trim(),
-                    r.stderr.trim()
-                ),
-                Err(e) => e.clone(),
-            };
-            report("C descendant inheritance (sh->python3)", ok, &detail);
-            results.push(("NATIVE_C", ok));
-        }
-    }
-    {
-        let outside = q(&fx.outside_file);
-        if which("node").is_none() {
-            report(
-                "C2 descendant inheritance",
-                true,
-                "SKIP_REASON: node not present",
-            );
-            results.push(("NATIVE_C2", true));
-        } else {
-            let tc = toolchain_roots_for("node");
-            // Same shape as C: the descendant catches the denial and exits 0.
-            // Braces are doubled because this is a `format!` template: a bare
-            // `{` in the JS would otherwise be read as a format placeholder.
-            let script = format!(
-                r#"printf 'C2_SHELL_OK'; node -e 'const fs=require("fs");
-try {{
-  const d = fs.readFileSync(process.argv[1], "utf8");
-  process.stdout.write("C2_LEAK:" + d);
-  process.exit(1);
-}} catch (e) {{
-  process.stdout.write("C2_DENIED");
-  process.exit(0);
-}}' "{outside}""#
-            );
-            let o = sh_in(&fx.root, plan_for(&fx.workspace), &script, &tc);
-            let ok = match &o {
-                Ok(r) => {
-                    r.code == 0
-                        && r.stdout.contains("C2_SHELL_OK")
-                        && r.stdout.contains("C2_DENIED")
-                        && !r.stdout.contains("C2_LEAK")
-                }
-                Err(_) => false,
-            };
-            let detail = match &o {
-                Ok(r) => format!(
-                    "rc={} stdout={:?} stderr={}",
-                    r.code,
-                    r.stdout.trim(),
-                    r.stderr.trim()
-                ),
-                Err(e) => e.clone(),
-            };
-            report("C2 descendant inheritance (sh->node)", ok, &detail);
-            results.push(("NATIVE_C2", ok));
-        }
+        // Two levels of descendant, all system binaries:
+        //   outer /bin/sh  ->  inner /bin/sh  ->  /bin/cat outside.txt
+        //
+        // The outer shell proves it started; the inner shell proves the profile
+        // is inherited by a *grandchild* — a single level of inheritance would
+        // not rule out the profile being re-applied only to direct children.
+        // `cat` does the denied read and reports the denial itself, exiting 0.
+        //
+        // This replaced the old `sh -> python3 -> open()` form on purpose: a
+        // missing or stubbed python3 is an interpreter-availability fact, not a
+        // confinement fact, and must not gate the security verdict.
+        let script = format!(
+            r#"cat "{inside}" > /dev/null && printf 'C_OUTER_STARTED' && /bin/sh -c '
+if /bin/cat "{outside}" 2>/dev/null; then
+  printf "C_LEAK"
+  exit 1
+else
+  printf "C_INNER_STARTED C_DENIED"
+  exit 0
+fi'"#
+        );
+        let o = sh_in(&fx.workspace, plan_for(&fx.workspace), &script, &[]);
+        let ok = match &o {
+            Ok(r) => {
+                r.code == 0
+                    && r.stdout.contains("C_OUTER_STARTED")
+                    && r.stdout.contains("C_INNER_STARTED")
+                    && r.stdout.contains("C_DENIED")
+                    && !r.stdout.contains("C_LEAK")
+            }
+            Err(_) => false,
+        };
+        let detail = match &o {
+            Ok(r) => format!(
+                "rc={} stdout={:?} stderr={}",
+                r.code,
+                r.stdout.trim(),
+                r.stderr.trim()
+            ),
+            Err(e) => e.clone(),
+        };
+        report(
+            "C descendant inheritance (sh->sh->cat, 2 levels)",
+            ok,
+            &detail,
+        );
+        security.push(("NATIVE_C", ok));
     }
 
     // ---- D: same action, different plan, different outcome ---------------
     {
         let outside = q(&fx.outside_file);
         let a = sh_in(
-            &fx.root,
+            &fx.workspace,
             plan_for(&fx.workspace),
             &format!("cat '{outside}'"),
             &[],
         );
         let b = sh_in(
-            &fx.root,
+            &fx.workspace,
             SandboxPlan::Confined {
                 writable_roots: vec![fx.workspace.clone()],
                 readable_roots: vec![fx.outside.clone()],
@@ -458,50 +384,64 @@ try {{
             b.as_ref().map(|r| r.code)
         );
         report("D per-action difference", ok, &detail);
-        results.push(("NATIVE_D", ok));
+        security.push(("NATIVE_D", ok));
     }
 
-    // ---- E: network denied, listener provably alive ----------------------
+    // ---- E: network denied, with an out-of-sandbox positive control -----
     {
-        if which("python3").is_none() {
-            report("E network denied", true, "SKIP_REASON: python3 not present");
-            results.push(("NATIVE_E", true));
+        if !Path::new(SYSTEM_NC).is_file() {
+            report(
+                "E network denied",
+                false,
+                &format!("BLOCKED: {SYSTEM_NC} not present on this host"),
+            );
+            security.push(("NATIVE_E", false));
         } else {
             // Bound by this process, outside the sandbox. `local_addr` succeeding
             // is the proof that a denial is attributable to the profile.
-            let listener = match std::net::TcpListener::bind("127.0.0.1:0") {
+            let listener = match TcpListener::bind("127.0.0.1:0") {
                 Ok(l) => l,
                 Err(e) => {
-                    report("E network denied", false, &format!("bind failed: {e}"));
-                    results.push(("NATIVE_E", false));
-                    emit(&results);
+                    report(
+                        "E network denied",
+                        false,
+                        &format!("bind failed, so enforcement is unmeasurable: {e}"),
+                    );
+                    security.push(("NATIVE_E", false));
+                    finish(&fx, &security);
                     return;
                 }
             };
             let port = listener.local_addr().expect("local_addr").port();
 
-            let tc = toolchain_roots_for("python3");
+            // Positive control: unsandboxed `nc` to the *same* listener. If this
+            // fails, a sandboxed failure would prove nothing.
+            let control = std::process::Command::new(SYSTEM_NC)
+                .args(["-w", "2", "127.0.0.1", &port.to_string()])
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false);
+
+            // Drain the control connection so the listener is in a clean state.
+            let _ = listener.accept();
+
             let script = format!(
-                r#"printf 'E_STARTED_OK'; python3 -c 'import socket
-s=socket.socket(); s.settimeout(3)
-try:
-    s.connect(("127.0.0.1",{port})); print("E_CONNECTED")
-except OSError as exc:
-    print("E_DENIED:"+type(exc).__name__)' "#
+                r#"printf 'E_STARTED_OK'; if {SYSTEM_NC} -w 2 127.0.0.1 {port} < /dev/null; then printf 'E_CONNECTED'; else printf 'E_DENIED'; fi; exit 0"#
             );
-            let o = sh_in(&fx.root, plan_for(&fx.workspace), &script, &tc);
-            let ok = match &o {
-                Ok(r) => {
+            let o = sh_in(&fx.workspace, plan_for(&fx.workspace), &script, &[]);
+            let ok = control
+                && matches!(&o, Ok(r) if
                     r.code == 0
-                        && r.stdout.contains("E_STARTED_OK")
-                        && !r.stdout.contains("E_CONNECTED")
-                        && r.stdout.contains("E_DENIED:")
-                }
-                Err(_) => false,
-            };
+                    && r.stdout.contains("E_STARTED_OK")
+                    && !r.stdout.contains("E_CONNECTED")
+                    && r.stdout.contains("E_DENIED"));
             let detail = match &o {
                 Ok(r) => format!(
-                    "listener=127.0.0.1:{port} (bound, unsandboxed) rc={} stdout={:?} stderr={}",
+                    "listener=127.0.0.1:{port} (positive_control={}) rc={} stdout={:?} stderr={}",
+                    control,
                     r.code,
                     r.stdout.trim(),
                     r.stderr.trim()
@@ -509,20 +449,69 @@ except OSError as exc:
                 Err(e) => e.clone(),
             };
             report("E network denied", ok, &detail);
-            results.push(("NATIVE_E", ok));
+            security.push(("NATIVE_E", ok));
         }
     }
 
-    emit(&results);
+    finish(&fx, &security);
 }
 
-fn emit(results: &[(&str, bool)]) {
+/// Run the two runtime probes and emit the summary block.
+fn finish(fx: &Fixture, security: &[(&str, bool)]) {
+    let python_runtime = check_interpreter(fx, "python3", "-c", "print(\"OK\")");
+    let node_runtime = check_interpreter(fx, "node", "-e", "console.log(\"OK\")");
+    emit(security, python_runtime, node_runtime);
+}
+
+/// Whether a non-system interpreter can run under this profile (with a
+/// toolchain grant). This is **runtime compatibility, not enforcement**: it is
+/// reported separately from `NATIVE_A..E` and never gates the security verdict.
+fn check_interpreter(
+    fx: &Fixture,
+    program: &str,
+    runner_flag: &str,
+    snippet: &str,
+) -> &'static str {
+    if which(program).is_none() {
+        return "UNAVAILABLE";
+    }
+    let tc = toolchain_roots_for(program);
+    // A host whose interpreter is only an xcode-select stub will be refused a
+    // toolchain grant (the stub is not a regular file in a recognised prefix)
+    // or will fail to run under the minimal PATH. Either way the answer is a
+    // compatibility result, never a confinement result.
+    let script = format!("{program} {runner_flag} '{snippet}'");
+    match sh_in(&fx.workspace, plan_for(&fx.workspace), &script, &tc) {
+        Ok(r) if r.code == 0 && r.stdout.trim() == "OK" => "PASS",
+        Ok(r) => {
+            eprintln!(
+                "note: {program} run under profile rc={} stdout={:?} stderr={:?}",
+                r.code,
+                r.stdout.trim(),
+                r.stderr.trim()
+            );
+            "FAIL"
+        }
+        Err(e) => {
+            eprintln!("note: {program} could not start: {e}");
+            "FAIL"
+        }
+    }
+}
+
+fn emit(security: &[(&str, bool)], python: &str, node: &str) {
     println!("\n--- machine-readable summary ---");
-    for (key, ok) in results {
+    for (key, ok) in security {
         println!("{key}={}", if *ok { "true" } else { "false" });
     }
-    let all = results.iter().all(|(_, ok)| *ok);
-    println!("NATIVE_ALL_PASS={}", if all { "true" } else { "false" });
+    let all = security.iter().all(|(_, ok)| *ok);
+    println!(
+        "NATIVE_SECURITY_ALL_PASS={}",
+        if all { "true" } else { "false" }
+    );
+    // Runtime compatibility is informational and never gates the verdict.
+    println!("RUNTIME_PYTHON={python}");
+    println!("RUNTIME_NODE={node}");
 }
 
 fn host_allows_restrictive_profiles() -> bool {
