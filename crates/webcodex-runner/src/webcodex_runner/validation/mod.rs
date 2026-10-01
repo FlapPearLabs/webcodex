@@ -99,9 +99,14 @@ fn execute_validation_with_shutdown(
     let project = resolve_runner_project(project_registry_dir, &request.project_id)?;
     let project_root = validate_project_root(policy, &project)?;
 
+    // The trusted execution authority comes from the caller's project registry,
+    // threaded down to the broker. It is never re-derived from `project_root`
+    // or from a request-supplied cwd at the execution layer — deriving it there
+    // is how an arbitrary path becomes an execution grant.
     match meta.adapter_id {
         "pyright" => Ok(pyright::run_pyright(
             &project_root,
+            Some(project_registry_dir),
             request,
             policy.max_timeout_secs,
             shutdown,
@@ -114,9 +119,26 @@ fn execute_validation_with_shutdown(
 }
 
 /// Direct internal entry for unit/e2e tests that already have a project root.
+///
+/// # The registry a test has to hand over
+///
+/// P1 authority is registered project context, so this entry point cannot
+/// simply hand `project_root` to the broker as though it were a registry
+/// directory: a project directory contains no `<name>.toml` project files, so
+/// the lookup would find nothing and *every* validation spawn would refuse.
+/// That refusal is correct behaviour, but it would make these tests measure the
+/// refusal path rather than validation.
+///
+/// So the tests build a real one-project registry for the root they already have
+/// ([`validation::tests::registry_for`]) and pass it here. The broker then
+/// derives exactly the plan production derives, and these tests keep measuring
+/// validation behaviour. The alternative — teaching the resolver to accept a
+/// bare directory — would reintroduce precisely the implicit-authority hole the
+/// closure closed.
 #[cfg(test)]
 pub(crate) fn execute_validation_at_root(
     project_root: &Path,
+    project_registry_dir: &Path,
     request: &ValidationBridgeRequest,
     max_timeout_secs: u64,
 ) -> Result<ValidationBridgeResponse, ValidationBridgeResultEnvelope> {
@@ -141,6 +163,7 @@ pub(crate) fn execute_validation_at_root(
     match meta.adapter_id {
         "pyright" => Ok(pyright::run_pyright(
             project_root,
+            Some(project_registry_dir),
             request,
             max_timeout_secs,
             None,

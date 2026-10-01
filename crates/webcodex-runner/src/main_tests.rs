@@ -32,6 +32,153 @@ pub(crate) fn test_env_lock() -> std::sync::MutexGuard<'static, ()> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
+/// Write a one-project registry for `project_path`, in the format production
+/// reads (`<id>.toml` carrying `id` + `path`).
+///
+/// Returns the keeper: the registry lives inside that `TempDir`, so it stays
+/// readable for as long as the caller holds the handle. Dropping it deletes the
+/// registry, which is exactly the intent — a registry must outlive the spawn
+/// that resolves authority through it, and not one instruction longer.
+pub(crate) fn project_registry_for(project_path: &Path) -> (tempfile::TempDir, PathBuf) {
+    let keeper = tempfile::tempdir().expect("create registry keeper");
+    let registry = keeper.path().to_path_buf();
+    std::fs::write(
+        registry.join("test-project.toml"),
+        format!(
+            "id = \"test-project\"\npath = {:?}\n",
+            project_path.to_string_lossy()
+        ),
+    )
+    .expect("write test project registry entry");
+    (keeper, registry)
+}
+
+/// Whether this host can actually run a process through the P1 broker.
+///
+/// # Why the gate exists
+///
+/// P1 routes model-triggered execution through `ExecutionBroker`, which applies
+/// a Seatbelt profile before the program starts. On a host that refuses to
+/// narrow — a nested sandbox, a container, a locked-down CI runner — the
+/// launcher starts and the kernel rejects the profile
+/// (`sandbox-exec: sandbox_apply: Operation not permitted`). The child then
+/// produces nothing, so any test asserting on a child's behaviour fails for an
+/// *environmental* reason while appearing to test product behaviour.
+///
+/// That refusal is the correct fail-closed production outcome. It is not a bug
+/// to paper over, and it is not a reason to un-route the path. So the affected
+/// tests detect it once, report it loudly, and **skip**. A skip is never
+/// reported as a pass.
+///
+/// # What this must never become
+///
+/// A way to make a genuine routing regression disappear. Two properties keep it
+/// honest:
+///
+/// * the probe performs a **real** brokered spawn of a real executable, so it
+///   cannot be fooled by a path that never reaches the launcher;
+/// * only the launcher's own refusal signature counts as `ENV_BLOCKED` — any
+///   other outcome (including a spawn error for some unrelated reason) is
+///   treated as "usable", so the real assertions still run and still fail if the
+///   product is broken.
+///
+/// An earlier version of this probe pointed at a deliberately missing program
+/// and inspected only the response envelope. It never reached the launcher, so
+/// it reported every host as usable and the gate silently did nothing — which is
+/// worse than having no gate at all, because it looked like protection.
+static BROKER_CAN_RUN: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
+pub(crate) fn broker_can_run() -> bool {
+    *BROKER_CAN_RUN.get_or_init(|| {
+        let Ok(project) = tempfile::tempdir() else {
+            return false;
+        };
+        let bin = executable_tempdir();
+        let script = bin.path().join("probe");
+        std::fs::write(&script, "#!/bin/sh\nexit 0\n").expect("write broker probe script");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
+                .expect("make broker probe executable");
+        }
+        // The probe must live inside the workspace, because the plan grants no
+        // read access outside it — the same reason the validation fixture is
+        // relocated in-tree.
+        let in_workspace = project.path().join("broker-probe");
+        std::fs::copy(&script, &in_workspace).expect("place broker probe in workspace");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&in_workspace, std::fs::Permissions::from_mode(0o755))
+                .expect("make in-workspace probe executable");
+        }
+        let (_keeper, registry) = project_registry_for(project.path());
+        let request = crate::webcodex_runner::local_execution::LocalExecutionRequest::new(
+            &in_workspace,
+            project.path(),
+        )
+        .env(crate::webcodex_runner::local_execution::LocalEnv::Snapshot(
+            std::collections::BTreeMap::from([("PATH".to_string(), "/usr/bin:/bin".to_string())]),
+        ))
+        .stdin(webcodex_process::execution_broker::StreamPolicy::Null)
+        .stdout(webcodex_process::execution_broker::StreamPolicy::Piped)
+        .stderr(webcodex_process::execution_broker::StreamPolicy::Piped);
+
+        let mut child = match crate::webcodex_runner::local_execution::spawn_local_action(
+            Some(&registry),
+            request,
+        ) {
+            Ok(child) => child,
+            Err(refusal) => {
+                eprintln!(
+                    "SKIP ENV_BLOCKED: the broker refused to launch the capability probe \
+                         ({refusal}); this host cannot broker execution"
+                );
+                return false;
+            }
+        };
+        let stderr = child.child_mut().stderr.take();
+        let status = child.wait();
+        let mut text = String::new();
+        if let Some(mut pipe) = stderr {
+            use std::io::Read;
+            let mut buffer = Vec::new();
+            let _ = pipe.read_to_end(&mut buffer);
+            text = String::from_utf8_lossy(&buffer).into_owned();
+        }
+        let refused_profile = text.contains("sandbox_apply") || text.contains("sandbox-exec");
+        if refused_profile {
+            eprintln!(
+                "SKIP ENV_BLOCKED: this host cannot apply a restrictive Seatbelt profile, so a \
+                 brokered process cannot run ({text}). This is NOT a pass."
+            );
+        }
+        // A probe that ran but produced no output is still usable; only the
+        // launcher's refusal signature suppresses the suite.
+        let _ = status;
+        !refused_profile
+    })
+}
+
+/// Skip the calling test when this host cannot run a brokered process.
+///
+/// The skip is loud on purpose. A caller that silenced it would turn an
+/// environmental limitation into an invisible pass.
+#[macro_export]
+macro_rules! require_broker_capable {
+    () => {
+        if !$crate::tests::broker_can_run() {
+            eprintln!(
+                "SKIPPED {}: brokered execution is unavailable on this host \
+                 (ENV_BLOCKED, not a pass)",
+                env!("CARGO_PKG_NAME")
+            );
+            return;
+        }
+    };
+}
+
 /// RAII restore for environment variables mutated by tests: restores the
 /// previous value (or absence) on drop, even when the test panics, so a
 /// failure cannot leak env state into later tests.

@@ -26,12 +26,15 @@
 //! does not do. Those exclusions are themselves asserted present, so the
 //! remaining-surface list cannot quietly become wrong.
 
+use std::collections::HashMap;
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 
-use super::config::RunnerPolicy;
+use super::config::{RunnerPolicy, ShellConfig, ShellEnvironmentMode};
 use super::local_execution::{
-    derive_workspace_plan, spawn_local_action, LocalEnv, LocalExecutionRequest,
+    approved_inherited_env, derive_workspace_plan, spawn_local_action, LocalExecutionRequest,
 };
+use super::shell::{run_shell_with_profiles_and_execution_state, PreparedShellProfileCache};
 use webcodex_process::execution_broker::{NetworkPolicy, SandboxPlan};
 
 /// Outcome of one native-facing P1 case on this host.
@@ -44,80 +47,159 @@ enum NativeOutcome {
     EnvBlocked,
 }
 
-fn policy_for(root: &Path) -> RunnerPolicy {
-    RunnerPolicy {
-        allowed_roots: vec![root.to_path_buf()],
-        ..RunnerPolicy::default()
-    }
-}
-
-/// Run `/bin/sh -c script` under the workspace plan and capture its output.
+/// A registry + policy pair for one workspace, as production reads them.
 ///
-/// The script is passed as a single argv element, never interpolated into the
-/// Runner's own command line, so a case's script cannot alter how the case is
-/// launched.
-fn run_script(workspace: &Path, script: &str) -> Result<(NativeOutcome, String, i32), String> {
-    let request = LocalExecutionRequest::new("/bin/sh", workspace)
-        .args(["-c", script])
-        .env(LocalEnv::Inherit {
-            overrides: Default::default(),
-            remove: Vec::new(),
-        })
-        .stdin(webcodex_process::execution_broker::StreamPolicy::Null)
-        .stdout(webcodex_process::execution_broker::StreamPolicy::Piped)
-        .stderr(webcodex_process::execution_broker::StreamPolicy::Piped);
+/// # Why every case needs a registered project
+///
+/// Authority is registered project context and nothing else (P1 closure). A case
+/// that passes `allowed_roots` and no registry is no longer testing "the plan
+/// confines to the workspace" — it is testing the refusal path, and it would
+/// keep reporting a confinement that never applied. So the harness makes the
+/// registration explicit and each case gets a real project.
+struct Project {
+    /// Directory holding the registered project root.
+    workspace: tempfile::TempDir,
+    /// Directory holding the registry. Kept alongside `workspace` so both live
+    /// as long as the struct.
+    _keeper: tempfile::TempDir,
+    /// Registry directory to hand to the production entry points.
+    registry: PathBuf,
+    /// The registered project root.
+    root: PathBuf,
+}
 
-    let mut child = match spawn_local_action(&policy_for(workspace), None, request) {
-        Ok(child) => child,
-        // A refusal is the documented fail-closed outcome, and on a nested
-        // Seatbelt host it is also the *only* outcome available. Either way no
-        // process ran, so the case proved nothing about confinement.
-        Err(_) => return Ok((NativeOutcome::EnvBlocked, String::new(), -1)),
-    };
+impl Project {
+    fn new() -> Self {
+        let workspace = tempfile::tempdir().unwrap();
+        let keeper = tempfile::tempdir().unwrap();
+        let registry = keeper.path().join("registry");
+        std::fs::create_dir_all(&registry).unwrap();
+        let root = workspace.path().canonicalize().unwrap();
+        std::fs::write(
+            registry.join("p1-project.toml"),
+            format!("id = \"p1-project\"\npath = {:?}\n", root.to_string_lossy()),
+        )
+        .unwrap();
+        Self {
+            workspace,
+            _keeper: keeper,
+            registry,
+            root,
+        }
+    }
 
-    let stdout = child.child_mut().stdout.take();
-    let stderr = child.child_mut().stderr.take();
-    let out = std::thread::spawn(move || read_all(stdout));
-    let err = std::thread::spawn(move || read_all(stderr));
-    let status = child
-        .wait()
-        .map_err(|error| format!("wait failed: {error}"))?;
-    let stdout = out.join().unwrap_or_default();
-    let stderr = err.join().unwrap_or_default();
+    fn path(&self) -> &Path {
+        &self.root
+    }
 
-    // A launcher that started but whose profile the kernel refused is
-    // ENV_BLOCKED, not a case result. Without this the case would read the
-    // launcher's own error as the action's behaviour and "confirm" a
+    fn registry(&self) -> &Path {
+        &self.registry
+    }
+
+    /// The policy production would hold. `allowed_roots` is still carried —
+    /// for file operations — but authority no longer comes from it, so these
+    /// cases deliberately keep it present to prove that it confers nothing.
+    fn policy(&self) -> RunnerPolicy {
+        RunnerPolicy {
+            allowed_roots: vec![self.root.clone()],
+            ..RunnerPolicy::default()
+        }
+    }
+}
+
+/// A shell configuration for the native cases.
+///
+/// `Inherit` is the interesting mode: it is the one that used to hand the
+/// Runner's whole environment to the child, so running the native path in this
+/// mode is what makes the environment assertions mean anything. The program is
+/// pinned to `/bin/sh` so a case measures confinement, not dialect resolution.
+fn shell_config() -> ShellConfig {
+    ShellConfig {
+        environment_mode: ShellEnvironmentMode::Inherit,
+        program: "/bin/sh".to_string(),
+        ..ShellConfig::default()
+    }
+}
+
+/// Run `script` through the **real** production shell entry point.
+///
+/// # Which layer this enters
+///
+/// [`run_shell_with_profiles_and_execution_state`] is the function the Runner's
+/// own request path calls. From here the chain under test is the production
+/// chain, end to end:
+///
+/// ```text
+/// run_shell_with_profiles_and_execution_state
+///   -> run_shell_impl
+///     -> configured_shell_command          (command text + environment rule)
+///     -> execute_configured_command
+///       -> spawn_local_action             (the chokepoint)
+///         -> resolve_workspace_authority  (registered project only)
+///         -> ExecutionBroker::spawn_with_toolchain
+///           -> Codex-derived Seatbelt profile
+///             -> task process tree
+/// ```
+///
+/// Nothing here re-implements any part of that. The previous version of this
+/// file called [`spawn_local_action`] directly, which proved the chokepoint works
+/// but proved nothing about whether production reaches it: a `run_shell` that
+/// stopped routing would have left every case here green.
+///
+/// `Err` is reserved for "the harness itself could not run the case". A
+/// production refusal is not that — it is reported as
+/// [`NativeOutcome::EnvBlocked`], because on a nested Seatbelt host refusing is
+/// the only correct outcome available.
+fn run_production_shell(
+    project: &Project,
+    script: &str,
+) -> Result<(NativeOutcome, String, i32), String> {
+    let cache = PreparedShellProfileCache::default();
+    let cwd = project.path().to_string_lossy().into_owned();
+    let result = run_shell_with_profiles_and_execution_state(
+        0,
+        &project.policy(),
+        &shell_config(),
+        project.registry(),
+        &cache,
+        Some(&cwd),
+        script,
+        None,
+        false,
+        None,
+        30,
+        None,
+    );
+
+    let stdout = result.result.stdout.clone().unwrap_or_default();
+    let stderr = result.result.stderr.clone().unwrap_or_default();
+    let error = result.result.error.clone().unwrap_or_default();
+    let combined = format!("{stdout}\n{stderr}\n{error}");
+
+    // Three shapes all mean "no process ran", which is ENV_BLOCKED rather than a
+    // case result:
+    //   * the launcher started and the kernel refused the profile,
+    //   * the broker refused and `run_shell` recorded an error,
+    //   * `run_shell` refused before spawning (fail-closed).
+    // Reading any of them as the action's behaviour would "confirm" a
     // confinement that never applied.
-    if stderr_is_profile_refusal(&stderr) {
-        return Ok((
-            NativeOutcome::EnvBlocked,
-            String::from_utf8_lossy(&stderr).into_owned(),
-            -1,
-        ));
+    if is_sandbox_refusal_text(&combined) {
+        return Ok((NativeOutcome::EnvBlocked, combined, -1));
+    }
+    if result.execution_state == crate::runner_protocol::ShellCommandExecutionState::NotStarted {
+        return Ok((NativeOutcome::EnvBlocked, combined, -1));
     }
 
-    let mut text = String::from_utf8_lossy(&stdout).into_owned();
-    if !stderr.is_empty() {
-        text.push_str(" |stderr: ");
-        text.push_str(&String::from_utf8_lossy(&stderr));
-    }
-    Ok((NativeOutcome::Confirmed, text, status.code().unwrap_or(-1)))
+    Ok((
+        NativeOutcome::Confirmed,
+        combined,
+        result.result.exit_code.unwrap_or(-1),
+    ))
 }
 
-/// Whether the captured stderr is the sandbox launcher refusing the profile.
-fn stderr_is_profile_refusal(stderr: &[u8]) -> bool {
-    let text = String::from_utf8_lossy(stderr);
+/// Whether the captured text shows the sandbox launcher refusing the profile.
+fn is_sandbox_refusal_text(text: &str) -> bool {
     text.contains("sandbox_apply") || text.contains("sandbox-exec")
-}
-
-fn read_all(pipe: Option<impl std::io::Read + Send + 'static>) -> Vec<u8> {
-    let Some(mut pipe) = pipe else {
-        return Vec::new();
-    };
-    let mut buffer = Vec::new();
-    let _ = pipe.read_to_end(&mut buffer);
-    buffer
 }
 
 /// Emit one machine-readable verdict for the native smoke script.
@@ -172,21 +254,95 @@ fn report(case: &str, outcome: NativeOutcome, passed: bool, detail: &str) {
     assert_ne!(verdict, NativeVerdict::Fail, "{case} failed: {detail}");
 }
 
+/// Drop every `#[cfg(test)]` module from a source file.
+///
+/// The anti-bypass guards are claims about **production** code. A test module
+/// legitimately does things production must not: compile a fixture with
+/// `rustc`, spawn a helper binary directly to exercise a cleanup routine in
+/// isolation. Asserting over the raw file would flag those and force the guard
+/// to be weakened until it no longer guarded anything.
+///
+/// `#[cfg(test)]` is an unambiguous production/non-production marker, so
+/// removing exactly those modules is sound: it cannot hide production code, and
+/// it cannot be arranged to move a production item inside one.
+fn production_region(source: &str) -> String {
+    let mut kept = String::with_capacity(source.len());
+    let bytes = source.as_bytes();
+    let mut index = 0usize;
+    while index < bytes.len() {
+        let rest = &source[index..];
+        let is_cfg_test = rest.starts_with("#[cfg(test)]");
+        // Find the `mod <name> {` that the attribute applies to.
+        let body_start = rest.find('{').filter(|offset| {
+            // Everything between the attribute and the brace must be the item
+            // header (`mod tests`, `mod tests;`, visibility, attributes).
+            let header = &rest[..*offset];
+            header.contains("mod ") && !header.contains('}') && !header.contains(';')
+        });
+        match (is_cfg_test, body_start) {
+            (true, Some(offset)) => {
+                let open = index + offset;
+                let mut depth = 0usize;
+                let mut cursor = open;
+                for (delta, ch) in source[open..].char_indices() {
+                    match ch {
+                        '{' => depth += 1,
+                        '}' => {
+                            depth -= 1;
+                            if depth == 0 {
+                                cursor = open + delta + ch.len_utf8();
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                index = cursor;
+            }
+            _ => {
+                let ch_len = source[index..]
+                    .chars()
+                    .next()
+                    .map(char::len_utf8)
+                    .unwrap_or(1);
+                kept.push_str(&source[index..index + ch_len]);
+                index += ch_len;
+            }
+        }
+    }
+    kept
+}
+
+/// Assert `needle` appears in `source` only inside line comments.
+///
+/// A doc comment that names a forbidden construct to explain what was removed
+/// is documentation, not a call site. Matching the raw substring would make it
+/// impossible to *explain* the fix, which is how these guards decay into
+/// silence. This walks line by line and requires every occurrence to sit on a
+/// line whose first non-space character is `//`, so a real usage — which by
+/// definition is code — still fails.
+fn occurrences_are_only_in_line_comments(source: &str, needle: &str) -> bool {
+    source
+        .lines()
+        .filter(|line| line.contains(needle))
+        .all(|line| line.trim_start().starts_with("//"))
+}
+
 // ---------------------------------------------------------------------------
-// P1-A .. P1-J
+// P1-A .. P1-M
 // ---------------------------------------------------------------------------
 
-/// **P1-A** The plan is derived from trusted project context, never from the
-/// model's `cwd`. A cwd outside every trusted root yields no plan at all.
+/// **P1-A** The plan is derived from registered project context, never from the
+/// model's `cwd`. A cwd no registered project covers yields no plan at all.
 #[test]
 fn a_plan_comes_from_trusted_context_and_cwd_is_only_a_request() {
-    let trusted = tempfile::tempdir().unwrap();
+    let project = Project::new();
     let outside = tempfile::tempdir().unwrap();
 
     let writable_roots;
     let readable_roots;
     let network;
-    match derive_workspace_plan(&policy_for(trusted.path()), None, trusted.path()).unwrap() {
+    match derive_workspace_plan(Some(project.registry()), project.path()).unwrap() {
         SandboxPlan::Confined {
             writable_roots: w,
             readable_roots: r,
@@ -197,24 +353,29 @@ fn a_plan_comes_from_trusted_context_and_cwd_is_only_a_request() {
             network = n;
         }
     }
-    assert_eq!(writable_roots, vec![trusted.path().canonicalize().unwrap()]);
+    assert_eq!(writable_roots, vec![project.root.clone()]);
     assert!(readable_roots.is_empty());
     assert_eq!(network, NetworkPolicy::Deny);
 
     // Naming a wider directory is a refusal, never a wider grant.
-    let err = derive_workspace_plan(&policy_for(trusted.path()), None, outside.path()).unwrap_err();
+    let err =
+        derive_workspace_plan(Some(project.registry()), outside.path()).expect_err("must refuse");
     assert_eq!(err.code, "sandbox_authority_unavailable");
 }
 
 /// **P1-B** Inside the workspace, the action can read and write.
+///
+/// Enters through the real `run_shell` boundary: the file was written by the
+/// same call chain production uses, not by a test that reached the broker
+/// directly.
 #[test]
 fn b_workspace_is_readable_and_writable() {
-    let workspace = tempfile::tempdir().unwrap();
-    std::fs::write(workspace.path().join("existing"), b"seed").unwrap();
+    let project = Project::new();
+    std::fs::write(project.path().join("existing"), b"seed").unwrap();
 
     let script = "printf read > existing && printf written > fresh && cat fresh";
-    let (outcome, text, code) = run_script(workspace.path(), script).expect("run");
-    let held = code == 0 && text.trim() == "written";
+    let (outcome, text, code) = run_production_shell(&project, script).expect("run");
+    let held = code == 0 && text.trim().contains("written");
     report(
         "P1_NATIVE_RUN_SHELL",
         outcome,
@@ -223,30 +384,34 @@ fn b_workspace_is_readable_and_writable() {
     );
 }
 
-/// **P1-C** A cwd outside the trusted roots is refused before any process
+/// **P1-C** A cwd outside the registered projects is refused before any process
 /// exists, so there is nothing to confine.
+///
+/// This one is about the chokepoint's own precondition, so it calls the
+/// chokepoint: `run_shell` funnels a bad cwd into the same refusal, and P1-H
+/// below covers the production side of that.
 #[test]
 fn c_cwd_outside_authority_is_refused_before_spawn() {
-    let trusted = tempfile::tempdir().unwrap();
+    let project = Project::new();
     let outside = tempfile::tempdir().unwrap();
     let request = LocalExecutionRequest::new("/bin/sh", outside.path())
         .args(["-c", "echo should-not-run"])
         .stdout(webcodex_process::execution_broker::StreamPolicy::Piped);
-    let refusal =
-        spawn_local_action(&policy_for(trusted.path()), None, request).expect_err("must refuse");
+    let refusal = spawn_local_action(Some(project.registry()), request).expect_err("must refuse");
     assert_eq!(refusal.code, "sandbox_authority_unavailable");
 }
 
-/// **P1-D** Nothing outside the workspace is readable.
+/// **P1-D** Nothing outside the workspace is readable, through the real
+/// `run_shell` boundary.
 #[test]
 fn d_external_filesystem_is_denied() {
-    let workspace = tempfile::tempdir().unwrap();
+    let project = Project::new();
     let outside = tempfile::tempdir().unwrap();
     let secret = outside.path().join("secret");
     std::fs::write(&secret, b"classified").unwrap();
 
-    let (outcome, text, _) = run_script(
-        workspace.path(),
+    let (outcome, text, _) = run_production_shell(
+        &project,
         &format!("cat {}", shell_quote(&secret.to_string_lossy())),
     )
     .expect("run");
@@ -259,39 +424,129 @@ fn d_external_filesystem_is_denied() {
     );
 }
 
-/// **P1-E** Network is denied.
+/// **P1-E** Network is denied, proven with a positive control.
+///
+/// # Why the old version of this case was worthless
+///
+/// It ran `exec 3<>/dev/tcp/127.0.0.1/1` and asserted the connect failed.
+/// Port 1 has nothing listening, so the connect fails **whether or not a
+/// sandbox is present**. The case passed on a host with no confinement at all —
+/// it could not distinguish "the profile denied network" from "the port is
+/// closed".
+///
+/// # What replaces it
+///
+/// A listener this test process owns, on a port it chose:
+///
+/// 1. bind `127.0.0.1:<port>` in the test process — `LISTENER_BOUND`;
+/// 2. connect to it from an **unsandboxed** child — `UNSANDBOXED_CONNECT_PASS`;
+///    this is the control that proves the listener is real and reachable;
+/// 3. only then connect from the **production** `run_shell` path —
+///    `SANDBOX_PROCESS_STARTED`, then `SANDBOX_CONNECT_DENIED`.
+///
+/// A PASS requires all four. If step 1 or 2 fails there is nothing to measure,
+/// so the case reports `TEST_BLOCKED` and never `PASS`.
 #[test]
-fn e_network_is_denied() {
-    let workspace = tempfile::tempdir().unwrap();
-    // A loopback connect attempt is the smallest network reach that does not
-    // depend on the outside world being up. Success would mean the profile
-    // failed to deny network.
-    let script = "exec 3<>/dev/tcp/127.0.0.1/1 2>/dev/null && echo NET_OPEN || echo NET_CLOSED";
-    let (outcome, text, _) = run_script(workspace.path(), script).expect("run");
-    // Either marker means the probe itself ran. Only NET_OPEN means the profile
-    // failed to deny network; no marker at all means the probe never executed and
-    // the case established nothing.
-    let probe_ran = text.contains("NET_CLOSED") || text.contains("NET_OPEN");
-    let reachable = text.contains("NET_OPEN");
-    let verdict = outcome == NativeOutcome::Confirmed && !probe_ran;
+fn e_network_is_denied_with_a_positive_control() {
+    let project = Project::new();
+    let listener = match TcpListener::bind(("127.0.0.1", 0)) {
+        Ok(listener) => listener,
+        Err(error) => {
+            report(
+                "P1_NATIVE_NETWORK_DENY",
+                NativeOutcome::Confirmed,
+                false,
+                &format!("LISTENER_BOUND=false bind failed: {error}"),
+            );
+            return;
+        }
+    };
+    let port = listener.local_addr().map(|addr| addr.port()).unwrap_or(0);
+    if port == 0 {
+        report(
+            "P1_NATIVE_NETWORK_DENY",
+            NativeOutcome::Confirmed,
+            false,
+            "LISTENER_BOUND=false no port assigned",
+        );
+        return;
+    }
+
+    // The listener must outlive the control client, and accept exactly one
+    // connection so the test never blocks on its own backlog.
+    let accept_handle = std::thread::spawn(move || {
+        let _ = listener.accept();
+    });
+
+    // Control step: an unsandboxed child must reach the listener. If this
+    // fails, the measurement below would be meaningless, so it is a hard stop
+    // rather than something to interpret.
+    let control_script = format!(
+        "exec 3<>/dev/tcp/127.0.0.1/{port} 2>/dev/null && echo CONTROL_CONNECTED || echo CONTROL_REFUSED"
+    );
+    let control = std::process::Command::new("/bin/sh")
+        .arg("-c")
+        .arg(&control_script)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .output();
+    let control_text = match control {
+        Ok(output) => String::from_utf8_lossy(&output.stdout).into_owned(),
+        Err(error) => {
+            let _ = accept_handle.join();
+            report(
+                "P1_NATIVE_NETWORK_DENY",
+                NativeOutcome::Confirmed,
+                false,
+                &format!("UNSANDBOXED_CONNECT_PASS=false control spawn failed: {error}"),
+            );
+            return;
+        }
+    };
+    if !control_text.contains("CONTROL_CONNECTED") {
+        let _ = accept_handle.join();
+        report(
+            "P1_NATIVE_NETWORK_DENY",
+            NativeOutcome::Confirmed,
+            false,
+            &format!(
+                "UNSANDBOXED_CONNECT_PASS=false the unsandboxed control could not reach the \
+                 listener on port {port}, so a denial below would prove nothing: {:?}",
+                control_text.trim()
+            ),
+        );
+        return;
+    }
+    let _ = accept_handle.join();
+
+    // Measurement step: the same connect, through the production path.
+    let sandbox_script = format!(
+        "exec 3<>/dev/tcp/127.0.0.1/{port} 2>/dev/null && echo SANDBOX_CONNECTED || \
+         echo SANDBOX_REFUSED"
+    );
+    let (outcome, text, _) = run_production_shell(&project, &sandbox_script).expect("run");
+    let reachable = text.contains("SANDBOX_CONNECTED");
+    let refused = text.contains("SANDBOX_REFUSED");
     report(
         "P1_NATIVE_NETWORK_DENY",
         outcome,
-        probe_ran && !reachable,
-        if verdict {
-            format!("probe produced no verdict: {:?}", text.trim())
-        } else {
-            format!("reachable={reachable} stdout={:?}", text.trim())
-        }
-        .as_str(),
+        refused && !reachable,
+        &format!(
+            "LISTENER_BOUND=true UNSANDBOXED_CONNECT_PASS=true SANDBOX_PROCESS_STARTED={} \
+             SANDBOX_CONNECT_DENIED={refused} reachable={reachable} stdout={:?}",
+            matches!(outcome, NativeOutcome::Confirmed),
+            text.trim()
+        ),
     );
 }
 
 /// **P1-F** Descendants inherit the profile: a grandchild cannot write outside
-/// the workspace even though its parent could spawn it.
+/// the workspace even though its parent could spawn it. Through the real
+/// `run_shell` boundary.
 #[test]
 fn f_descendants_inherit_the_profile() {
-    let workspace = tempfile::tempdir().unwrap();
+    let project = Project::new();
     let outside = tempfile::tempdir().unwrap();
     let target = outside.path().join("descendant-target");
     let script = format!(
@@ -299,7 +554,7 @@ fn f_descendants_inherit_the_profile() {
         shell_quote(&target.to_string_lossy()),
         shell_quote(&target.to_string_lossy())
     );
-    let (outcome, text, _) = run_script(workspace.path(), &script).expect("run");
+    let (outcome, text, _) = run_production_shell(&project, &script).expect("run");
     let escaped = target.exists();
     report(
         "P1_NATIVE_DESCENDANT",
@@ -312,32 +567,271 @@ fn f_descendants_inherit_the_profile() {
     );
 }
 
-/// **P1-G** is covered in `webcodex-workspace`'s `git_broker` tests, where the
-/// real `git apply` code path lives. It cannot be covered from here: the broker
-/// helper is `pub(crate)` to that crate, and a test that reimplemented it would
-/// prove nothing about the code that ships.
-///
-/// **P1-H** likewise: the plan `git_broker` derives is asserted there, against
-/// the real function.
+/// **P1-G** (`git apply` through the real `workspace_checkpoint` wrapper) and
+/// **P1-H** (the plan `git_broker` derives) are covered in `webcodex-workspace`,
+/// where that code lives. They cannot be covered from here: the checkpoint
+/// module and the broker helper are `pub(crate)` to that crate, and a test that
+/// reimplemented them would prove nothing about the code that ships.
 
-/// **P1-I** The validation execute path is *identified* rather than silently
-/// skipped. P1 does not route it: `run_bounded` launches interpreter-based
-/// tools whose runtime compatibility is tracked as
-/// `RUNTIME_COMPATIBILITY_TODO`. This test fails if that path is quietly
-/// reclassified as normalized.
+/// **P1-I** The validation execute path is now **routed** through the broker.
+///
+/// The previous version of this file asserted the opposite — that
+/// `validation/execute.rs` stayed unbrokered and carried a
+/// `RUNTIME_COMPATIBILITY_TODO`. That was honest about P1's first round but it
+/// was also the reason P1 could not be called complete: validation is a
+/// model-triggered local execution surface, and "we know we skip it" is not the
+/// same as "it is confined".
+///
+/// The route is now mandatory. If the interpreter cannot start under the
+/// trusted runtime policy, `run_bounded` returns a spawn failure — it must never
+/// fall back to a bare `Command::spawn`. Runtime compatibility and execution
+/// normalization are now separate claims: the first may be `FAIL`, the second
+/// must be `PASS`.
 #[test]
-fn i_validation_execute_is_declared_unrouted_with_a_runtime_todo() {
+fn i_validation_execute_is_brokered_and_cannot_direct_spawn() {
     let source = read_runner_source("validation/execute.rs");
     assert!(
-        source.contains("RUNTIME_COMPATIBILITY_TODO"),
-        "validation/execute.rs must carry the RUNTIME_COMPATIBILITY_TODO marker \
-         while it remains outside P1 routing"
+        !source.contains("RUNTIME_COMPATIBILITY_TODO"),
+        "validation/execute.rs must no longer claim to be un-routed; it is brokered now"
     );
-    // And the marker must not be a claim of routing.
+    // The anti-bypass property, scoped to production code. The test module is
+    // excluded because it legitimately compiles a fixture with `rustc` and
+    // spawns a helper directly to exercise `terminate_validation_child` in
+    // isolation — neither is a production execution path.
+    let production = production_region(&source);
+    for forbidden in ["Command::new(", "ManagedChild::spawn("] {
+        assert!(
+            !production.contains(forbidden),
+            "validation/execute.rs must not contain `{forbidden}` outside its test module — \
+             it must go through spawn_local_action, or a validation process can escape \
+             the broker"
+        );
+    }
     assert!(
-        !source.contains("spawn_local_action"),
-        "validation/execute.rs must not appear to route through the broker yet"
+        production.contains("spawn_local_action"),
+        "validation/execute.rs must route through the P1 chokepoint"
     );
+    assert!(
+        production.contains("request_terminate_tree"),
+        "process-tree ownership and shutdown cleanup must survive the routing"
+    );
+}
+
+/// **P1-K (closure)** A model-triggered action must not receive the Runner's
+/// environment.
+///
+/// This is the P0 the first round got wrong: the old `LocalEnv::Inherit`
+/// reached the broker as `EnvPolicy::Inherit`, which is the Runner's entire
+/// environment minus a five-name credential denylist. The test uses names the
+/// denylist never mentioned, because a denylist that only knows about the
+/// credentials someone already thought of is not a boundary.
+#[test]
+fn k_model_triggered_env_is_positively_selected_not_inherited() {
+    // A deliberately unknown variable: no denylist in the world lists this.
+    let host: HashMap<String, String> = [
+        ("TOTALLY_NEW_SECRET_123", "leaked"),
+        ("GH_TOKEN", "ghp_leaked"),
+        ("GITHUB_TOKEN", "ghp_leaked"),
+        ("OPENAI_API_KEY", "sk-leaked"),
+        ("AWS_SECRET_ACCESS_KEY", "leaked"),
+        ("NPM_TOKEN", "leaked"),
+        ("DESKTOP_MCP_SOURCE_TOKEN", "leaked"),
+        // The approved ones, which must survive.
+        ("PATH", "/usr/bin:/bin"),
+        ("LANG", "en_US.UTF-8"),
+        ("TERM", "xterm-256color"),
+        ("NO_COLOR", "1"),
+    ]
+    .into_iter()
+    .map(|(key, value)| (key.to_string(), value.to_string()))
+    .collect();
+
+    let selected = approved_inherited_env(&host);
+    let names: Vec<&str> = selected.iter().map(|(key, _)| key.as_str()).collect();
+
+    for leaked in [
+        "TOTALLY_NEW_SECRET_123",
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+        "OPENAI_API_KEY",
+        "AWS_SECRET_ACCESS_KEY",
+        "NPM_TOKEN",
+        "DESKTOP_MCP_SOURCE_TOKEN",
+    ] {
+        assert!(
+            !names.contains(&leaked),
+            "`{leaked}` reached a model-triggered environment; the approved set is a \
+             positive list and must not contain it"
+        );
+    }
+    for kept in ["PATH", "LANG", "TERM", "NO_COLOR"] {
+        assert!(
+            names.contains(&kept),
+            "`{kept}` is an approved runtime variable and must be retained; got {names:?}"
+        );
+    }
+
+    // And the variant that made this possible must not exist as code. Doc
+    // comments naming it are allowed — see the comment rule below.
+    let local = read_runner_source("local_execution.rs");
+    assert!(
+        occurrences_are_only_in_line_comments(&production_region(&local), "LocalEnv::Inherit"),
+        "LocalEnv::Inherit must stay deleted as a variant: it reaches the broker as \
+         EnvPolicy::Inherit, which hands the Runner's whole environment to the child"
+    );
+
+    // No P1 model-triggered surface may *request* `EnvPolicy::Inherit`. Comments
+    // naming it are explicitly allowed — the closure has to be able to explain
+    // what it removed, and a guard that forbade the explanation would push the
+    // next reader to delete the comment instead of the code.
+    for file in ["shell.rs", "local_execution.rs", "job_manager.rs"] {
+        let production = production_region(&read_runner_source(file));
+        assert!(
+            occurrences_are_only_in_line_comments(&production, "EnvPolicy::Inherit"),
+            "{file} contains a live `EnvPolicy::Inherit` request; no P1 model-triggered \
+             execution may inherit the Runner's environment"
+        );
+    }
+}
+
+/// **P1-L (closure)** `HOME` is not an execution authority.
+///
+/// The runner config carries `$HOME` in `allowed_roots` as a generic "the user
+/// said anywhere under here" grant — `effective_allowed_roots` *substitutes* it
+/// whenever the operator configured nothing. For file operations that is still a
+/// sensible default. For execution it hands every model-triggered action the
+/// user's entire home directory, which is the opposite of confining it to a
+/// project.
+///
+/// The closure removes the possibility structurally rather than by filtering:
+/// `resolve_workspace_authority` no longer takes a policy at all, so `$HOME`
+/// cannot reach it. These two cases pin the behaviour that remains.
+///
+/// * `HOME` trusted as a generic `allowed_root` but **no registered project**
+///   covering the cwd → refused, not silently granted;
+/// * a **registered project under `HOME`** → authority is the project root, not
+///   `HOME`.
+#[test]
+fn l_home_is_not_a_project_authority() {
+    // A stand-in for $HOME with a project inside it.
+    let home = tempfile::tempdir().unwrap();
+    let project = home.path().join("project");
+    std::fs::create_dir_all(project.join("src")).unwrap();
+
+    // HOME is trusted as a generic allowed_root, exactly as the config allows —
+    // and deliberately kept in the policy even for the case that must refuse.
+    let policy = RunnerPolicy {
+        allowed_roots: vec![home.path().to_path_buf()],
+        ..RunnerPolicy::default()
+    };
+
+    // No project registry: nothing establishes a *project* authority, so a
+    // directory that is only covered by the coarse HOME grant must be refused
+    // rather than inheriting the whole home directory. `allowed_roots` cannot
+    // even be offered to the resolver any more, so the case states the refusal
+    // through the public surface a caller has.
+    let loose = home.path().join("not-a-project");
+    std::fs::create_dir_all(&loose).unwrap();
+    let empty_registry = home.path().join("registry");
+    std::fs::create_dir_all(&empty_registry).unwrap();
+    let err = derive_workspace_plan(Some(&empty_registry), &loose)
+        .expect_err("HOME must not be authority");
+    assert_eq!(
+        err.code, "sandbox_authority_unavailable",
+        "a coarse HOME grant must not become a project authority"
+    );
+    assert!(
+        !policy.allowed_roots.is_empty(),
+        "the HOME grant is still configured for file operations; it is simply not \
+         reachable from execution"
+    );
+
+    // With a registered project, the authority is the project root — narrower
+    // than HOME, which is the whole narrowest-wins point. The registry is read
+    // as `<name>.toml` with `id` and `path`, so the test writes the same file
+    // format production reads rather than calling a registration helper that
+    // might diverge from it.
+    let registry = home.path().join("registry");
+    std::fs::create_dir_all(&registry).unwrap();
+    std::fs::write(
+        registry.join("project.toml"),
+        format!(
+            "id = \"closure-project\"\npath = {:?}\n",
+            project.to_string_lossy()
+        ),
+    )
+    .unwrap();
+    let authority = super::sandbox_authority::resolve_workspace_authority(
+        Some(&registry),
+        &project.join("src"),
+    )
+    .expect("a registered project establishes authority");
+    assert_eq!(
+        authority.root(),
+        project.canonicalize().unwrap(),
+        "authority must be the project root, never the enclosing HOME"
+    );
+    assert_ne!(authority.root(), home.path().canonicalize().unwrap());
+
+    // And the resolver has no parameter through which `$HOME` could be handed
+    // to it. This is the structural half: it holds even if someone later adds a
+    // second trusted source, because there is no slot to add it to.
+    let resolver = read_runner_source("sandbox_authority.rs");
+    let signature = function_body(&resolver, "resolve_workspace_authority")
+        .expect("resolve_workspace_authority must exist");
+    let declaration = resolver
+        .split("fn resolve_workspace_authority(")
+        .nth(1)
+        .and_then(|rest| rest.split(')').next())
+        .unwrap_or_default();
+    assert!(
+        !declaration.contains("policy") && !declaration.contains("allowed_roots"),
+        "resolve_workspace_authority must not accept a policy: `allowed_roots` is the \
+         vector that carries an implicit `$HOME`, so accepting it is how the fallback \
+         returns. Declaration was: ({declaration})"
+    );
+    assert!(
+        !signature.contains("policy.allowed_roots"),
+        "the resolver body must never read policy.allowed_roots"
+    );
+}
+
+/// **P1-M (closure)** `narrowest_covering` is order-independent.
+///
+/// It used to return the *first* covering root, which made the result depend on
+/// the order the caller happened to supply. A caller that put a coarse root
+/// first would confine a project to its parent. Narrowest must mean narrowest:
+/// the deepest covering root wins regardless of the order it arrived in.
+#[test]
+fn m_narrowest_covering_is_order_independent() {
+    let outer = tempfile::tempdir().unwrap();
+    let inner = outer.path().join("project");
+    std::fs::create_dir_all(inner.join("src")).unwrap();
+    let candidate = inner.join("src");
+    let expected = inner.canonicalize().unwrap();
+
+    let outer_root = outer.path().to_path_buf();
+    let inner_root = inner.clone();
+
+    // Both orders, plus duplicates, must land on the project.
+    for roots in [
+        vec![outer_root.clone(), inner_root.clone()],
+        vec![inner_root.clone(), outer_root.clone()],
+        vec![outer_root.clone(), inner_root.clone(), outer_root.clone()],
+    ] {
+        let authority = webcodex_process::execution_broker::WorkspaceAuthority::narrowest_covering(
+            &candidate, &roots,
+        )
+        .expect("covered");
+        assert_eq!(
+            authority.root(),
+            expected,
+            "narrowest_covering returned {:?} for order {:?}; it must be the deepest \
+             covering root regardless of caller order",
+            authority.root(),
+            roots
+        );
+    }
 }
 
 /// **P1-J** A missing or unusable trusted context fails before process
@@ -345,9 +839,12 @@ fn i_validation_execute_is_declared_unrouted_with_a_runtime_todo() {
 #[test]
 fn j_missing_trusted_context_fails_before_process_creation() {
     let outside = tempfile::tempdir().unwrap();
+    // A registry that exists but registers nothing: the shape of a Runner whose
+    // operator never added the project this request asks for.
+    let empty_registry = tempfile::tempdir().unwrap();
     let request = LocalExecutionRequest::new("/usr/bin/true", outside.path());
     let refusal =
-        spawn_local_action(&RunnerPolicy::default(), None, request).expect_err("must refuse");
+        spawn_local_action(Some(empty_registry.path()), request).expect_err("must refuse");
     assert_eq!(refusal.code, "sandbox_authority_unavailable");
     assert!(
         refusal.detail.contains("no trusted project context"),
@@ -455,13 +952,21 @@ fn p1_routed_functions_cannot_spawn_outside_the_broker() {
 /// A surface silently disappearing is as much a lie as one silently appearing:
 /// the remaining-surface list in `NORMALIZATION_P1_REPORT.md` is only true if
 /// these call sites are still there.
+///
+/// `validation/execute.rs` is **no longer** in this list. It used to be, and the
+/// assertion here used to demand that its `RUNTIME_COMPATIBILITY_TODO` marker
+/// stayed put. That assertion is now inverted in P1-I: the file must route. The
+/// two tests would have contradicted each other, which is exactly the kind of
+/// drift this list exists to prevent — a surface that gets routed must be
+/// removed from here in the same change, not asserted in both places.
 #[test]
 fn known_unrouted_surfaces_are_still_present_and_named() {
-    // validation/execute.rs: interpreter-based validation tools.
+    // validation/execute.rs must *not* still be declared unrouted.
     let validation = read_runner_source("validation/execute.rs");
     assert!(
-        validation.contains("RUNTIME_COMPATIBILITY_TODO"),
-        "the validation exception must stay named while it is unrouted"
+        !validation.contains("RUNTIME_COMPATIBILITY_TODO"),
+        "validation/execute.rs is routed now; leaving the un-routed marker would make \
+         this list — and the report — wrong"
     );
 
     // job_manager.rs: the local SSH client, which P1 excludes by scope.
@@ -471,11 +976,14 @@ fn known_unrouted_surfaces_are_still_present_and_named() {
         "the SSH client launch is a known P1 exclusion and must stay visible"
     );
 
-    // detached_job.rs: the durable detached payload.
+    // detached_job.rs: the durable detached payload. This is the one surface
+    // P1b still owes (see DETACHED_DURABLE_NORMALIZATION in the report), so its
+    // presence is asserted rather than its absence.
     let detached = read_runner_source("detached_job.rs");
     assert!(
         detached.contains("failed to spawn detached payload"),
-        "the detached durable payload is a known P1 exclusion and must stay visible"
+        "the detached durable payload is still unrouted and must stay visible; it is \
+         recorded as BLOCKED_PROCESS_OWNERSHIP, not as done"
     );
 }
 

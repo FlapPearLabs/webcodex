@@ -2454,6 +2454,7 @@ fn phase_e2_stopped_queued_job_never_executes_after_slot_release() {
 #[cfg(unix)]
 #[test]
 fn phase_e2_validation_job_shares_the_same_job_manager_slot_limit() {
+    crate::require_broker_capable!();
     use std::os::unix::fs::PermissionsExt;
 
     let temp = tempfile::tempdir().unwrap();
@@ -3955,6 +3956,7 @@ fn cargo_test_terminal_count_evidence_survives_runner_stream_retention() {
 #[cfg(unix)]
 #[test]
 fn validation_job_exposes_activity_during_silent_step_and_clears_terminal() {
+    crate::require_broker_capable!();
     use std::os::unix::fs::PermissionsExt;
 
     let temp = tempfile::tempdir().unwrap();
@@ -4395,6 +4397,7 @@ fn activity_only_delivery_coalesces_without_consuming_required_semantic_queue() 
 #[cfg(unix)]
 #[test]
 fn noisy_validation_progress_delivery_stays_ordered_after_transport_backpressure() {
+    crate::require_broker_capable!();
     use std::os::unix::fs::PermissionsExt;
 
     let temp = tempfile::tempdir().unwrap();
@@ -4553,6 +4556,7 @@ fn noisy_validation_progress_delivery_stays_ordered_after_transport_backpressure
 #[cfg(unix)]
 #[test]
 fn validation_job_progress_is_executor_owned_and_fail_fast() {
+    crate::require_broker_capable!();
     // Spawning a step can fail for reasons that belong to the machine rather
     // than to the state machine — `fork` returning EAGAIN under a loaded test
     // suite, or ETXTBSY on a script written moments earlier. The executor

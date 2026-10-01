@@ -126,10 +126,20 @@ impl WorkspaceAuthority {
 
     /// Establish the *narrowest* trusted root that contains `candidate`.
     ///
-    /// `trusted_roots` is ordered most-specific first by the caller (the
-    /// project registry before the coarse `allowed_roots`), and the first entry
-    /// that contains `candidate` wins. Narrowest-wins is the whole point: a
-    /// project inside `$HOME` must confine to the project, not to `$HOME`.
+    /// # Narrowest means deepest, not first
+    ///
+    /// This used to return the first entry in `trusted_roots` that covered
+    /// `candidate`, on the stated assumption that callers ordered their roots
+    /// most-specific first. That made the result a property of the caller's
+    /// ordering rather than of the filesystem: a caller that passed a coarse
+    /// `$HOME` root before a project root would confine the project to the whole
+    /// home directory, and the "narrowest-wins" guarantee held only as long as
+    /// every caller got the order right.
+    ///
+    /// It now measures. Every root that covers `candidate` is canonicalized and
+    /// the deepest one wins, so `/tmp/root` and `/tmp/root/project` resolve to
+    /// the project in either order. Dependence on caller ordering is not a
+    /// property a security boundary can have.
     ///
     /// Returns [`AuthorityError::NoTrustedContext`] when nothing covers
     /// `candidate`. Callers must refuse execution on that error rather than
@@ -145,6 +155,7 @@ impl WorkspaceAuthority {
                     root: candidate.to_path_buf(),
                     reason: format!("does not resolve to a real directory: {error}"),
                 })?;
+        let mut narrowest: Option<Self> = None;
         for root in trusted_roots {
             // An unusable trusted root is skipped rather than fatal: another
             // entry may still cover the candidate, and the *absence* of any
@@ -152,11 +163,21 @@ impl WorkspaceAuthority {
             let Ok(authority) = Self::for_trusted_root(root) else {
                 continue;
             };
-            if canonical == authority.root || canonical.starts_with(&authority.root) {
-                return Ok(authority);
+            if !(canonical == authority.root || canonical.starts_with(&authority.root)) {
+                continue;
+            }
+            // Deepest wins. `components().count()` is the depth measure that
+            // works for both absolute and relative canonical paths, and it
+            // cannot be fooled by a longer string: containment was already
+            // checked component-wise above.
+            let is_narrower = narrowest
+                .as_ref()
+                .is_none_or(|current| depth(&authority.root) > depth(&current.root));
+            if is_narrower {
+                narrowest = Some(authority);
             }
         }
-        Err(AuthorityError::NoTrustedContext {
+        narrowest.ok_or(AuthorityError::NoTrustedContext {
             requested: candidate.to_path_buf(),
         })
     }
@@ -205,6 +226,16 @@ impl WorkspaceAuthority {
     }
 }
 
+/// How many path components a canonical root has.
+///
+/// Used to pick the deepest covering root. Component count rather than string
+/// length, because a longer *name* does not mean a deeper path: `/a/long-name`
+/// and `/a/b` are both depth 2, and comparing lengths would order them by
+/// spelling.
+fn depth(path: &Path) -> usize {
+    path.components().count()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -221,10 +252,7 @@ mod tests {
             writable_roots,
             readable_roots,
             network,
-        } = authority.plan()
-        else {
-            panic!("P1 policy must be confined");
-        };
+        } = authority.plan();
         assert_eq!(writable_roots.len(), 1);
         assert!(readable_roots.is_empty(), "P1 grants no extra read roots");
         assert_eq!(network, NetworkPolicy::Deny);
@@ -254,7 +282,15 @@ mod tests {
     }
 
     /// The narrowest covering root wins, so a project inside `$HOME` confines
-    /// to the project rather than to the whole home directory.
+    /// to the project rather than to the whole home directory — **in either
+    /// order**.
+    ///
+    /// The second half used to assert the opposite: with the home root listed
+    /// first, it asserted that home won. That assertion documented the old
+    /// first-match behaviour as if it were intended, which is exactly how an
+    /// ordering-dependent security property survives a refactor: it is written
+    /// down as a test. Narrowest has to mean narrowest regardless of what order
+    /// the caller happened to use.
     #[test]
     fn narrowest_covering_prefers_the_project_over_the_home_root() {
         let home = temp_dir();
@@ -262,25 +298,18 @@ mod tests {
         std::fs::create_dir_all(project.join("src")).unwrap();
         let inside = project.join("src");
 
-        let authority = WorkspaceAuthority::narrowest_covering(
-            &inside,
-            // Most specific first, as the caller must supply them.
-            &[project.clone(), home.path().to_path_buf()],
-        )
-        .unwrap();
-        assert_eq!(authority.root(), project.canonicalize().unwrap());
-
-        // Reversed order must not silently widen to the home root.
-        let authority = WorkspaceAuthority::narrowest_covering(
-            &inside,
-            &[home.path().to_path_buf(), project.clone()],
-        )
-        .unwrap();
-        assert_eq!(
-            authority.root(),
-            home.path().canonicalize().unwrap(),
-            "with home first, home is the covering root"
-        );
+        for roots in [
+            vec![project.clone(), home.path().to_path_buf()],
+            vec![home.path().to_path_buf(), project.clone()],
+        ] {
+            let authority = WorkspaceAuthority::narrowest_covering(&inside, &roots)
+                .expect("the project covers the candidate");
+            assert_eq!(
+                authority.root(),
+                project.canonicalize().unwrap(),
+                "with roots {roots:?} the authority must be the project, never the home root"
+            );
+        }
     }
 
     #[test]

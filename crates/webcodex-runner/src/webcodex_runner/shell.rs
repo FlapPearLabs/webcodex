@@ -11,7 +11,7 @@ use super::projects::find_project_shell_context;
 #[cfg(windows)]
 use crate::runner_protocol::ShellCommandExecutionState;
 use crate::runner_protocol::{ShellProcessArgv, ShellScriptLanguage, ShellScriptPayload};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 #[cfg(windows)]
 use std::ffi::OsStr;
 use std::ffi::OsString;
@@ -26,7 +26,9 @@ use webcodex_core::workflow_session_contract::ExecutionShell;
 use webcodex_process::execution_broker::StreamPolicy;
 use webcodex_process::{GracefulTermination, ManagedChild};
 
-use super::local_execution::{snapshot_env, spawn_local_action, CommandBlueprint, LocalEnv};
+use super::local_execution::{
+    approved_inherited_env, snapshot_env, spawn_local_action, CommandBlueprint, LocalEnv,
+};
 
 #[path = "process_command.rs"]
 mod process_command;
@@ -266,34 +268,104 @@ fn prepared_shell_command_text(dialect: ShellDialect, command: &str) -> String {
 /// a `Command` happened to carry. Rust's Windows environment handling is
 /// case-insensitive, so removing the canonical sensitive spellings also removes
 /// mixed-case variants such as `WebCodex_Token`.
+/// Build the environment for a model-triggered shell action.
+///
+/// # P1 closure: positive selection, not a denylist
+///
+/// This used to return `LocalEnv::Inherit { overrides, remove }`, which the
+/// broker turned into `EnvPolicy::Inherit`: the Runner's entire environment
+/// minus five credential names. That is not a security boundary — `GH_TOKEN`,
+/// `OPENAI_API_KEY`, `AWS_SECRET_ACCESS_KEY`, `NPM_TOKEN` and
+/// `DESKTOP_MCP_*` all passed through it, as would any credential added
+/// tomorrow.
+///
+/// It now returns a `Snapshot`, so the action's environment is exactly what is
+/// written here:
+///
+/// 1. the approved non-secret host variables ([`approved_inherited_env`]),
+/// 2. the `Isolated` floor when the shell is configured isolated,
+/// 3. `path_prepend`, merged into the inherited `PATH`,
+/// 4. operator-configured `shell.env`,
+/// 5. any sensitive name, dropped last so configuration cannot reintroduce one.
+///
+/// `LocalEnv::Inherit` no longer exists, so this function cannot drift back.
+///
+/// # Compatibility delta
+///
+/// A shell in `Inherit` mode now sees only the approved variables, not the
+/// full host environment. Tools that relied on an arbitrary host variable —
+/// a corporate `COREPACK_HOME`, a `NODE_OPTIONS`, a language-manager shim — will
+/// report it missing instead of silently using it. That is the intended
+/// direction: an absent variable is visible, an inherited credential is not.
+/// The fix for a legitimately needed variable is to name it in the shell's
+/// configured `env`, which is operator-controlled and auditable.
 fn shell_environment_rule(shell: &ShellConfig) -> Result<LocalEnv, String> {
+    // Start from the approved non-secret subset of the host environment. This
+    // is the *only* place host values enter a model-triggered action.
+    let host = host_env_map();
+    let mut env: HashMap<String, String> = approved_inherited_env(&host).into_iter().collect();
+
     if shell.environment_mode == ShellEnvironmentMode::Isolated {
-        let env = base_shell_env(shell, &ShellProfileConfig::default())?;
-        return Ok(snapshot_env(&env));
+        // The isolated floor is a *floor*, not a replacement: the approved host
+        // variables above are already minimal and non-secret, and a user who
+        // chose isolated still needs a working PATH to run anything at all.
+        env.entry("PATH".to_string())
+            .or_insert_with(default_isolated_path);
     }
-    let mut overrides: std::collections::BTreeMap<String, String> =
-        std::collections::BTreeMap::new();
+
     if !shell.path_prepend.is_empty() {
         let mut paths = shell.path_prepend.clone();
-        if let Some(current) = std::env::var_os("PATH") {
-            paths.extend(std::env::split_paths(&current));
+        // The inherited PATH may be spelled `Path` on Windows; lookup must be
+        // case-insensitive or the prepended entries replace it instead of
+        // extending it.
+        if let Some(current) = env_lookup(&env, "PATH") {
+            paths.extend(std::env::split_paths(current));
         }
         let joined = std::env::join_paths(paths)
             .map_err(|e| format!("failed to build shell PATH from shell.path_prepend: {}", e))?;
-        overrides.insert("PATH".to_string(), joined.to_string_lossy().into_owned());
+        env_insert(&mut env, "PATH", joined.to_string_lossy().to_string());
     }
     for (key, value) in &shell.env {
         if !is_sensitive_env_key(key) {
-            overrides.insert(key.clone(), value.clone());
+            env_insert(&mut env, key, value.clone());
         }
     }
-    Ok(LocalEnv::Inherit {
-        overrides,
-        remove: SENSITIVE_ENV_KEYS
-            .iter()
-            .map(|key| (*key).to_string())
-            .collect(),
-    })
+    // Sensitive names are dropped *after* every configuration layer, so neither
+    // shell.env nor a prepared profile can reintroduce one.
+    remove_sensitive_env(&mut env);
+    Ok(LocalEnv::Snapshot(
+        env.into_iter().collect::<BTreeMap<String, String>>(),
+    ))
+}
+
+/// The Runner's own environment, lossily decoded.
+///
+/// Non-Unicode variables are dropped rather than replaced: a value that cannot
+/// be represented is not one to hand to a child, and dropping it cannot widen
+/// the approved set, because that set is decided by name and not by value.
+pub(crate) fn host_env_map() -> HashMap<String, String> {
+    std::env::vars_os()
+        .filter_map(|(key, value)| Some((key.into_string().ok()?, value.into_string().ok()?)))
+        .collect()
+}
+
+/// The `PATH` an isolated shell starts from when the host supplies none.
+fn default_isolated_path() -> String {
+    #[cfg(windows)]
+    {
+        std::env::var("SystemRoot")
+            .map(|root| {
+                Path::new(&root)
+                    .join("System32")
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .unwrap_or_else(|_| "C:\\Windows\\System32".to_string())
+    }
+    #[cfg(not(windows))]
+    {
+        "/usr/bin:/bin".to_string()
+    }
 }
 
 fn apply_env_snapshot(cmd: &mut Command, env_snapshot: &HashMap<String, String>) {
@@ -3109,7 +3181,7 @@ fn execute_configured_command(
         .stdout(StreamPolicy::Piped)
         .stderr(StreamPolicy::Piped);
 
-    let mut child = match spawn_local_action(policy, project_registry_dir, request) {
+    let mut child = match spawn_local_action(project_registry_dir, request) {
         Ok(child) => child,
         Err(refusal) => {
             return ShellCommandResult::not_started(CommandResult {

@@ -18,8 +18,18 @@ use std::sync::atomic::AtomicBool;
 
 const ADAPTER_ID: &str = "pyright";
 
+/// Run the pyright adapter under the P1-normalized execution path.
+///
+/// `authority_root` is the trusted project root the caller vouches for — the
+/// registered project from the Runner's registry, passed down from the request
+/// handler. It is *not* derived here from `request.cwd` or from `project_root`
+/// alone: the caller owns the trust decision, and this layer only forwards it to
+/// the broker. `None` means the caller has no trusted authority, in which case
+/// the broker refuses and the response reports a spawn failure rather than
+/// running unconfined.
 pub(crate) fn run_pyright(
     project_root: &Path,
+    authority_root: Option<&Path>,
     request: &ValidationBridgeRequest,
     max_timeout_secs: u64,
     shutdown: Option<&AtomicBool>,
@@ -69,7 +79,7 @@ pub(crate) fn run_pyright(
         }
     }
 
-    let captured = run_bounded(&program, &args, &cwd, timeout, shutdown);
+    let captured = run_bounded(&program, &args, &cwd, authority_root, timeout, shutdown);
     let mut response = base_response(request, true);
     response.command_started = captured.spawn_error.is_none();
     response.duration_ms = captured.duration_ms;

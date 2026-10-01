@@ -2931,27 +2931,25 @@ impl JobManager {
                 }
             };
             if validation {
-                let overrides: std::collections::BTreeMap<String, String> = steps[index]
-                    .env
-                    .iter()
-                    .map(|(key, value)| (key.clone(), value.clone()))
-                    .collect();
-                blueprint = match blueprint.env().clone() {
-                    super::local_execution::LocalEnv::Snapshot(_) => {
-                        blueprint.with_env(super::local_execution::LocalEnv::Snapshot(overrides))
-                    }
-                    super::local_execution::LocalEnv::Inherit {
-                        overrides: existing,
-                        remove,
-                    } => {
-                        let mut merged = existing;
-                        merged.extend(overrides);
-                        blueprint.with_env(super::local_execution::LocalEnv::Inherit {
-                            overrides: merged,
-                            remove,
-                        })
-                    }
+                // A validation step's `env` extends the blueprint's environment
+                // rather than replacing it. Under the old two-variant shape this
+                // branch had to distinguish Snapshot (replace) from Inherit
+                // (merge); with `LocalEnv::Inherit` gone there is one shape, and
+                // merging is the correct one — a step that sets `CI=1` should
+                // not thereby lose `PATH` and the rest of the shell floor it
+                // was going to run with.
+                let mut merged = match blueprint.env() {
+                    super::local_execution::LocalEnv::Snapshot(vars) => vars.clone(),
                 };
+                for (key, value) in &steps[index].env {
+                    merged.insert(key.clone(), value.clone());
+                }
+                // Sanitize after the merge: a step's configured env is
+                // configuration, not a licence to reintroduce a credential the
+                // approved set just removed.
+                let sanitized = super::local_execution::sanitize_snapshot(&merged);
+                blueprint =
+                    blueprint.with_env(super::local_execution::LocalEnv::Snapshot(sanitized));
             }
             // Raw Shell Jobs and every validation step have no stdin payload.
             // Never inherit the Runner's parent-liveness pipe: it stays open
@@ -2998,7 +2996,7 @@ impl JobManager {
         // P1: local Job execution goes through the broker like every other
         // model-triggered local action. A refusal here is a pre-start failure,
         // so the job is failed without any child ever existing.
-        let spawn = spawn_local_action(&policy, Some(&project_registry_dir), command);
+        let spawn = spawn_local_action(Some(&project_registry_dir), command);
         let mut child = match spawn {
             Ok(child) => child,
             Err(e) => {
@@ -3265,8 +3263,7 @@ impl JobManager {
                         .expect("one command per validation step");
                     // Each validation step is its own local action, so each one
                     // derives its own plan and refuses independently.
-                    let spawn =
-                        spawn_local_action(&policy, Some(&project_registry_dir), next_command);
+                    let spawn = spawn_local_action(Some(&project_registry_dir), next_command);
                     let mut next = match spawn {
                         Ok(child) => child,
                         Err(_error) => {

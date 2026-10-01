@@ -107,36 +107,94 @@ fn write_fake_pyright(bin_dir: &std::path::Path, spec: &FakePyrightSpec) -> Path
     }
 }
 
-fn with_path<T>(bin_dir: &std::path::Path, f: impl FnOnce() -> T) -> T {
-    with_path_mode(bin_dir, true, f)
+#[cfg(unix)]
+const PYRIGHT_FIXTURE_NAME: &str = "pyright";
+#[cfg(windows)]
+const PYRIGHT_FIXTURE_NAME: &str = "pyright.cmd";
+
+/// Copy the fixture directory into `root` and return the in-workspace program
+/// path, or `None` if the fixture does not exist.
+///
+/// The fixture lives inside the workspace on purpose. Under P1 closure the
+/// validation process is spawned through the broker under a workspace-derived
+/// plan, so an interpreter outside the workspace is not readable and the tool
+/// would fail to start — which would make every assertion below a statement
+/// about the sandbox rather than about validation. Relocating keeps these tests
+/// measuring validation behaviour; the sandbox itself is covered by the
+/// native conformance cases in `normalization_p1_tests`.
+fn relocate_fixture_into(root: &std::path::Path, bin_dir: &std::path::Path) -> Option<PathBuf> {
+    let source = bin_dir.join(PYRIGHT_FIXTURE_NAME);
+    if !source.is_file() {
+        return None;
+    }
+    let dest_dir = root.join(".webcodex-validation-fixture");
+    fs::create_dir_all(&dest_dir).unwrap();
+    for entry in fs::read_dir(bin_dir).unwrap() {
+        let entry = entry.unwrap();
+        if entry.path().is_file() {
+            fs::copy(entry.path(), dest_dir.join(entry.file_name())).unwrap();
+        }
+    }
+    let dest = dest_dir.join(PYRIGHT_FIXTURE_NAME);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&dest).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&dest, perms).unwrap();
+    }
+    Some(dest)
+}
+
+/// Build a real one-project registry for `root`, returning the keeper.
+///
+/// P1 authority is registered project context, so `execute_validation_at_root`
+/// needs a registry *directory* — a directory of `<name>.toml` project files —
+/// and not merely the project root. Handing the broker a bare project directory
+/// looks like it would work and does not: the lookup finds no project file,
+/// refuses, and every validation spawn fails before any process exists. That
+/// refusal is correct, but it would make these tests assert the refusal path
+/// instead of validation behaviour.
+fn registry_for(root: &std::path::Path) -> (tempfile::TempDir, PathBuf) {
+    crate::tests::project_registry_for(root)
+}
+
+fn with_path<T>(
+    root: &std::path::Path,
+    bin_dir: &std::path::Path,
+    f: impl FnOnce(&std::path::Path) -> T,
+) -> (tempfile::TempDir, T) {
+    with_path_mode(root, bin_dir, true, f)
 }
 
 /// Point validation at this test's explicit pyright fixture without mutating
 /// process-wide PATH. Other Runner tests execute shells and SSH clients in
 /// parallel, so replacing PATH here makes otherwise unrelated tests race with
-/// the validation fixture. `available = false` points at a guaranteed-missing
-/// path to exercise the tool-unavailable branch without exposing real tools.
-fn with_path_mode<T>(bin_dir: &std::path::Path, available: bool, f: impl FnOnce() -> T) -> T {
+/// the validation fixture.
+///
+/// `available = true` resolves the fixture, relocating it into `root` so it is
+/// readable under the workspace-derived plan. `available = false` points at a
+/// guaranteed-missing path to exercise the tool-unavailable branch without
+/// exposing real tools.
+fn with_path_mode<T>(
+    root: &std::path::Path,
+    bin_dir: &std::path::Path,
+    available: bool,
+    f: impl FnOnce(&std::path::Path) -> T,
+) -> (tempfile::TempDir, T) {
     let _env_lock = crate::tests::test_env_lock();
     let program = if available {
-        #[cfg(unix)]
-        {
-            bin_dir.join("pyright")
-        }
-        #[cfg(windows)]
-        {
-            let exe = bin_dir.join("pyright.exe");
-            if exe.is_file() {
-                exe
-            } else {
-                bin_dir.join("pyright.cmd")
-            }
-        }
+        relocate_fixture_into(root, bin_dir).expect("fixture must exist when available = true")
     } else {
         bin_dir.join("webcodex-missing-pyright")
     };
     let _env = crate::tests::EnvGuard::new().set("WEBCODEX_PYRIGHT", &program);
-    f()
+    // The registry is built here rather than at each call site so a test cannot
+    // forget it: a missing registry makes every spawn refuse, which fails loudly
+    // instead of silently degrading these tests into refusal-path assertions.
+    let (keeper, registry) = registry_for(root);
+    let out = f(&registry);
+    (keeper, out)
 }
 
 #[test]
@@ -152,7 +210,8 @@ fn unknown_adapter_is_rejected() {
     let tmp = tempfile::tempdir().unwrap();
     let mut req = typecheck_request("demo");
     req.adapter_id = "does-not-exist".into();
-    let err = execute_validation_at_root(tmp.path(), &req, 120).unwrap_err();
+    let (_keeper, registry) = registry_for(tmp.path());
+    let err = execute_validation_at_root(tmp.path(), &registry, &req, 120).unwrap_err();
     assert!(!err.success);
     assert_eq!(
         err.error.as_ref().unwrap().code,
@@ -165,7 +224,8 @@ fn language_mismatch_is_rejected() {
     let tmp = tempfile::tempdir().unwrap();
     let mut req = typecheck_request("demo");
     req.language = "typescript".into();
-    let err = execute_validation_at_root(tmp.path(), &req, 120).unwrap_err();
+    let (_keeper, registry) = registry_for(tmp.path());
+    let err = execute_validation_at_root(tmp.path(), &registry, &req, 120).unwrap_err();
     assert_eq!(
         err.error.as_ref().unwrap().code,
         failure_kinds::LANGUAGE_ADAPTER_MISMATCH
@@ -177,7 +237,8 @@ fn absolute_cwd_is_rejected() {
     let tmp = tempfile::tempdir().unwrap();
     let mut req = typecheck_request("demo");
     req.cwd = Some("/etc".into());
-    let err = execute_validation_at_root(tmp.path(), &req, 120).unwrap_err();
+    let (_keeper, registry) = registry_for(tmp.path());
+    let err = execute_validation_at_root(tmp.path(), &registry, &req, 120).unwrap_err();
     assert_eq!(
         err.error.as_ref().unwrap().code,
         failure_kinds::INVALID_ARGUMENTS
@@ -189,7 +250,8 @@ fn path_traversal_target_is_rejected() {
     let tmp = tempfile::tempdir().unwrap();
     let mut req = typecheck_request("demo");
     req.targets = vec!["../secret.py".into()];
-    let err = execute_validation_at_root(tmp.path(), &req, 120).unwrap_err();
+    let (_keeper, registry) = registry_for(tmp.path());
+    let err = execute_validation_at_root(tmp.path(), &registry, &req, 120).unwrap_err();
     assert_eq!(
         err.error.as_ref().unwrap().code,
         failure_kinds::INVALID_ARGUMENTS
@@ -198,6 +260,7 @@ fn path_traversal_target_is_rejected() {
 
 #[test]
 fn end_to_end_fake_pyright_success_and_diagnostics() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let root = project.path();
     fs::create_dir_all(root.join("src")).unwrap();
@@ -233,8 +296,8 @@ fn end_to_end_fake_pyright_success_and_diagnostics() {
     );
     write_fake_pyright(bin.path(), &FakePyrightSpec::new(stdout, 1));
 
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(root, &typecheck_request("demo"), 120).unwrap()
+    let (_keeper, response) = with_path(root, bin.path(), |registry| {
+        execute_validation_at_root(root, registry, &typecheck_request("demo"), 120).unwrap()
     });
 
     assert!(response.command_started);
@@ -268,6 +331,7 @@ fn end_to_end_fake_pyright_success_and_diagnostics() {
 
 #[test]
 fn end_to_end_exit_zero_no_diagnostics_is_success() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let root = project.path();
     fs::write(root.join("ok.py"), "x = 1\n").unwrap();
@@ -285,8 +349,8 @@ fn end_to_end_exit_zero_no_diagnostics_is_success() {
 }
 "#;
     write_fake_pyright(bin.path(), &FakePyrightSpec::new(stdout, 0));
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(root, &typecheck_request("demo"), 120).unwrap()
+    let (_keeper, response) = with_path(root, bin.path(), |registry| {
+        execute_validation_at_root(root, registry, &typecheck_request("demo"), 120).unwrap()
     });
     assert!(response.success);
     assert!(response.command_started);
@@ -302,8 +366,9 @@ fn fake_pyright_missing_reports_tool_unavailable() {
     let project = tempfile::tempdir().unwrap();
     let empty_bin = tempfile::tempdir().unwrap();
     // Point directly at a guaranteed-missing pyright; process PATH stays untouched.
-    let response = with_path_mode(empty_bin.path(), false, || {
-        execute_validation_at_root(project.path(), &typecheck_request("demo"), 120).unwrap()
+    let (_keeper, response) = with_path_mode(project.path(), empty_bin.path(), false, |registry| {
+        execute_validation_at_root(project.path(), registry, &typecheck_request("demo"), 120)
+            .unwrap()
     });
     assert!(!response.command_started);
     assert!(!response.tool_available);
@@ -315,14 +380,15 @@ fn fake_pyright_missing_reports_tool_unavailable() {
 
 #[test]
 fn invalid_cwd_reports_available_tool_without_starting_command() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let bin = crate::tests::executable_tempdir();
     write_fake_pyright(bin.path(), &FakePyrightSpec::new("", 0));
     let mut request = typecheck_request("demo");
     request.cwd = Some("missing-directory".to_string());
 
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(project.path(), &request, 120).unwrap()
+    let (_keeper, response) = with_path(project.path(), bin.path(), |registry| {
+        execute_validation_at_root(project.path(), registry, &request, 120).unwrap()
     });
     assert!(!response.success);
     assert!(!response.command_started);
@@ -335,6 +401,7 @@ fn invalid_cwd_reports_available_tool_without_starting_command() {
 
 #[test]
 fn spawn_failure_does_not_report_command_started() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let bin = crate::tests::executable_tempdir();
     // A file that resolves as a program but cannot be started. Executable text
@@ -367,8 +434,9 @@ fn spawn_failure_does_not_report_command_started() {
             .unwrap()
     };
 
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(project.path(), &typecheck_request("demo"), 120).unwrap()
+    let (_keeper, response) = with_path(project.path(), bin.path(), |registry| {
+        execute_validation_at_root(project.path(), registry, &typecheck_request("demo"), 120)
+            .unwrap()
     });
     assert!(!response.success);
     assert!(!response.command_started);
@@ -384,6 +452,7 @@ fn spawn_failure_does_not_report_command_started() {
 
 #[test]
 fn timeout_reports_started_and_available_tool() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let bin = crate::tests::executable_tempdir();
     // Long enough to outlive the 1s request timeout on either platform.
@@ -391,8 +460,8 @@ fn timeout_reports_started_and_available_tool() {
     let mut request = typecheck_request("demo");
     request.timeout_secs = 1;
 
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(project.path(), &request, 120).unwrap()
+    let (_keeper, response) = with_path(project.path(), bin.path(), |registry| {
+        execute_validation_at_root(project.path(), registry, &request, 120).unwrap()
     });
     assert!(!response.success);
     assert!(response.command_started);
@@ -405,6 +474,7 @@ fn timeout_reports_started_and_available_tool() {
 
 #[test]
 fn oversized_stdout_is_not_parsed() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let root = project.path();
     let bin = crate::tests::executable_tempdir();
@@ -413,8 +483,8 @@ fn oversized_stdout_is_not_parsed() {
     // platform fixture (no shell loop needed).
     let payload = "a".repeat(over);
     write_fake_pyright(bin.path(), &FakePyrightSpec::new(payload, 0));
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(root, &typecheck_request("demo"), 30).unwrap()
+    let (_keeper, response) = with_path(root, bin.path(), |registry| {
+        execute_validation_at_root(root, registry, &typecheck_request("demo"), 30).unwrap()
     });
     assert!(response.command_started, "{response:?}");
     assert!(
@@ -431,6 +501,7 @@ fn oversized_stdout_is_not_parsed() {
 
 #[test]
 fn oversized_stderr_is_capped_while_stdout_json_remains_parseable() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let bin = crate::tests::executable_tempdir();
     let over = MAX_VALIDATION_STDERR_CAPTURE_BYTES + 8192;
@@ -448,8 +519,9 @@ fn oversized_stderr_is_capped_while_stdout_json_remains_parseable() {
     ));
     write_fake_pyright(bin.path(), &spec);
 
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(project.path(), &typecheck_request("demo"), 120).unwrap()
+    let (_keeper, response) = with_path(project.path(), bin.path(), |registry| {
+        execute_validation_at_root(project.path(), registry, &typecheck_request("demo"), 120)
+            .unwrap()
     });
 
     assert!(response.success, "{response:?}");
@@ -466,12 +538,13 @@ fn oversized_stderr_is_capped_while_stdout_json_remains_parseable() {
 
 #[test]
 fn malformed_json_is_structured_failure() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let root = project.path();
     let bin = crate::tests::executable_tempdir();
     write_fake_pyright(bin.path(), &FakePyrightSpec::new("not-json\n", 1));
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(root, &typecheck_request("demo"), 120).unwrap()
+    let (_keeper, response) = with_path(root, bin.path(), |registry| {
+        execute_validation_at_root(root, registry, &typecheck_request("demo"), 120).unwrap()
     });
     assert!(response.command_started);
     assert_eq!(
@@ -483,6 +556,7 @@ fn malformed_json_is_structured_failure() {
 
 #[test]
 fn bridge_response_free_text_is_sanitized_before_serialization() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let root = project.path();
     let file = root.join("app.py");
@@ -516,8 +590,8 @@ fn bridge_response_free_text_is_sanitized_before_serialization() {
     let spec = FakePyrightSpec::new(stdout, 0).with_stderr(stderr);
     write_fake_pyright(bin.path(), &spec);
 
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(root, &typecheck_request("demo"), 120).unwrap()
+    let (_keeper, response) = with_path(root, bin.path(), |registry| {
+        execute_validation_at_root(root, registry, &typecheck_request("demo"), 120).unwrap()
     });
     let stderr = response.stderr_summary.as_deref().unwrap();
     assert!(stderr.contains("stderr"));
@@ -539,6 +613,7 @@ fn bridge_response_free_text_is_sanitized_before_serialization() {
 
 #[test]
 fn malformed_json_containing_absolute_path_does_not_echo_it() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let bin = crate::tests::executable_tempdir();
     let injected = "/root/git/private-drop/private.py";
@@ -546,8 +621,9 @@ fn malformed_json_containing_absolute_path_does_not_echo_it() {
         bin.path(),
         &FakePyrightSpec::new(format!("{{\"generalDiagnostics\":[\"{injected}"), 1),
     );
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(project.path(), &typecheck_request("demo"), 120).unwrap()
+    let (_keeper, response) = with_path(project.path(), bin.path(), |registry| {
+        execute_validation_at_root(project.path(), registry, &typecheck_request("demo"), 120)
+            .unwrap()
     });
     assert_eq!(
         response.failure_kind.as_deref(),
@@ -563,6 +639,7 @@ fn malformed_json_containing_absolute_path_does_not_echo_it() {
 
 #[test]
 fn pyright_exit_code_and_diagnostics_status_matrix() {
+    crate::require_broker_capable!();
     struct Case {
         name: &'static str,
         exit_code: i32,
@@ -655,8 +732,8 @@ fn pyright_exit_code_and_diagnostics_status_matrix() {
             bin.path(),
             &FakePyrightSpec::new(json.to_string(), case.exit_code),
         );
-        let response = with_path(bin.path(), || {
-            execute_validation_at_root(root, &typecheck_request("demo"), 120).unwrap()
+        let (_keeper, response) = with_path(root, bin.path(), |registry| {
+            execute_validation_at_root(root, registry, &typecheck_request("demo"), 120).unwrap()
         });
         assert_eq!(
             response.success, case.success,
@@ -676,6 +753,7 @@ fn pyright_exit_code_and_diagnostics_status_matrix() {
 
 #[test]
 fn missing_summary_counts_errors_before_diagnostic_truncation() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let root = project.path();
     let mut diagnostics = Vec::new();
@@ -699,8 +777,8 @@ fn missing_summary_counts_errors_before_diagnostic_truncation() {
     let bin = crate::tests::executable_tempdir();
     write_fake_pyright(bin.path(), &FakePyrightSpec::new(json.to_string(), 0));
 
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(root, &typecheck_request("demo"), 120).unwrap()
+    let (_keeper, response) = with_path(root, bin.path(), |registry| {
+        execute_validation_at_root(root, registry, &typecheck_request("demo"), 120).unwrap()
     });
     assert!(!response.success, "{response:?}");
     assert_eq!(
@@ -719,6 +797,7 @@ fn missing_summary_counts_errors_before_diagnostic_truncation() {
 
 #[test]
 fn unicode_paths_and_messages_are_preserved_relative() {
+    crate::require_broker_capable!();
     let project = tempfile::tempdir().unwrap();
     let root = project.path();
     fs::create_dir_all(root.join("源")).unwrap();
@@ -745,8 +824,8 @@ fn unicode_paths_and_messages_are_preserved_relative() {
 }}"#
     );
     write_fake_pyright(bin.path(), &FakePyrightSpec::new(stdout, 0));
-    let response = with_path(bin.path(), || {
-        execute_validation_at_root(root, &typecheck_request("demo"), 120).unwrap()
+    let (_keeper, response) = with_path(root, bin.path(), |registry| {
+        execute_validation_at_root(root, registry, &typecheck_request("demo"), 120).unwrap()
     });
     assert!(response.success); // information only → no errors
     let diag = &response.diagnostics.as_ref().unwrap().diagnostics[0];

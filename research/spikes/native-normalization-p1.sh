@@ -22,6 +22,14 @@
 # plugin/MCP providers, LSP, the persistent interactive shell, the detached
 # durable payload and interpreter-based validation are outside P1 by scope.
 #
+# DO NOT RUN THIS INSIDE WORKBUDDY / A NESTED SANDBOX. This host (and any
+# nested sandbox session) refuses `sandbox_apply` with EPERM, so every
+# enforcement check would "pass" for the wrong reason — the program never
+# started. The script detects that and reports ENV_BLOCKED, never PASS. Run it
+# from an ordinary Terminal.app session (launchd session Aqua) and report the
+# result from there. Treating ENV_BLOCKED as a pass is explicitly forbidden by
+# the closure spec (§13).
+#
 # USAGE
 #   bash research/spikes/native-normalization-p1.sh
 #
@@ -86,8 +94,11 @@ say ""
 RUN_LOG="$(mktemp -t webcodex-p1-native.XXXXXX)"
 # The cases assert their own confinement and print machine-readable verdicts.
 # `--nocapture` is required: the verdicts go to stderr, not to the test harness.
-# P1-G (git apply) lives in webcodex-workspace's git_broker tests, so both
-# suites are run and their verdicts land in the same log the summary reads.
+# The runner suite (P1-A..P1-M) enters the REAL production run_shell boundary and
+# emits P1_NATIVE_RUN_SHELL / P1_NATIVE_EXTERNAL_DENY / P1_NATIVE_NETWORK_DENY /
+# P1_NATIVE_DESCENDANT. P1-G (git apply) lives in webcodex-workspace's git_broker
+# tests and emits P1_NATIVE_GIT_APPLY. All verdicts land in the same log the
+# summary reads.
 ( cd "$REPO_ROOT" && \
   cargo test -p webcodex-runner --features workspace-checkpoints \
     --bin webcodex-runner normalization_p1 \
@@ -99,7 +110,7 @@ TEST_RC="${PIPESTATUS[0]}"
 say ""
 
 # The launcher-refusal signature. A run that produced it proves nothing about
-# confinement, whatever the harness exit code says.
+# confinement, whatever the harness exit code says. ENV_BLOCKED is NOT a pass.
 ENV_BLOCKED=0
 if grep -q 'sandbox_apply: Operation not permitted' "$RUN_LOG"; then
   ENV_BLOCKED=1
@@ -118,7 +129,8 @@ fail_count=0
 # Each case prints exactly one of PASS/FAIL/ENV_BLOCKED. A missing line is
 # NOT_REPORTED and counts as a failure: silence must never read as a pass. A
 # per-case ENV_BLOCKED is the same event as the launcher-refusal signature: the
-# host cannot measure this path, so the whole run cannot be a pass.
+# host cannot measure this path, so the whole run cannot be a pass. P1_NATIVE_ALL_PASS
+# is computed last (below) from the per-case results plus the launcher-refusal state.
 for key in P1_NATIVE_RUN_SHELL P1_NATIVE_GIT_APPLY P1_NATIVE_EXTERNAL_DENY \
            P1_NATIVE_NETWORK_DENY P1_NATIVE_DESCENDANT; do
   line="$(emit "$key")"

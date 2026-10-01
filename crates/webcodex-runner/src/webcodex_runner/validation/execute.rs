@@ -1,39 +1,46 @@
 //! Bounded process execution for validation adapters.
 //!
-//! # P1 scope: deliberately not routed through the execution broker
+//! # P1 closure: routed through the execution broker
 //!
-//! `RUNTIME_COMPATIBILITY_TODO` — this file still spawns validation tools with
-//! a plain `Command`, outside the P1 [`ExecutionBroker`]. It is named here
-//! rather than left to be discovered, because it is one of the local,
-//! model-triggered execution surfaces P1 was supposed to cover.
+//! Validation tools are interpreter-based (pyright is Node, other adapters are
+//! Python), so they were the last P1 surface still spawning with a bare
+//! `Command`. That is now closed: [`run_bounded`] reaches the same broker
+//! [`crate::webcodex_runner::local_execution::spawn_local_action`] chokepoint
+//! every other model-triggered action uses. The trusted workspace authority is
+//! resolved from the caller's project registry — not from an arbitrary `cwd`
+//! fabricated here — and if the interpreter cannot start under the broker's
+//! trusted runtime policy, [`run_bounded`] returns a spawn failure rather than
+//! falling back to a bare `Command::spawn`.
 //!
-//! It is not routed in this round for a concrete reason, not for convenience:
-//! the tools reached from here are interpreter-based (pyright is Node,
-//! other adapters are Python), and their runtimes live outside any recognised
-//! toolchain prefix on the hosts this product runs on. Putting them under the
-//! current broker would mean either granting read reach to an interpreter's
-//! whole installation or refusing to start them at all. Choosing between those
-//! is a policy decision about toolchain authority, and P1's scope explicitly
-//! excludes new policy — there is no approval, no ASK, no session grant yet.
+//! # Two independent claims
 //!
-//! So the honest position is: **this surface is enumerated as a known P1
-//! exception**, tracked by this marker, and it must not be silently reclassified
-//! as normalized. A structural test
-//! (`normalization_p1_tests::i_validation_execute_is_declared_unrouted_with_a_runtime_todo`)
-//! fails if this file starts routing without the marker being revisited.
+//! * `EXECUTION_NORMALIZATION = PASS`: the surface is routed, fail-closed, with
+//!   no unbrokered spawn available anywhere in this file.
+//! * `RUNTIME_COMPATIBILITY` may be `FAIL`: a host whose broker cannot apply a
+//!   restrictive profile to an interpreter runtime will refuse to start the
+//!   tool. That is the honest, fail-closed outcome and it is asserted by the
+//!   structural guard in `normalization_p1_tests`; it does not downgrade the
+//!   normalization claim. The interpreter-readiness policy decision is out of
+//!   P1 scope and belongs to the SecurityBroker that does not exist yet.
 
 use crate::validation_bridge::{
     sanitize_bridge_text, MAX_VALIDATION_STDERR_CAPTURE_BYTES, MAX_VALIDATION_STDERR_SUMMARY_CHARS,
     MAX_VALIDATION_STDOUT_BYTES,
 };
+use crate::webcodex_runner::local_execution::{
+    approved_inherited_env, spawn_local_action, LocalEnv,
+};
 use crate::webcodex_runner::output_text::{normalize_output_text, OutputTextSource};
+use crate::webcodex_runner::shell::host_env_map;
+use std::collections::HashMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Stdio};
+use std::process::ExitStatus;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
+use webcodex_process::execution_broker::StreamPolicy;
 use webcodex_process::{GracefulTermination, ManagedChild};
 
 #[derive(Debug)]
@@ -52,38 +59,57 @@ pub(crate) struct CapturedProcess {
 /// Run argv with bounded stdout capture. When stdout exceeds the hard byte cap,
 /// `stdout_capped` is true and `stdout` is empty (complete JSON only — never a
 /// truncated body intended for parsing).
+///
+/// The process is started through the P1 [`spawn_local_action`] chokepoint: the
+/// trusted authority comes from `project_registry_dir` (the caller's project
+/// registry), never from an arbitrary `cwd` derived here, and a refusal or a
+/// runtime policy failure returns a spawn error rather than falling back to a
+/// bare `Command::spawn`. Everything after the spawn — bounded stdout/stderr
+/// capture, timeout, shutdown signal, whole-tree termination — operates on the
+/// returned [`ManagedChild`] exactly as the unrouted version did.
 pub(crate) fn run_bounded(
     program: &Path,
     args: &[String],
     cwd: &Path,
+    project_registry_dir: Option<&Path>,
     timeout_secs: u64,
     shutdown: Option<&AtomicBool>,
 ) -> CapturedProcess {
     let start = Instant::now();
-    let mut command = Command::new(program);
-    command
-        .args(args)
-        .current_dir(cwd)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .env_remove("PYTHONSTARTUP")
-        .env_remove("PYTHONPATH");
+
+    // The validation environment is the positive-list subset of the host's own
+    // variables (PATH, LANG, LC_*, TERM, …) plus the broker's Minimal floor,
+    // which sets HOME to the workspace and a working PATH. `PYTHONSTARTUP` /
+    // `PYTHONPATH` and every credential are dropped: they are not on the
+    // approved list, so they never reach the child.
+    let mut env: HashMap<String, String> = HashMap::new();
+    for (key, value) in approved_inherited_env(&host_env_map()) {
+        env.insert(key, value);
+    }
+    let request = crate::webcodex_runner::local_execution::LocalExecutionRequest::new(
+        program.to_path_buf(),
+        cwd.to_path_buf(),
+    )
+    .args(args.iter().map(|arg| arg.as_str()))
+    .env(LocalEnv::Snapshot(env.into_iter().collect()))
+    .stdin(StreamPolicy::Null)
+    .stdout(StreamPolicy::Piped)
+    .stderr(StreamPolicy::Piped);
 
     // ManagedChild owns the whole validation process tree: a private process
     // group on Unix, a kill-on-close Job Object on Windows.
-    let mut child = match ManagedChild::spawn(&mut command) {
+    let mut child = match spawn_local_action(project_registry_dir, request) {
         Ok(child) => child,
-        Err(error) => {
+        Err(refusal) => {
             return CapturedProcess {
                 exit_code: None,
                 stdout: Vec::new(),
                 stdout_capped: false,
                 stderr_capped: false,
-                stderr_summary: Some(bound_stderr(&format!("spawn failed: {error}"))),
+                stderr_summary: Some(bound_stderr(&format!("spawn failed: {refusal}"))),
                 duration_ms: start.elapsed().as_millis() as u64,
                 timed_out: false,
-                spawn_error: Some(format!("spawn failed: {error}")),
+                spawn_error: Some(format!("spawn failed: {refusal}")),
                 wait_error: None,
             };
         }
@@ -502,6 +528,30 @@ mod tests {
         args.iter().map(|s| s.to_string()).collect()
     }
 
+    /// A registry directory registering `root` as the only project, plus the
+    /// keeper that keeps it on disk.
+    ///
+    /// `run_bounded` resolves trusted authority from a *registry*, not from the
+    /// process's own policy, so a test that wants a real spawn has to register
+    /// the directory it runs in. Passing the project directory itself would look
+    /// right and silently resolve nothing, because the broker reads
+    /// `<registry>/<name>.toml` and never lists a directory as its own contents.
+    fn registry_for(root: &Path) -> (tempfile::TempDir, PathBuf) {
+        let keeper = tempfile::tempdir().expect("registry keeper");
+        let registry = keeper.path().join("registry");
+        std::fs::create_dir_all(&registry).expect("registry dir");
+        let canonical = root.canonicalize().expect("canonical project root");
+        std::fs::write(
+            registry.join("validation-test-project.toml"),
+            format!(
+                "id = \"validation-test-project\"\npath = {:?}\n",
+                canonical.to_string_lossy()
+            ),
+        )
+        .expect("registry entry");
+        (keeper, registry)
+    }
+
     /// A unique temp file, removed on drop.
     #[cfg(feature = "runner-real-process-tests")]
     struct CleanupPath(PathBuf);
@@ -627,10 +677,12 @@ mod tests {
     #[ignore = "runner real-process lane: spawns the validation process-tree fixture"]
     fn runner_real_process_validation_normal_completion_preserves_exit_code_and_capture() {
         let cwd = tempfile::tempdir().unwrap();
+        let (_registry_keeper, registry) = registry_for(cwd.path());
         let captured = run_bounded(
             &helper_binary(),
             &str_args(&["sleep", "0", "7"]),
             cwd.path(),
+            Some(&registry),
             30,
             None,
         );
@@ -655,6 +707,7 @@ mod tests {
         let parent_marker = unique_temp_path("timeout-parent");
         let alive_marker = unique_temp_path("timeout-desc");
         let cwd = tempfile::tempdir().unwrap();
+        let (_registry_keeper, registry) = registry_for(cwd.path());
         let program = helper_binary();
         let args = str_args(&[
             "spawn-descendant-keepalive",
@@ -664,7 +717,8 @@ mod tests {
         ]);
         let started = Instant::now();
         let captured = thread::scope(|scope| {
-            let handle = scope.spawn(|| run_bounded(&program, &args, cwd.path(), 10, None));
+            let handle =
+                scope.spawn(|| run_bounded(&program, &args, cwd.path(), Some(&registry), 10, None));
             assert!(
                 wait_until_file(&parent_marker, Duration::from_secs(30)),
                 "parent marker never appeared"
@@ -714,6 +768,7 @@ mod tests {
         let parent_marker = unique_temp_path("parent-first");
         let alive_marker = unique_temp_path("parent-first-desc");
         let cwd = tempfile::tempdir().unwrap();
+        let (_registry_keeper, registry) = registry_for(cwd.path());
         let program = helper_binary();
         let args = str_args(&[
             "spawn-descendant",
@@ -723,7 +778,8 @@ mod tests {
         ]);
         let started = Instant::now();
         let captured = thread::scope(|scope| {
-            let handle = scope.spawn(|| run_bounded(&program, &args, cwd.path(), 30, None));
+            let handle =
+                scope.spawn(|| run_bounded(&program, &args, cwd.path(), Some(&registry), 30, None));
             // The parent exits almost immediately after spawning its
             // descendant. The descendant's marker appears only if it actually
             // ran, so its existence proves the descendant was alive after the
@@ -766,6 +822,7 @@ mod tests {
         let parent_marker = unique_temp_path("shutdown-parent");
         let alive_marker = unique_temp_path("shutdown-desc");
         let cwd = tempfile::tempdir().unwrap();
+        let (_registry_keeper, registry) = registry_for(cwd.path());
         let program = helper_binary();
         let args = str_args(&[
             "spawn-descendant-keepalive",
@@ -776,8 +833,16 @@ mod tests {
         let shutdown = AtomicBool::new(false);
         let started = Instant::now();
         let captured = thread::scope(|scope| {
-            let handle =
-                scope.spawn(|| run_bounded(&program, &args, cwd.path(), 60, Some(&shutdown)));
+            let handle = scope.spawn(|| {
+                run_bounded(
+                    &program,
+                    &args,
+                    cwd.path(),
+                    Some(&registry),
+                    60,
+                    Some(&shutdown),
+                )
+            });
             assert!(
                 wait_until_file(&parent_marker, Duration::from_secs(30)),
                 "parent marker never appeared"
@@ -831,6 +896,7 @@ mod tests {
         let parent_marker = unique_temp_path("resist-parent");
         let alive_marker = unique_temp_path("resist-desc");
         let cwd = tempfile::tempdir().unwrap();
+        let (_registry_keeper, registry) = registry_for(cwd.path());
         let program = helper_binary();
         let args = str_args(&[
             "ignore-term-keepalive",
@@ -840,7 +906,8 @@ mod tests {
         ]);
         let started = Instant::now();
         let captured = thread::scope(|scope| {
-            let handle = scope.spawn(|| run_bounded(&program, &args, cwd.path(), 3, None));
+            let handle =
+                scope.spawn(|| run_bounded(&program, &args, cwd.path(), Some(&registry), 3, None));
             assert!(
                 wait_until_file(&parent_marker, Duration::from_secs(30)),
                 "parent marker never appeared"
@@ -888,10 +955,12 @@ mod tests {
         // Normal completion runs cleanup after the tree already exited; the
         // AlreadyExited graceful path must not surface as a wait error.
         let cwd = tempfile::tempdir().unwrap();
+        let (_registry_keeper, registry) = registry_for(cwd.path());
         let captured = run_bounded(
             &helper_binary(),
             &str_args(&["sleep", "0", "0"]),
             cwd.path(),
+            Some(&registry),
             30,
             None,
         );
@@ -923,11 +992,17 @@ mod tests {
     /// G. Spawn failure keeps the spawn-error semantics and has no tree to leak.
     #[test]
     fn spawn_failure_reports_spawn_error_only() {
+        crate::require_broker_capable!();
         let cwd = tempfile::tempdir().unwrap();
+        // Registered on purpose: this case must fail because the *program* is
+        // missing, not because authority was unavailable. The two failure modes
+        // are different and conflating them would hide a broken registry.
+        let (_registry_keeper, registry) = registry_for(cwd.path());
         let captured = run_bounded(
             Path::new("webcodex-validation-executable-that-does-not-exist"),
             &str_args(&["sleep", "0", "0"]),
             cwd.path(),
+            Some(&registry),
             30,
             None,
         );
