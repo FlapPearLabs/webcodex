@@ -887,3 +887,131 @@ fn fail_extra(kind: &str, message: impl Into<String>, extra: Vec<(&str, Value)>)
     }
     Value::Object(obj)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Initialise a throwaway real git repository.
+    ///
+    /// Unmodified `git init` only, so the fixture is a real repository without
+    /// needing a commit: the patch under test creates a brand-new file, which
+    /// `git apply` handles without any index entry.
+    fn init_repo(root: &Path) -> bool {
+        const CANDIDATES: &[&str] = &["/usr/bin/git", "/bin/git", "/usr/local/bin/git"];
+        let Some(git) = CANDIDATES
+            .iter()
+            .map(PathBuf::from)
+            .find(|candidate| candidate.is_file())
+        else {
+            return false;
+        };
+        std::process::Command::new(git)
+            .args(["init", "-q"])
+            .current_dir(root)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+    }
+
+    /// Whether a failure detail shows the sandbox launcher refusing the profile
+    /// rather than git itself rejecting the patch.
+    ///
+    /// The two must never be collapsed: a host that cannot apply Seatbelt
+    /// establishes nothing about `git apply`, so reporting it as a git failure
+    /// would blame patch semantics for an environment limitation — and
+    /// reporting it as a pass would be worse.
+    fn is_profile_refusal(detail: &str) -> bool {
+        detail.contains("sandbox_apply") || detail.contains("sandbox-exec")
+    }
+
+    /// **P1-G, checkpoint-wrapper half.** The production chain the model can
+    /// actually reach is
+    ///
+    /// ```text
+    /// workspace_checkpoint::git_apply
+    ///   -> git_broker::run_git
+    ///     -> ExecutionBroker
+    /// ```
+    ///
+    /// The broker's own fidelity test only covers the middle and last links. It
+    /// cannot show that the checkpoint layer — the argv assembly, the stdin
+    /// payload, and the success/failure interpretation that every restore and
+    /// rollback path depends on — reaches the broker with git semantics intact.
+    ///
+    /// So this case drives the **private** `git_apply` directly, from inside this
+    /// module, against a real repository and a real textual patch, and asserts
+    /// the patch landed on disk. `git_apply` stays private: making it `pub`
+    /// purely so a test could call it would hand the surrounding module a new
+    /// outward-facing surface for no production reason.
+    ///
+    /// Three outcomes, never collapsed:
+    ///
+    /// * patch applied and the file matches — `PASS`;
+    /// * git started and rejected the patch — `FAIL`, and the test fails;
+    /// * the launcher or the kernel refused — `ENV_BLOCKED`, and the test
+    ///   passes without claiming anything was proved.
+    #[test]
+    fn checkpoint_git_apply_applies_a_real_patch_through_the_broker() {
+        let repo = tempfile::tempdir().unwrap();
+        if !init_repo(repo.path()) {
+            eprintln!("P1_NATIVE_GIT_APPLY=ENV_BLOCKED no trusted git executable on this host");
+            return;
+        }
+
+        let patch = concat!(
+            "diff --git a/checkpoint-added.txt b/checkpoint-added.txt\n",
+            "new file mode 100644\n",
+            "index 0000000..9daeafb\n",
+            "--- /dev/null\n",
+            "+++ b/checkpoint-added.txt\n",
+            "@@ -0,0 +1 @@\n",
+            "+applied-through-checkpoint-wrapper\n",
+        );
+
+        // The private production wrapper, called exactly as production calls it.
+        match git_apply(repo.path(), &[], patch) {
+            Ok(()) => {
+                let landed = repo.path().join("checkpoint-added.txt");
+                let body = std::fs::read_to_string(&landed).unwrap_or_default();
+                eprintln!(
+                    "P1_NATIVE_GIT_APPLY=PASS workspace_checkpoint::git_apply applied a real \
+                     patch through the broker (bytes_on_disk={})",
+                    body.len()
+                );
+                assert_eq!(
+                    body, "applied-through-checkpoint-wrapper\n",
+                    "the checkpoint wrapper must put the patch on disk, not merely return Ok"
+                );
+            }
+            Err(detail) => {
+                assert!(
+                    !repo.path().join("checkpoint-added.txt").exists(),
+                    "a failed apply must not leave the patch applied"
+                );
+                // Any failure to run git *under the broker* — the launcher
+                // refusing before spawn, or the kernel refusing the profile at
+                // runtime — is an environment limitation, not evidence about
+                // patch semantics. It must never read as a pass, but it must
+                // also never be blamed on `git apply`. The same rule the runner
+                // cases use: a confinement that never applied proves nothing.
+                let env_blocked = is_profile_refusal(&detail)
+                    || detail.contains("failed to start")
+                    || detail.contains("refused");
+                if env_blocked {
+                    eprintln!(
+                        "P1_NATIVE_GIT_APPLY=ENV_BLOCKED workspace_checkpoint::git_apply could \
+                         not run git under the broker ({detail}); this is NOT a pass"
+                    );
+                    return;
+                }
+                eprintln!(
+                    "P1_NATIVE_GIT_APPLY=FAIL workspace_checkpoint::git_apply failed: {detail}"
+                );
+                panic!("P1-G checkpoint git apply failed on an unconfined-capable host: {detail}");
+            }
+        }
+    }
+}

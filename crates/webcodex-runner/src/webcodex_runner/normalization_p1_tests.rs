@@ -440,12 +440,25 @@ fn d_external_filesystem_is_denied() {
 ///
 /// 1. bind `127.0.0.1:<port>` in the test process — `LISTENER_BOUND`;
 /// 2. connect to it from an **unsandboxed** child — `UNSANDBOXED_CONNECT_PASS`;
-///    this is the control that proves the listener is real and reachable;
-/// 3. only then connect from the **production** `run_shell` path —
+/// 3. prove the listener is *still* listening — `LISTENER_STILL_LIVE_BEFORE_SANDBOX`;
+/// 4. only then connect from the **production** `run_shell` path —
 ///    `SANDBOX_PROCESS_STARTED`, then `SANDBOX_CONNECT_DENIED`.
 ///
-/// A PASS requires all four. If step 1 or 2 fails there is nothing to measure,
-/// so the case reports `TEST_BLOCKED` and never `PASS`.
+/// A PASS requires all five.
+///
+/// # Why the listener must be owned by the parent
+///
+/// An earlier version moved the `TcpListener` into a thread that accepted the
+/// unsandboxed control connection and then exited. That dropped the listener
+/// **before** the sandboxed measurement, so the sandboxed connect hit a closed
+/// port — and an entirely unconfined process would also have been refused. The
+/// case therefore false-passed: it could not tell "the profile denied network"
+/// from "nothing is listening any more".
+///
+/// So the listener stays in the parent, and step 3 re-probes liveness with a
+/// second unsandboxed connect immediately before the sandboxed attempt. If the
+/// listener were dropped at any point, that probe fails and the case reports
+/// `TEST_BLOCKED` instead of a vacuous PASS.
 #[test]
 fn e_network_is_denied_with_a_positive_control() {
     let project = Project::new();
@@ -472,55 +485,55 @@ fn e_network_is_denied_with_a_positive_control() {
         return;
     }
 
-    // The listener must outlive the control client, and accept exactly one
-    // connection so the test never blocks on its own backlog.
-    let accept_handle = std::thread::spawn(move || {
-        let _ = listener.accept();
-    });
+    // Phase A: the unsandboxed positive control. The listener is borrowed, not
+    // moved, so it stays owned by this frame and remains open afterwards.
+    if let Some(reason) = unsandboxed_connect_fails(port, "UNSANDBOXED_CONNECT_PASS") {
+        report(
+            "P1_NATIVE_NETWORK_DENY",
+            NativeOutcome::Confirmed,
+            false,
+            &format!("UNSANDBOXED_CONNECT_PASS=false {reason}"),
+        );
+        return;
+    }
 
-    // Control step: an unsandboxed child must reach the listener. If this
-    // fails, the measurement below would be meaningless, so it is a hard stop
-    // rather than something to interpret.
-    let control_script = format!(
-        "exec 3<>/dev/tcp/127.0.0.1/{port} 2>/dev/null && echo CONTROL_CONNECTED || echo CONTROL_REFUSED"
-    );
-    let control = std::process::Command::new("/bin/sh")
-        .arg("-c")
-        .arg(&control_script)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .output();
-    let control_text = match control {
-        Ok(output) => String::from_utf8_lossy(&output.stdout).into_owned(),
-        Err(error) => {
-            let _ = accept_handle.join();
-            report(
-                "P1_NATIVE_NETWORK_DENY",
-                NativeOutcome::Confirmed,
-                false,
-                &format!("UNSANDBOXED_CONNECT_PASS=false control spawn failed: {error}"),
-            );
-            return;
-        }
-    };
-    if !control_text.contains("CONTROL_CONNECTED") {
-        let _ = accept_handle.join();
+    // Phase B: prove the listener is still live. This is the regression guard for
+    // the dropped-listener bug: if the socket were closed by now, this probe
+    // fails and the case stops rather than reporting a vacuous denial.
+    //
+    // The probe connection is drained by a short-lived accept on the borrowed
+    // listener, so the listen backlog is not left holding a pending connection.
+    if let Err(error) = listener.set_nonblocking(true) {
+        report(
+            "P1_NATIVE_NETWORK_DENY",
+            NativeOutcome::Confirmed,
+            false,
+            &format!("LISTENER_STILL_LIVE_BEFORE_SANDBOX=false cannot probe listener: {error}"),
+        );
+        return;
+    }
+    let still_live =
+        unsandboxed_connect_fails(port, "LISTENER_STILL_LIVE_BEFORE_SANDBOX").is_none();
+    // Accept whatever the liveness probe queued, so the measurement below faces
+    // a listener with an empty backlog.
+    let _ = listener.accept();
+    if !still_live {
         report(
             "P1_NATIVE_NETWORK_DENY",
             NativeOutcome::Confirmed,
             false,
             &format!(
-                "UNSANDBOXED_CONNECT_PASS=false the unsandboxed control could not reach the \
-                 listener on port {port}, so a denial below would prove nothing: {:?}",
-                control_text.trim()
+                "LISTENER_STILL_LIVE_BEFORE_SANDBOX=false the listener stopped accepting between \
+                 the positive control and the sandboxed measurement on port {port}; a sandboxed \
+                 refusal would prove nothing"
             ),
         );
         return;
     }
-    let _ = accept_handle.join();
 
-    // Measurement step: the same connect, through the production path.
+    // Phase C: the same connect, through the production path. It must be
+    // refused, and it must NOT be accepted by the listener — a sandboxed
+    // process that reached the listener would mean the profile leaked.
     let sandbox_script = format!(
         "exec 3<>/dev/tcp/127.0.0.1/{port} 2>/dev/null && echo SANDBOX_CONNECTED || \
          echo SANDBOX_REFUSED"
@@ -528,16 +541,100 @@ fn e_network_is_denied_with_a_positive_control() {
     let (outcome, text, _) = run_production_shell(&project, &sandbox_script).expect("run");
     let reachable = text.contains("SANDBOX_CONNECTED");
     let refused = text.contains("SANDBOX_REFUSED");
+
+    // The listener must still be live *after* the sandboxed attempt too. If the
+    // sandboxed child had reached it, the socket would have accepted a second
+    // connection and this probe would find nothing to accept.
+    let listener_survived =
+        unsandboxed_connect_fails(port, "LISTENER_SURVIVED_SANDBOX_ATTEMPT").is_none();
+    let _ = listener.accept();
+
     report(
         "P1_NATIVE_NETWORK_DENY",
         outcome,
-        refused && !reachable,
+        refused && !reachable && listener_survived,
         &format!(
-            "LISTENER_BOUND=true UNSANDBOXED_CONNECT_PASS=true SANDBOX_PROCESS_STARTED={} \
-             SANDBOX_CONNECT_DENIED={refused} reachable={reachable} stdout={:?}",
+            "LISTENER_BOUND=true UNSANDBOXED_CONNECT_PASS=true \
+             LISTENER_STILL_LIVE_BEFORE_SANDBOX={still_live} SANDBOX_PROCESS_STARTED={} \
+             SANDBOX_CONNECT_DENIED={refused} LISTENER_SURVIVED_SANDBOX_ATTEMPT={listener_survived} \
+             reachable={reachable} stdout={:?}",
             matches!(outcome, NativeOutcome::Confirmed),
             text.trim()
         ),
+    );
+}
+
+/// Connect to `127.0.0.1:<port>` from an **unsandboxed** `/bin/sh` child.
+///
+/// Returns `Err(reason)` when the child could not be spawned or the connect did
+/// not succeed. Used both as the positive control and as the liveness probe
+/// around the sandboxed measurement, so the two phases are proven against the
+/// same live socket rather than against a remembered port number.
+fn unsandboxed_connect_fails(port: u16, label: &str) -> Option<String> {
+    let script = format!(
+        "exec 3<>/dev/tcp/127.0.0.1/{port} 2>/dev/null && echo CONTROL_CONNECTED || echo CONTROL_REFUSED"
+    );
+    let output = std::process::Command::new("/bin/sh")
+        .arg("-c")
+        .arg(&script)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .output();
+    match output {
+        Ok(output) => {
+            let text = String::from_utf8_lossy(&output.stdout).into_owned();
+            if text.contains("CONTROL_CONNECTED") {
+                None
+            } else {
+                Some(format!(
+                    "{label}=false an unsandboxed child could not reach the listener on port \
+                     {port}: {:?}",
+                    text.trim()
+                ))
+            }
+        }
+        Err(error) => Some(format!("{label}=false control spawn failed: {error}")),
+    }
+}
+
+/// **Regression guard for the dropped-listener false-pass.** The network case
+/// trusts `LISTENER_STILL_LIVE_BEFORE_SANDBOX` to distinguish "the profile denied
+/// network" from "nothing is listening any more". That trust is only sound if the
+/// liveness probe actually *fails* on a closed port. This pins both directions on
+/// a real socket, with no sandbox involved, so the guard cannot rot into a
+/// tautology:
+///
+/// * a live listener is reachable, so the probe reports no failure;
+/// * the same port, after the listener is dropped, is refused, so the probe
+///   reports a failure — which is exactly what makes case E stop instead of
+///   printing a vacuous `SANDBOX_CONNECT_DENIED=true`.
+///
+/// Without the second half, an earlier build that moved the listener into a
+/// short-lived accept thread passed this gate: the port was closed, every
+/// connect was refused, and the denial looked like proof.
+#[test]
+fn liveness_probe_distinguishes_a_live_listener_from_a_dropped_one() {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind a loopback port");
+    let port = listener.local_addr().expect("local addr").port();
+    assert_ne!(port, 0, "bind must assign a real port");
+
+    // Direction 1: while the listener is owned by this frame, the unsandboxed
+    // probe reaches it, so the helper reports no failure.
+    assert!(
+        unsandboxed_connect_fails(port, "LIVE_LISTENER").is_none(),
+        "a listener this process still owns must be reachable, otherwise the \
+         positive control in case E can never pass"
+    );
+
+    // Direction 2: drop it. The very same probe on the very same port must now
+    // report a failure — this is the condition case E has to catch.
+    drop(listener);
+    let refusal = unsandboxed_connect_fails(port, "DROPPED_LISTENER")
+        .expect("a dropped listener must be reported as unreachable");
+    assert!(
+        refusal.contains("DROPPED_LISTENER=false"),
+        "the failure reason must name the probe that failed, got: {refusal}"
     );
 }
 

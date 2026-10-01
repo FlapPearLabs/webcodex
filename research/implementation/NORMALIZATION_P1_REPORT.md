@@ -7,11 +7,32 @@
 - **Closure HEAD:** `739ac79e16f913ccc18d89c21d78e557988489fc` (the branch is created from this
   baseline; the closure delta is the set of commits on `fix/webcodex-execution-normalization-p1-closure`
   above this SHA)
-- **Scope:** P1 local execution core + the closure defects GPT identified
+- **Scope:** P1 local execution core + the closure defects GPT identified + the harness-trustworthiness fixes
 - **P1_CLOSURE_STATUS:** `PARTIAL` (defects #1–#5 and #7 closed; #6 — detached durable payload — recorded as blocked, not solved)
-- **P1_CORE_LOCAL_NORMALIZATION:** `PASS`
+- **P1_STATUS:** `PARTIAL`
 - **P1B_REQUIRED:** `YES`
+- **P1_CORE_LOCAL_NORMALIZATION:** `PASS`
 - **READY_FOR_NORMALIZATION / READY_FOR_P2:** `NO` — see §11
+
+### Harness-trustworthiness round (role `WEBCODEX_P1_CLOSURE_HARNESS_FIXER`)
+
+This round changes **no** production behaviour. It fixes five defects in the evidence and reporting
+that the previous round's own conclusions rested on — i.e. it makes the gate capable of failing.
+
+| # | Defect | Fix |
+|---|---|---|
+| 1 | Network gate could **false-pass**: the `TcpListener` was moved into an accept thread that exited before the sandboxed measurement, so the sandboxed connect met a *closed* port — which an unconfined process would also have met | listener stays parent-owned; liveness re-probed before **and** after the sandboxed attempt; new deterministic test pins both directions (§4.1) |
+| 2 | Native script collapsed two suites into one `PIPESTATUS[0]`, so a failing runner suite plus a passing workspace suite read as `rc=0` | two independent invocations, `P1_RUNNER_TEST_RC` / `P1_WORKSPACE_TEST_RC`, both required for `P1_NATIVE_ALL_PASS`; rule verified by a host-independent `--self-check` (§6.4.1) |
+| 3 | `P1_NATIVE_GIT_APPLY` was emitted by `git_broker`'s own fidelity test, which never enters the checkpoint layer — so "the checkpoint path is covered" was an unestablished claim | new in-module `#[cfg(test)]` case drives the **private** `workspace_checkpoint::git_apply` against a real repo and patch; broker test demoted to informational `P1_NATIVE_GIT_BROKER_FIDELITY` (§6.1.1) |
+| 4 | `run_pyright`'s second parameter was named `authority_root` while both `run_bounded` and every call site treat it as the **project registry directory** — a name that invites a future maintainer to pass a project root, which silently makes every validation spawn refuse | renamed `project_registry_dir`, with a comment stating that it is a registry directory and not a project root (§2.5) |
+| 5 | Target accounting mixed *target categories* with *launch sites*, reported `P1_REQUESTED_TARGETS_BLOCKED=0` while a blocked category existed, and claimed a repo-wide unrouted count (`=4`) that the same report contradicted | `P1_REQUESTED_TARGETS_TOTAL=6 / ROUTED=5 / BLOCKED=1`, `P1_ROUTED_PRODUCTION_LAUNCH_SITES=7` measured separately, and `TOTAL_KNOWN_MODEL_TRIGGERED_UNROUTED_SURFACES=NOT_FULLY_ENUMERATED` with all nine named surfaces listed (§5, §5.1) |
+
+Defect 3 also retires a specific false statement: an earlier version of this report asserted
+`REAL_CHECKPOINT_GIT_APPLY_PATH=YES` on the strength of the broker test. That assertion was wrong —
+the broker test never calls the checkpoint wrapper — and it is withdrawn. The checkpoint path is now
+covered by a test that actually enters it (§6.1.1).
+
+Status is unchanged and deliberately not upgraded: `P1_STATUS=PARTIAL`, `P1B_REQUIRED=YES`.
 
 ---
 
@@ -253,12 +274,33 @@ control** rather than a dead port:
 1. the test process binds `127.0.0.1:<random port>` — `LISTENER_BOUND`;
 2. an **unsandboxed** child connects to it — `UNSANDBOXED_CONNECT_PASS`; this proves the listener is
    real and reachable, so a subsequent denial is meaningful;
-3. only then does the **production** `run_shell` path run the same connect — `SANDBOX_PROCESS_STARTED`,
-   then `SANDBOX_CONNECT_DENIED`.
+3. the listener is re-probed with a second unsandboxed connect —
+   `LISTENER_STILL_LIVE_BEFORE_SANDBOX`;
+4. only then does the **production** `run_shell` path run the same connect — `SANDBOX_PROCESS_STARTED`,
+   then `SANDBOX_CONNECT_DENIED`;
+5. after the sandboxed attempt the listener is probed once more —
+   `LISTENER_SURVIVED_SANDBOX_ATTEMPT`.
 
-A PASS requires all four. If step 1 or 2 fails there is nothing to measure, so the case reports
-`TEST_BLOCKED` (never PASS). This removes the prior bug where `exec 3<>/dev/tcp/127.0.0.1/1` "passed"
-on any host because port 1 is closed whether or not a sandbox exists.
+A PASS requires all five. If step 1, 2 or 3 fails there is nothing to measure, so the case reports
+the failure and never a vacuous `SANDBOX_CONNECT_DENIED=true`.
+
+#### Why steps 3 and 5 exist: a real false-pass, found and closed
+
+An earlier version moved the `TcpListener` **into a thread** that accepted the unsandboxed
+positive-control connection and then exited. That dropped the listener **before** the sandboxed
+measurement. The sandboxed child therefore met a *closed* port — and so would an entirely
+unconfined process, because the port was closed for everybody. The case could not distinguish
+"the profile denied network" from "nothing is listening any more", and it **false-passed**.
+
+The fix is that the listener is owned by the parent frame for the whole test and never moved, with
+steps 3 and 5 as the regression guard. The guard is itself pinned by a separate deterministic test,
+`liveness_probe_distinguishes_a_live_listener_from_a_dropped_one`, which asserts both directions on
+a real socket with no sandbox involved: a listener this process still owns **is** reachable, and the
+same port after `drop` **is not**. Without the second half the guard would be a tautology — a probe
+that could not fail would prove nothing.
+
+This removes the prior bug where `exec 3<>/dev/tcp/127.0.0.1/1` "passed" on any host because port 1
+is closed whether or not a sandbox exists.
 
 ---
 
@@ -269,61 +311,85 @@ rolled-up `P1_REMAINING_MODEL_TRIGGERED_COUNT=4` is **replaced** by the five sep
 closure requires, each named individually.
 
 ```text
-P1_REQUESTED_TARGETS_TOTAL=10
-P1_REQUESTED_TARGETS_ROUTED=6
-P1_REQUESTED_TARGETS_BLOCKED=0
-RUNNER_LOCAL_REMAINING_COUNT=4
-TOTAL_KNOWN_MODEL_TRIGGERED_UNROUTED_SURFACES=4
+P1_REQUESTED_TARGETS_TOTAL=6
+P1_REQUESTED_TARGETS_ROUTED=5
+P1_REQUESTED_TARGETS_BLOCKED=1
+P1_ROUTED_PRODUCTION_LAUNCH_SITES=7
+TOTAL_KNOWN_MODEL_TRIGGERED_UNROUTED_SURFACES=NOT_FULLY_ENUMERATED
 ```
 
-(The breakdown below names every target so the totals are auditable; a surface that disappears or
-appears silently would make these numbers wrong, and `known_unrouted_surfaces_are_still_present_and_named`
-asserts the remaining ones still exist in source.)
+**The two units are different and must not be mixed.** `P1_REQUESTED_TARGETS_*` counts the six
+*target categories* the P1 request named. `P1_ROUTED_PRODUCTION_LAUNCH_SITES` counts the concrete
+production call sites that reach the broker at this commit. One category can carry several launch
+sites (`run_shell` alone has two), and one launch site can be reached from more than one category.
+Reporting a launch-site count as a target count — or the reverse — is what made the previous version
+of this section wrong.
 
-**Requested (10) = routed (6) + runner-local remaining (4).** Every production call site reaching the
-broker:
+**Requested targets (6) = routed (5) + blocked (1).** Each category named, with the launch sites
+measured underneath it:
 
-| # | Site | Path |
-|---|---|---|
-| 1 | `shell.rs:3112` | `run_shell` main execution (single launch site for all `configured_*_shell_command` builders, prepared/explicit/job/validation variants) |
-| 2 | `job_manager.rs:3001` | local job start |
-| 3 | `job_manager.rs:3269` | local job queue advance |
-| 4 | `workspace_checkpoint.rs:357` | `git_output` |
-| 5 | `workspace_checkpoint.rs:396` | `git_apply` (high-priority P1 target) |
-| 6 | `project_context.rs:610` | `bounded_git_output` |
+| # | Requested target category | Status | Production launch sites reaching the broker |
+|---|---|---|---|
+| 1 | `run_shell` | ROUTED | 1 (`shell.rs:3184`) |
+| 2 | local jobs | ROUTED | 2 (`job_manager.rs:2999` start, `job_manager.rs:3266` queue advance) |
+| 3 | detached durable payload | **BLOCKED** | 0 — see §9 |
+| 4 | `workspace_checkpoint` git | ROUTED | 2 (`workspace_checkpoint.rs:357` `git_output`, `:396` `git_apply`) |
+| 5 | `project_context` git | ROUTED | 1 (`project_context.rs:610` `bounded_git_output`) |
+| 6 | validation execute | ROUTED | 1 (`validation/execute.rs:101`) |
 
-`local_execution.rs:311` is the chokepoint definition itself, not an additional path. `validation/execute.rs`
-is now routed too (§2.5); it is counted as part of the validated execution path, which is why
-`RUNNER_LOCAL_REMAINING_COUNT` is 4, not 5 — the old count double-counted it.
+`P1_ROUTED_PRODUCTION_LAUNCH_SITES=7` is the sum of the routed rows: 1 + 2 + 2 + 1 + 1. It was
+measured by enumerating production call sites of `spawn_local_action` and `git_broker::run_git*`,
+excluding `#[cfg(test)]` modules and excluding the chokepoint's own definition
+(`local_execution.rs:309`). It is a launch-site count and must not be read as a target count.
 
-Note on what these 6 sites cover: because the shell command builders all converge on `shell.rs:3112`,
-one call site carries the `run_shell` main path, the prepared and explicit shell variants, the
-shell-job variants, and the validation-step variant. The count is of *launch sites reaching the broker*,
-not of command variants — those are pinned by the structural guard in §6.2, which names each routed
-builder function individually.
+The single blocked category is the **detached durable payload**. It is not routed, not approximated,
+and not counted as routed: `DETACHED_DURABLE_NORMALIZATION = BLOCKED_PROCESS_OWNERSHIP` (§9). The
+previous `P1_REQUESTED_TARGETS_BLOCKED=0` was wrong on its face — a blocked category existed and was
+being reported as zero.
+
+Note on what these sites cover: because the shell command builders all converge on
+`shell.rs:3184`, one call site carries the `run_shell` main path, the prepared and explicit shell
+variants, the shell-job variants, and the validation-step variant. The count is of *launch sites
+reaching the broker*, not of command variants — those are pinned by the structural guard in §6.2,
+which names each routed builder function individually.
 
 `project_context.rs:1125` also calls `git_broker::run_git`, but it sits inside a `#[cfg(test)]` module
 and is excluded from this count.
 
-**Runner-local remaining (4), each named and each out of P1 scope by the accepted scope statement:**
+### 5.1 Known model-triggered surfaces still NOT routed
 
-| # | Site | Function | Why not routed |
-|---|---|---|---|
-| 1 | `shell.rs:1253` | `run_prepare_command` | Runs a user-configured shell profile's `init_script`. Authority is the profile configuration, not a model-authored command; cwd is profile-owned. |
-| 2 | `shell.rs:1460` | `capture_profile_env_snapshot` | Runner-owned control-plane probe (reads the environment a profile would produce). |
-| 3 | `shell.rs:1657` | Tool Plugin launcher (`get_or_prepare`) | P1 excludes plugin/MCP provider processes. |
-| 4 | `job_manager.rs:3462` | `start_ssh_shell_job` | P1 excludes SSH / `remote_shell`. |
+`TOTAL_KNOWN_MODEL_TRIGGERED_UNROUTED_SURFACES=NOT_FULLY_ENUMERATED` replaces the previous
+`=4`. That number was a false count: it was derived from the Runner-local list only, while the same
+report named several further unrouted surfaces (detached payload, persistent interactive shell, LSP,
+browser/CDP, coding-agent children). A repo-wide count that the report itself contradicts is worse
+than no count. Every surface named anywhere in this report is listed below; the enumeration is
+**not claimed to be complete**, and precision is preferred over a fabricated total.
 
-Plus, outside the Runner's local-execution surface entirely: the **detached durable payload**
-(`detached_job.rs`) — see §9, `DETACHED_DURABLE_NORMALIZATION = BLOCKED_PROCESS_OWNERSHIP`; the
-persistent interactive shell, LSP, browser/CDP, and `coding_agent`/Hermes/Codex children.
+Model-triggered, unrouted, named:
 
-These four are **asserted to still exist** by `known_unrouted_surfaces_are_still_present_and_named`,
-so this list cannot silently drift. Note: that test now **asserts the absence** of
-`RUNTIME_COMPATIBILITY_TODO` from `validation/execute.rs` (it is routed), and asserts the *presence*
-of the detached-payload spawn error string (it is still unrouted). The two were previously
-contradictory; the contradiction is resolved by removing validation from the unrouted list in the same
-change that routed it.
+1. **Detached durable payload** — `detached_job.rs`. Requested target category #3; blocked
+   (`BLOCKED_PROCESS_OWNERSHIP`, §9).
+2. **Persistent interactive shell** — `shell.rs:1253` `run_prepare_command` (profile `init_script`;
+   authority is the profile configuration, not a model-authored command).
+3. **Profile environment snapshot** — `shell.rs:1460` `capture_profile_env_snapshot` (Runner-owned
+   control-plane probe).
+4. **Tool Plugin / MCP provider launcher** — `shell.rs:1657` `get_or_prepare`. P1 excludes plugin/MCP
+   provider processes by scope.
+5. **SSH / remote shell jobs** — `job_manager.rs:3462` `start_ssh_shell_job`. P1 excludes SSH.
+6. **LSP** — language-server child processes; excluded by scope.
+7. **Browser / CDP** — browser and Chrome DevTools Protocol drivers; excluded by scope.
+8. **Coding-agent children** — `coding_agent.rs` ACP/Hermes/Codex child processes; excluded by scope.
+9. **Project catalog / managed-worktree git** — `projects/catalog.rs:361` `run_git_bounded_with_program`
+   spawns `Command::new(program)` **directly**, without the broker. Callers include
+   `projects/lifecycle.rs:681` (`git init`), `projects/managed_worktree.rs:91,103,870`. This is
+   Runner-owned project management rather than a model-authored command, which is why it is not one
+   of the six requested targets — but it is a real git surface that is **not** broker-routed, and
+   the earlier report did not name it at all.
+
+Items 2–5 are asserted still present by `known_unrouted_surfaces_are_still_present_and_named`, so
+that list cannot silently drift. That test also asserts the *absence* of `RUNTIME_COMPATIBILITY_TODO`
+from `validation/execute.rs` (it is routed) and the *presence* of the detached-payload spawn error
+string (it is still unrouted).
 
 ---
 
@@ -339,7 +405,8 @@ change that routed it.
 | P1-D | A file outside the workspace is not readable | `normalization_p1_tests.rs` → `P1_NATIVE_EXTERNAL_DENY` |
 | P1-E | Network is denied, with a positive control | `normalization_p1_tests.rs` → `P1_NATIVE_NETWORK_DENY` |
 | P1-F | Descendants inherit the profile (grandchild cannot escape) | `normalization_p1_tests.rs` → `P1_NATIVE_DESCENDANT` |
-| P1-G | `git apply` applies a real patch through the broker, semantics preserved | `git_broker.rs` → `P1_NATIVE_GIT_APPLY` |
+| P1-G | The **checkpoint wrapper** `workspace_checkpoint::git_apply` applies a real patch through `git_broker` → `ExecutionBroker`, semantics preserved | `workspace_checkpoint.rs` (in-module `#[cfg(test)]`) → `P1_NATIVE_GIT_APPLY` |
+| P1-G′ | Broker-level `git apply` fidelity, **without** the checkpoint layer | `git_broker.rs` → `P1_NATIVE_GIT_BROKER_FIDELITY` (informational, not the P1-G gate) |
 | P1-H | The git helper gains no authority beyond the project root | `git_broker.rs` |
 | P1-I | Validation execute is now routed; no `Command::new(` / `ManagedChild::spawn(` in production region | `normalization_p1_tests.rs` |
 | P1-J | Missing trusted context fails before process creation with a stable code | `normalization_p1_tests.rs` |
@@ -349,6 +416,44 @@ change that routed it.
 
 P1-G and P1-H live in `webcodex-workspace` on purpose: the git broker is `pub(crate)` there, and a
 test that reimplemented it would prove nothing about the code that ships.
+
+### 6.1.1 Why P1-G is measured at the checkpoint wrapper, not at the broker
+
+The broker's own test drives `git_broker::run_git` directly. That proves two links of the chain —
+`git_broker` → `ExecutionBroker` — and fidelity of git patch semantics underneath the broker. It
+proves **nothing** about the layer the model actually reaches, because it never enters
+`workspace_checkpoint` at all:
+
+```text
+model-authored patch
+  → workspace_checkpoint::git_apply     ← argv assembly, stdin payload, success/failure reading
+    → git_broker::run_git                ← plan derivation, trusted-root resolution
+      → ExecutionBroker                  ← profile compilation, launcher
+        → sandbox-exec → git
+```
+
+A claim that the checkpoint path is covered by the broker's test is **not** established by that test.
+`git_apply` is also `private`, so an external integration test could not call it even in principle.
+
+The gate is therefore measured by `workspace_checkpoint::tests::checkpoint_git_apply_applies_a_real_patch_through_the_broker`,
+an in-module `#[cfg(test)]` case that calls the private `git_apply(root, &[], patch)` directly against
+a real throwaway git repository and a real textual patch, then asserts the patched file is on disk with
+the expected bytes — `Ok(())` alone is not accepted as success. `git_apply` stays private: promoting it
+to `pub` so a test could reach it would add an outward-facing surface for no production reason.
+
+The three outcomes are never collapsed:
+
+| Observation | Verdict |
+|---|---|
+| patch applied, file bytes match | `PASS` |
+| git started and rejected the patch | `FAIL`, and the test fails |
+| launcher or kernel refused; git never ran under the profile | `ENV_BLOCKED` |
+
+`ENV_BLOCKED` is not a pass and is never converted into one. On a host that refuses `sandbox_apply`,
+this case establishes nothing — which is exactly what it reports. The lower-level broker fidelity test
+is retained and still run, but it now emits its own marker,
+`P1_NATIVE_GIT_BROKER_FIDELITY`, so a green broker test can never be mistaken for evidence about the
+checkpoint layer.
 
 ### 6.2 Structural anti-bypass guard
 
@@ -394,12 +499,85 @@ cargo fmt --check       clean
 cargo check             clean (webcodex-process, webcodex-runner, webcodex-workspace)
 webcodex-process        38 + 15 + 3 passed, 0 failed
 webcodex-workspace      72 passed, 0 failed        (63 at baseline + 9 new)
-runner normalization_p1 14 passed, 0 failed
+runner normalization_p1 15 passed, 0 failed       (14 at closure + 1 liveness regression guard)
 runner validation       59 passed, 0 failed
+bash -n native-normalization-p1.sh   clean
 git diff --check        clean
-secret scan             no credentials in the diff (matches are the denylist
-                        names in comments and the P1-K placeholder values)
+secret scan             no credentials in the diff
 ```
+
+On this host the native-facing cases report `ENV_BLOCKED` — the host refuses `sandbox_apply`, so no
+profile was ever applied and nothing was confirmed. That is the correct, non-pass result; see §7.
+
+**Toolchain note (measured, not assumed).** The `webcodex-runner` test build fails to compile under
+the Homebrew `rustc 1.94.0` that comes first on this machine's `PATH`:
+
+```text
+error[E0658]: use of unstable library feature `atomic_try_update`
+   --> crates/webcodex-runner/src/webcodex_runner/coding_agent.rs:261
+```
+
+That call site is inside a `#[cfg(test)]` block in a file this work does not touch, and the failure
+is a toolchain-version artefact, not a defect introduced here: `AtomicU32::try_update` is accepted by
+the rustup toolchains on this machine (`1.95.0`, `1.98.1`) and rejected by Homebrew's `1.94.0`. All
+results above were produced with `PATH="$HOME/.cargo/bin:$PATH"`. This is recorded rather than
+silently worked around, because "the suite does not build" and "the suite is red" are different
+facts and only one of them is a code problem.
+
+### 6.4.1 The native smoke script aggregates two suites, not one pipeline
+
+`research/spikes/native-normalization-p1.sh` runs two suites and captures **two independent exit
+codes**:
+
+```text
+P1_RUNNER_TEST_RC=<rc>
+P1_WORKSPACE_TEST_RC=<rc>
+```
+
+and `P1_NATIVE_ALL_PASS=true` requires **all** of:
+
+1. `RUNNER_RC == 0`, **and**
+2. `WORKSPACE_RC == 0`, **and**
+3. every required `P1_NATIVE_*` marker reported `PASS`, **and**
+4. `ENV_BLOCKED == 0`.
+
+#### The bug this fixes
+
+The previous version ran both suites inside one subshell and read a single code:
+
+```bash
+( cargo test RUNNER ; cargo test WORKSPACE ) | tee "$RUN_LOG"
+TEST_RC="${PIPESTATUS[0]}"
+```
+
+`PIPESTATUS[0]` is the exit status of the **subshell**, which is the status of its *last* command. A
+runner suite that failed every case, followed by a workspace suite that passed, yields `TEST_RC=0`.
+The gate would then report the *absence of a later failure* as a pass — the most dangerous possible
+reading, because the runner suite is the one that carries the production `run_shell` confinement
+cases. The two suites are now separate commands with separate statuses, so neither can mask the other.
+
+#### The aggregation rule is itself tested
+
+`all_pass` is not trusted because it looks correct. `bash research/spikes/native-normalization-p1.sh --self-check`
+exercises it with no cargo, no sandbox and no host dependency, and fails if any of these is accepted:
+
+* `runner rc=1` with `workspace rc=0` — the exact defect above;
+* `workspace rc=1`;
+* a non-`PASS` marker;
+* `ENV_BLOCKED=1`;
+* both suites failing.
+
+It also asserts the inverse — that a genuinely clean `(0, 0, 0, 0)` **is** accepted — so the rule
+cannot be trivially "always false". The full run aborts with exit 2 if the self-check does not hold,
+rather than reporting a verdict derived from an unverified rule. Measured on this host:
+
+```text
+SELF-CHECK PASSED: ALL_PASS requires RUNNER_RC=0 AND WORKSPACE_RC=0 AND no failures AND no ENV_BLOCKED
+```
+
+The script also runs the broker-level fidelity test alongside the checkpoint-wrapper test and reports
+it as `P1_NATIVE_GIT_BROKER_FIDELITY`, explicitly marked informational, so it is never counted
+toward `P1_NATIVE_ALL_PASS`.
 
 ### 6.5 An honest note on 9 workspace tests
 

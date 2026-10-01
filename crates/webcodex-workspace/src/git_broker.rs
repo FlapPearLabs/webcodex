@@ -534,8 +534,18 @@ mod tests {
             .unwrap_or(false)
     }
 
-    /// **P1-G** `git apply` still applies a real patch with git patch semantics
-    /// unchanged, through the broker.
+    /// **P1-G, broker half.** `git apply` still applies a real patch with git
+    /// patch semantics unchanged, through the broker.
+    ///
+    /// This is **fidelity only**: it drives `git_broker::run_git` directly. It
+    /// does not touch `workspace_checkpoint::git_apply`, so it cannot speak for
+    /// the checkpoint-wrapper path the model reaches in production — that half
+    /// is covered by `workspace_checkpoint`'s own
+    /// `checkpoint_git_apply_applies_a_real_patch_through_the_broker`. The
+    /// verdict therefore carries its own marker
+    /// (`P1_NATIVE_GIT_BROKER_FIDELITY`), never `P1_NATIVE_GIT_APPLY`, so a
+    /// passing broker test can never be mistaken for evidence about the
+    /// checkpoint layer.
     ///
     /// The gate is **routing plus fidelity**, not confinement. Two hosts
     /// produce a non-applying run and they must not be confused:
@@ -570,7 +580,8 @@ mod tests {
                     // Emit the machine-readable verdict *before* the assertion, so
                     // a genuine mismatch still shows up in the smoke log.
                     eprintln!(
-                        "P1_NATIVE_GIT_APPLY=PASS git apply applied the patch through the broker"
+                        "P1_NATIVE_GIT_BROKER_FIDELITY=PASS git apply applied the patch through \
+                         the broker (lower-level fidelity only; NOT the checkpoint-wrapper path)"
                     );
                     assert_eq!(
                         std::fs::read_to_string(repo.path().join("added.txt")).unwrap(),
@@ -582,7 +593,7 @@ mod tests {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 if is_profile_refusal(&output.stderr) {
                     eprintln!(
-                        "P1_NATIVE_GIT_APPLY=ENV_BLOCKED broker launched but the kernel \
+                        "P1_NATIVE_GIT_BROKER_FIDELITY=ENV_BLOCKED broker launched but the kernel \
                          refused the profile ({stderr}); this is NOT a pass"
                     );
                     assert!(
@@ -591,14 +602,14 @@ mod tests {
                     );
                     return;
                 }
-                eprintln!("P1_NATIVE_GIT_APPLY=FAIL git apply failed: {stderr}");
+                eprintln!("P1_NATIVE_GIT_BROKER_FIDELITY=FAIL git apply failed: {stderr}");
                 panic!("P1-G git apply failed on an unconfined-capable host: {stderr}");
             }
             // The launcher never started a process: fail-closed, and still not a
             // statement about patch semantics.
             Err(refusal) => {
                 eprintln!(
-                    "P1_NATIVE_GIT_APPLY=ENV_BLOCKED broker refused to launch git ({refusal})"
+                    "P1_NATIVE_GIT_BROKER_FIDELITY=ENV_BLOCKED broker refused to launch git ({refusal})"
                 );
                 assert_eq!(refusal.code, "git_spawn_refused");
             }

@@ -20,16 +20,23 @@ const ADAPTER_ID: &str = "pyright";
 
 /// Run the pyright adapter under the P1-normalized execution path.
 ///
-/// `authority_root` is the trusted project root the caller vouches for — the
-/// registered project from the Runner's registry, passed down from the request
-/// handler. It is *not* derived here from `request.cwd` or from `project_root`
-/// alone: the caller owns the trust decision, and this layer only forwards it to
-/// the broker. `None` means the caller has no trusted authority, in which case
-/// the broker refuses and the response reports a spawn failure rather than
-/// running unconfined.
+/// # `project_registry_dir` is a registry *directory*, not a project root
+///
+/// It is the Runner's project-registry directory — a directory of `<name>.toml`
+/// project files — passed down from the request handler, which owns the trust
+/// decision. This layer only forwards it to the broker.
+///
+/// The name matters, and the previous name (`authority_root`) was actively
+/// misleading: it invited a future maintainer to "fix" the call by handing over
+/// the project root, which resolves no registered project at all and makes every
+/// validation spawn refuse. `project_root` above is that project root; the two
+/// are different things and must not be conflated.
+///
+/// `None` means the caller has no registry, in which case the broker refuses and
+/// the response reports a spawn failure rather than running unconfined.
 pub(crate) fn run_pyright(
     project_root: &Path,
-    authority_root: Option<&Path>,
+    project_registry_dir: Option<&Path>,
     request: &ValidationBridgeRequest,
     max_timeout_secs: u64,
     shutdown: Option<&AtomicBool>,
@@ -79,7 +86,14 @@ pub(crate) fn run_pyright(
         }
     }
 
-    let captured = run_bounded(&program, &args, &cwd, authority_root, timeout, shutdown);
+    let captured = run_bounded(
+        &program,
+        &args,
+        &cwd,
+        project_registry_dir,
+        timeout,
+        shutdown,
+    );
     let mut response = base_response(request, true);
     response.command_started = captured.spawn_error.is_none();
     response.duration_ms = captured.duration_ms;
