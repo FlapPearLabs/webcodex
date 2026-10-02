@@ -211,7 +211,11 @@ pub(crate) fn run_git(
     input: Option<&[u8]>,
     timeout: Option<std::time::Duration>,
 ) -> Result<GitOutput, GitRefusal> {
-    let git = BrokeredGit::spawn(root, args, input, GitStreams::BothPiped)?;
+    // `None` means "no caller budget", which is a different statement from "a
+    // budget this large": an absent deadline still cannot leave an *internal*
+    // wait unbounded, so the probes below are bounded by their own constants.
+    let deadline = timeout.map(|budget| Instant::now() + budget);
+    let git = BrokeredGit::spawn(root, args, input, GitStreams::BothPiped, deadline)?;
     git.finish(timeout)
 }
 
@@ -228,7 +232,13 @@ pub(crate) fn run_git_bounded(
     max_bytes: usize,
     deadline: Instant,
 ) -> Result<BoundedGitCapture, GitRefusal> {
-    let git = BrokeredGit::spawn(root, args, None, GitStreams::StdoutOnlyBounded(max_bytes))?;
+    let git = BrokeredGit::spawn(
+        root,
+        args,
+        None,
+        GitStreams::StdoutOnlyBounded(max_bytes),
+        Some(deadline),
+    )?;
     git.finish_bounded(deadline)
 }
 
@@ -254,6 +264,13 @@ pub fn run_git_bounded_read(
     stderr_budget: usize,
     timeout: std::time::Duration,
 ) -> Result<BoundedGitRead, GitRefusal> {
+    // The deadline is established **here**, before anything else can block, and
+    // it is then threaded through every remaining step. Creating it after
+    // `spawn` — as this did before — left executable resolution and the
+    // candidate probes outside the caller's budget entirely: a probe that hung
+    // for eight seconds still returned `status = 0, timed_out = false` under a
+    // two-second timeout, because nothing was measuring the time it took.
+    let deadline = Instant::now() + timeout;
     let git = BrokeredGit::spawn(
         root,
         args,
@@ -262,8 +279,9 @@ pub fn run_git_bounded_read(
             stdout: stdout_budget,
             stderr: stderr_budget,
         },
+        Some(deadline),
     )?;
-    git.finish_bounded_read(Instant::now() + timeout)
+    git.finish_bounded_read(deadline)
 }
 
 /// Which of git's streams the caller needs.
@@ -320,6 +338,7 @@ fn brokered_git_spec(
     args: &[&str],
     input: Option<&[u8]>,
     streams: GitStreams,
+    deadline: Option<Instant>,
 ) -> Result<SpawnSpec, GitRefusal> {
     let plan = workspace_git_plan(root)?;
 
@@ -327,7 +346,12 @@ fn brokered_git_spec(
     // would be resolved through the sandboxed child's PATH, which the plan
     // does not grant. Resolving it here, in the trusted parent, keeps the
     // executable choice outside model influence.
-    let git = resolve_git_executable().ok_or_else(|| GitRefusal {
+    //
+    // Resolution runs **under the caller's deadline**. It launches processes —
+    // a repository fixture plus three metadata reads per candidate — so a
+    // candidate that hangs would otherwise spend unbounded time before the
+    // caller's budget even started counting.
+    let git = resolve_git_executable(deadline).ok_or_else(|| GitRefusal {
         code: "git_executable_unavailable",
         detail: "git could not be resolved from a trusted system prefix".to_string(),
     })?;
@@ -338,7 +362,7 @@ fn brokered_git_spec(
         GitStreams::BothStreamsBounded { .. } => (StreamPolicy::Piped, StreamPolicy::Piped),
     };
 
-    let spec = SpawnSpec::new(git, root.to_path_buf(), plan)
+    let spec = SpawnSpec::new(git.program.clone(), root.to_path_buf(), plan)
         .args(args.iter().map(std::ffi::OsString::from))
         // An explicit input payload is piped; its absence is an explicit EOF
         // source. Never inherit the caller's stdin, which may be a
@@ -365,11 +389,12 @@ fn brokered_git_spec(
     for (key, value, _why) in GIT_READ_PROFILE {
         spec = spec.env_var(*key, *value);
     }
-    // `xcrun` is how Apple's git shim finds a developer directory. Naming the
-    // resolved toolchain root explicitly is what lets a *real* git run under a
-    // profile that denies the shim its `xcrun` reach, without inheriting
-    // anything else from the host. `None` on a real-git host adds nothing.
-    Ok(match developer_dir_for(&spec.program) {
+    // `xcrun` is how Apple's git shim finds a developer directory, so a shim
+    // that cannot work without one is given exactly the directory the
+    // capability probe proved it needs. This is not re-derived from the binary
+    // — the probe already measured it, and the measurement is what travels here.
+    // `None` on a real-git host adds nothing at all.
+    Ok(match git.developer_dir {
         Some(developer_dir) => spec.env_var("DEVELOPER_DIR", developer_dir),
         None => spec,
     })
@@ -435,68 +460,45 @@ const GIT_READ_PROFILE: &[(&str, &str, &str)] = &[
     ),
 ];
 
-/// The `DEVELOPER_DIR` a shim git needs, or `None` when the resolved git is a
-/// real git that does not consult `xcrun` at all.
-///
-/// Naming a toolchain directory is not a privilege increase: the broker
-/// already grants read reach to the resolved toolchain root via
-/// [`Self::trusted_toolchain_for`], and this only tells git's own shim which
-/// directory that is instead of letting it search the filesystem for one.
-fn developer_dir_for(git: &Path) -> Option<std::ffi::OsString> {
-    // A real git resolves its own toolchain; a shim delegates to xcrun. Only
-    // the shim needs help, and only the shim can be identified by asking it.
-    if is_apple_shim(git) {
-        developer_dir().map(std::ffi::OsString::from)
-    } else {
-        None
-    }
-}
-
-/// Whether `git` is Apple's developer-tools shim rather than a real git.
-///
-/// The shim's give-away is that it resolves its toolchain through `xcrun`, so
-/// it reports an `xcrun`/`xcode-select` failure when the developer directory
-/// is missing or unreachable — while a real git never mentions either.
-fn is_apple_shim(git: &Path) -> bool {
-    const SHIM_MARKERS: &[&str] = &["xcrun", "xcode-select"];
-    std::process::Command::new(git)
-        .arg("--version")
-        .env_clear()
-        .env("PATH", "/usr/bin:/bin")
-        .env("HOME", git)
-        .env("DEVELOPER_DIR", "")
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::piped())
-        .output()
-        .ok()
-        .is_some_and(|probe| {
-            !probe.status.success() || {
-                let stderr = String::from_utf8_lossy(&probe.stderr).to_ascii_lowercase();
-                SHIM_MARKERS.iter().any(|marker| stderr.contains(marker))
-            }
-        })
-}
-
-/// The developer directory a shim git should be pointed at, discovered from the
-/// host rather than hardcoded.
+/// The developer directory a candidate git should be pointed at, discovered
+/// from the host rather than hardcoded.
 ///
 /// `xcode-select -p` is the host's own answer to "where are the developer
 /// tools". Reading it is not a grant: the path it returns is only useful to
 /// git if the broker also grants that root, and it does, as a toolchain root.
+///
+/// Bounded like every other host interaction here — a host that cannot answer
+/// this quickly is a host we do not want to keep waiting on.
 fn developer_dir() -> Option<String> {
-    let output = std::process::Command::new("/usr/bin/xcode-select")
+    let mut child = std::process::Command::new("/usr/bin/xcode-select")
         .arg("-p")
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
-        .output()
+        .spawn()
         .ok()?;
-    if !output.status.success() {
-        return None;
+    let deadline = Instant::now() + GIT_PROBE_TIMEOUT;
+    loop {
+        match child.try_wait() {
+            Ok(Some(_status)) => {
+                let output = child.wait_with_output().ok()?;
+                if !output.status.success() {
+                    return None;
+                }
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                return (!path.is_empty() && std::path::Path::new(&path).is_dir()).then_some(path);
+            }
+            Ok(None) => {
+                if Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return None;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+            Err(_) => return None,
+        }
     }
-    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    (!path.is_empty() && std::path::Path::new(&path).is_dir()).then_some(path)
 }
 
 impl BrokeredGit {
@@ -506,8 +508,9 @@ impl BrokeredGit {
         args: &[&str],
         input: Option<&[u8]>,
         streams: GitStreams,
+        deadline: Option<Instant>,
     ) -> Result<Self, GitRefusal> {
-        let spec = brokered_git_spec(root, args, input, streams)?;
+        let spec = brokered_git_spec(root, args, input, streams, deadline)?;
 
         let mut child = ExecutionBroker::new()
             .spawn_with_toolchain(&spec, &trusted_toolchain_for(&spec.program))
@@ -591,11 +594,11 @@ impl BrokeredGit {
                 // inherit the write end, so EOF is not implied by this status.
                 // Give the tree a bounded moment to clear it so the readers can
                 // finish normally; if it does not, terminate it, so the drain
-                // join below is bounded by [`DRAIN_TAIL_BUDGET`] instead of by
+                // join below is bounded by the remaining tail instead of by
                 // however long a descendant lives.
                 if self
                     .child
-                    .wait_tree_exit(DRAIN_TAIL_BUDGET)
+                    .wait_tree_exit(remaining_tail(deadline))
                     .unwrap_or(false)
                 {
                     break status;
@@ -673,20 +676,25 @@ impl BrokeredGit {
             std::thread::sleep(std::time::Duration::from_millis(2));
         };
 
+        // The drain tail is drawn from the caller's deadline, not granted afresh.
+        // Handing each stage its own `DRAIN_TAIL_BUDGET` let the tail add up: tree
+        // wait, then stdout, then stderr, so a request could finish up to three budgets
+        // past the deadline the caller agreed to. One shared tail, spent once, keeps
+        // "the whole operation is bounded" a single measurable claim.
+        let drain_budget = remaining_tail(deadline);
         let (stdout, stdout_drain_incomplete) =
-            join_reader_bounded(self.stdout, "stdout", DRAIN_TAIL_BUDGET);
+            join_reader_bounded(self.stdout, "stdout", drain_budget);
         let (stderr, stderr_drain_incomplete) =
-            join_reader_bounded(self.stderr, "stderr", DRAIN_TAIL_BUDGET);
+            join_reader_bounded(self.stderr, "stderr", drain_budget);
         // A drain that could not finish means the request outlived its budget in
         // the only way a caller cares about. Reporting `timed_out` here is what
         // stops a caller from treating a partial capture as a complete answer.
         let drain_incomplete = stdout_drain_incomplete || stderr_drain_incomplete;
         if drain_incomplete {
             eprintln!(
-                "webcodex-workspace: git reader drain exceeded {}ms after the child was \
-                 accounted for; reporting the capture as incomplete rather than blocking the \
-                 caller on a descendant-held pipe",
-                DRAIN_TAIL_BUDGET.as_millis()
+                "webcodex-workspace: git reader drain exceeded its {drain_budget:?} tail after \
+                 the child was accounted for; reporting the capture as incomplete rather than \
+                 blocking the caller on a descendant-held pipe"
             );
         }
 
@@ -798,6 +806,25 @@ fn spawn_reader<R: Read + Send + 'static>(
 /// observable degradation, the other is a hang.
 const DRAIN_TAIL_BUDGET: std::time::Duration = std::time::Duration::from_millis(250);
 
+/// The drain tail still available at `deadline`, never more than
+/// [`DRAIN_TAIL_BUDGET`].
+///
+/// Two properties matter, and both come from the same place:
+///
+/// * **Bounded.** A deadline already in the past yields a zero tail, so the
+///   readers are not joined at all rather than joined for another fixed period.
+///   Without this, every stage after an expired deadline would still be granted
+///   a fresh budget and the totals would accumulate past what the caller agreed
+///   to.
+/// * **Capped.** The tail never exceeds [`DRAIN_TAIL_BUDGET`], so a caller that
+///   allowed ten seconds does not silently get an unbounded cleanup window
+///   inside it — the git deadline and the cleanup deadline stay separate claims.
+fn remaining_tail(deadline: Instant) -> std::time::Duration {
+    deadline
+        .saturating_duration_since(Instant::now())
+        .min(DRAIN_TAIL_BUDGET)
+}
+
 /// Collect one drained pipe, giving up on it if it cannot finish in time.
 ///
 /// # Why the join is bounded
@@ -879,14 +906,59 @@ fn join_reader(reader: Option<std::thread::JoinHandle<Vec<u8>>>, stream: &'stati
 /// the *least* functional candidate first and turns a working host into one
 /// that reports no branch, no head, and no dirty state for every project.
 ///
-/// So a candidate must be **functional**: it has to answer a trivial version
-/// query under the same minimal environment the child will get. Anything less
-/// is a shim we must skip over rather than a git we can use.
-fn resolve_git_executable() -> Option<PathBuf> {
+/// So a candidate must be **capable**, and capability is measured the only way
+/// that is honest: by performing the actual metadata operations the product
+/// depends on, in a throwaway repository, under the exact environment the
+/// brokered child will receive.
+///
+/// # Why `--version` was not enough
+///
+/// A previous version of this probe asked only for `--version` and classified
+/// anything that answered as a real git. That is wrong in both directions:
+///
+/// * **False positive.** `/usr/bin/git` answers `--version` on a machine with
+///   Command Line Tools installed, so it was classified as a plain real git and
+///   never received `DEVELOPER_DIR`. On a host where the same shim cannot reach
+///   its developer directory, every metadata read then failed while selection
+///   still reported success.
+/// * **False negative.** The accompanying shim test looked for `xcrun` or
+///   `xcode-select` in the child's output. A shim that simply works emits
+///   neither, so it was misclassified the other way.
+///
+/// Both failures come from asking "does this binary identify as a shim?"
+/// instead of "can this binary do the work?". Only the second question is
+/// answerable in a way that survives a host we have not seen.
+fn resolve_git_executable(deadline: Option<Instant>) -> Option<GitSelection> {
     CANDIDATES
         .iter()
         .map(PathBuf::from)
-        .find(|candidate| is_functional_git(candidate))
+        .find_map(|candidate| is_capable_git(&candidate, deadline))
+}
+
+/// A candidate that passed the capability probe, plus what the probe learned
+/// about the environment it needs.
+///
+/// # Why the probe's finding travels with the selection
+///
+/// The `DEVELOPER_DIR` question cannot be re-derived later without repeating
+/// the mistake F2 flagged. An earlier version guessed "is this a shim?" from
+/// the binary's output, and that heuristic disagreed with reality in both
+/// directions. The replacement is an experiment — run the candidate without the
+/// variable, and only retry with it if it failed — and an experiment's result is
+/// only valid where it was performed.
+///
+/// So the answer is carried, not recomputed: a candidate proven to work without
+/// `DEVELOPER_DIR` gets `None` and the spec names nothing extra, while one
+/// proven to need it gets exactly the directory the successful probe used. That
+/// makes the environment a function of the measurement rather than of a second
+/// guess about the same binary.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GitSelection {
+    /// The git binary to run.
+    pub program: PathBuf,
+    /// The developer directory the probe proved this candidate needs, or `None`
+    /// when it worked without one.
+    pub developer_dir: Option<std::ffi::OsString>,
 }
 
 /// The git this build would actually run, for a caller that must agree with it.
@@ -903,7 +975,7 @@ fn resolve_git_executable() -> Option<PathBuf> {
 /// So the selection rule is exposed for fixtures to reuse, and it is the same
 /// function — not a re-implementation that could drift.
 pub fn functional_git_for_tests() -> Option<PathBuf> {
-    resolve_git_executable()
+    resolve_git_executable(None).map(|selection| selection.program)
 }
 
 /// The trusted prefixes searched for a usable git, in preference order.
@@ -911,9 +983,10 @@ pub fn functional_git_for_tests() -> Option<PathBuf> {
 /// A Homebrew git is preferred **when both work**, because it is a real git
 /// rather than a developer-tools shim: it does not consult `xcrun`, so it keeps
 /// working under a profile that denies the shim its developer directory. The
-/// system prefixes stay in the list as a fallback for hosts with no
-/// Homebrew, where a fully installed Command Line Tools does provide a real
-/// git underneath the shim.
+/// system prefixes stay in the list as a fallback for hosts with no Homebrew,
+/// where a fully installed Command Line Tools does provide a real git underneath
+/// the shim — and where, if it does not, the capability probe rejects it instead
+/// of selecting it and failing later inside the broker.
 const CANDIDATES: &[&str] = &[
     "/opt/homebrew/bin/git",
     "/usr/local/bin/git",
@@ -922,55 +995,279 @@ const CANDIDATES: &[&str] = &[
     "/bin/git",
 ];
 
-/// How long the pre-flight version probe may take before a candidate is
-/// declared unusable.
+/// How long the capability probe may spend on one candidate.
 ///
-/// Deliberately short: this runs on the request path, before any real work,
-/// and a candidate that cannot answer `--version` quickly is not worth the
-/// wait. It is a liveness probe, not a workload.
+/// Bounded for two independent reasons: it runs on the request path before any
+/// real work, and it is the step that decides whether we start a process at
+/// all. A candidate that cannot create a repository and answer three metadata
+/// queries inside this budget is not a git this broker should use.
+///
+/// Also the ceiling when the caller supplied no deadline of its own, so an
+/// absent caller budget never means an unbounded probe.
 const GIT_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
-/// Whether `candidate` can actually answer a git query under the environment
-/// the brokered child will receive.
+/// Whether `candidate` can perform the metadata operations the catalog needs,
+/// under the environment the brokered child will receive.
 ///
-/// Probed with `env_clear` plus the same `PATH`/`HOME` shape the child gets,
-/// so "it works here" means "it works there" for the part that matters: whether
-/// git can start at all. Without the probe, the only signal is a file existing,
-/// which a shim satisfies.
-fn is_functional_git(candidate: &Path) -> bool {
+/// The probe is deliberately the real thing: create a repository, commit, then
+/// run `rev-parse`, `status` and `log` in it. Anything less — a version string,
+/// an identity heuristic — has already been shown to disagree with what the
+/// brokered child will experience.
+///
+/// Every step is bounded by `deadline`, and each command is launched with
+/// `env_clear` plus the production `PATH` and `HOME`, so a candidate that needs
+/// reach this broker does not grant is rejected here rather than at first use.
+fn is_capable_git(candidate: &Path, deadline: Option<Instant>) -> Option<GitSelection> {
     if !candidate.is_file() {
-        return false;
+        return None;
     }
-    // Bounded, because this is a synchronous pre-flight on the request path.
-    // `Command::status` alone would inherit an unbounded wait from the
-    // candidate, and the whole point of probing is that we do not trust it.
-    let Ok(mut child) = std::process::Command::new(candidate)
-        .arg("--version")
-        .env_clear()
-        .env("PATH", "/usr/bin:/bin")
-        .env("HOME", candidate)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-    else {
+    let budget = match deadline {
+        // Never spend more than the caller allowed, and never less than a
+        // usable minimum: a deadline already in the past simply fails the probe
+        // rather than launching anything.
+        Some(absolute) => absolute
+            .saturating_duration_since(Instant::now())
+            .min(GIT_PROBE_TIMEOUT),
+        None => GIT_PROBE_TIMEOUT,
+    };
+    if budget.is_zero() {
+        return None;
+    }
+    let probe_deadline = Instant::now() + budget;
+
+    // Step 1 — try the candidate with **no** `DEVELOPER_DIR`, which is what a
+    // real git needs and what the brokered child will normally get. This is the
+    // narrow case and it must be tried first, so the common path never widens
+    // the environment.
+    if probe_candidate(candidate, None, probe_deadline) {
+        return Some(GitSelection {
+            program: candidate.to_path_buf(),
+            developer_dir: None,
+        });
+    }
+
+    // Step 2 — only now, having watched it fail without help, allow the host's
+    // developer directory and try once more. A candidate that needs this is a
+    // shim, and a shim that still cannot work with an explicitly named
+    // toolchain is not usable at all.
+    let developer_dir = developer_dir().map(std::ffi::OsString::from)?;
+    if probe_candidate(candidate, Some(developer_dir.clone()), probe_deadline) {
+        return Some(GitSelection {
+            program: candidate.to_path_buf(),
+            developer_dir: Some(developer_dir),
+        });
+    }
+    None
+}
+
+/// Create a throwaway directory for a capability probe, and remove it after.
+///
+/// Hand-rolled rather than `tempfile` because `tempfile` is a dev-dependency of
+/// this crate: production code here must not gain a dependency the sandboxed
+/// build does not already have. The directory lives under the process temp
+/// root, is named distinctly enough not to collide, and is best-effort removed
+/// because a leftover empty directory is harmless next to a probe that failed.
+struct ProbeDir(std::path::PathBuf);
+
+impl ProbeDir {
+    fn create(tag: &str) -> Option<Self> {
+        let unique = format!(
+            "webcodex-git-probe-{tag}-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        );
+        let path = std::env::temp_dir().join(unique.replace(['(', ')', ' '], "-"));
+        // A pre-existing path means someone else owns this name; refusing is
+        // safer than reusing a directory whose contents we did not create.
+        if path.exists() {
+            return None;
+        }
+        std::fs::create_dir_all(&path).ok()?;
+        Some(Self(path))
+    }
+
+    fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for ProbeDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+/// Create a repository with `candidate` and read the three metadata operations
+/// back out of it, all under one deadline.
+///
+/// Returns `false` on any failure — a command that could not run, exited
+/// non-zero, was killed by the deadline, or answered with nothing where an
+/// answer is required. An empty `rev-parse` or `log` is a failure rather than a
+/// pass, because "git exited 0" is not the same claim as "git reported a
+/// branch and a commit".
+fn probe_candidate(
+    candidate: &Path,
+    developer_dir: Option<std::ffi::OsString>,
+    deadline: Instant,
+) -> bool {
+    // A throwaway repository, outside any caller-visible path. This runs in the
+    // trusted parent, before any sandboxed child exists — the same place the
+    // plan is derived — so using the process temp directory here grants nothing
+    // to a child that has not been created yet.
+    let Some(repo) = ProbeDir::create("cap") else {
         return false;
     };
-    let deadline = Instant::now() + GIT_PROBE_TIMEOUT;
+    let root = repo.path().to_path_buf();
+
+    if run_probe(candidate, &["init", "-q"], &root, &developer_dir, deadline) != Some(0) {
+        return false;
+    }
+    if std::fs::write(root.join("probe.txt"), b"probe\n").is_err() {
+        return false;
+    }
+    if run_probe(
+        candidate,
+        &["add", "probe.txt"],
+        &root,
+        &developer_dir,
+        deadline,
+    ) != Some(0)
+    {
+        return false;
+    }
+    // Identity on the command line: the probe runs with no global config, which
+    // is the point, so it cannot rely on one existing.
+    let commit: Vec<&str> = [
+        "-c",
+        "user.email=probe@example.invalid",
+        "-c",
+        "user.name=probe",
+        "commit",
+        "-q",
+        "-m",
+        "probe",
+    ]
+    .to_vec();
+    if run_probe(candidate, &commit, &root, &developer_dir, deadline) != Some(0) {
+        return false;
+    }
+
+    // The three reads the catalog actually performs. `status --short` is
+    // legitimately empty on a clean tree, so only its exit status matters; the
+    // other two must produce an answer.
+    for (argv, must_be_non_empty) in [
+        (["rev-parse", "--abbrev-ref", "HEAD"].as_slice(), true),
+        (["status", "--short"].as_slice(), false),
+        (["log", "-1", "--pretty=format:%h"].as_slice(), true),
+    ] {
+        match run_probe_output(candidate, argv, &root, &developer_dir, deadline) {
+            Some((0, stdout)) => {
+                if must_be_non_empty && stdout.trim().is_empty() {
+                    // Exited zero with no answer: this is the broken candidate
+                    // the F2 review was about, and counting it as usable would
+                    // put the failure back into the catalog.
+                    return false;
+                }
+            }
+            _ => return false,
+        }
+    }
+    true
+}
+
+/// Run one probe command with the production environment, fully bounded.
+///
+/// Returns the exit code on a clean, in-budget completion, and `None` for
+/// anything else — a non-zero exit, a signal, or a deadline that passed. The
+/// distinction is deliberate: "this candidate cannot do the work" and "this
+/// candidate cannot be evaluated in time" both disqualify it, but neither is
+/// allowed to become an unbounded wait.
+fn run_probe(
+    candidate: &Path,
+    args: &[&str],
+    root: &Path,
+    developer_dir: &Option<std::ffi::OsString>,
+    deadline: Instant,
+) -> Option<i32> {
+    run_probe_output(candidate, args, root, developer_dir, deadline).map(|(code, _)| code)
+}
+
+/// [`run_probe`], additionally returning captured stdout.
+///
+/// The metadata reads this broker depends on are judged on their *answer*, not
+/// only on their exit status, so the probe has to be able to see what git said.
+fn run_probe_output(
+    candidate: &Path,
+    args: &[&str],
+    root: &Path,
+    developer_dir: &Option<std::ffi::OsString>,
+    deadline: Instant,
+) -> Option<(i32, String)> {
+    let mut command = std::process::Command::new(candidate);
+    command
+        .args(args)
+        .current_dir(root)
+        // The production environment, minus `DEVELOPER_DIR` unless this
+        // candidate needs it. `env_clear` first: nothing may leak in.
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", root)
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_TERMINAL_PROMPT", "0");
+    if let Some(dir) = developer_dir {
+        command.env("DEVELOPER_DIR", dir);
+    }
+    let mut child = command
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .ok()?;
+
     loop {
         match child.try_wait() {
-            Ok(Some(status)) => return status.success(),
+            Ok(Some(status)) => {
+                // The child is gone, so reading its pipes to EOF cannot block on
+                // it. A descendant could still hold the write end, which is why
+                // this is bounded rather than trusted.
+                let output = read_bounded_output(&mut child, deadline)?;
+                return status.code().map(|code| (code, output));
+            }
             Ok(None) => {
                 if Instant::now() >= deadline {
                     let _ = child.kill();
                     let _ = child.wait();
-                    return false;
+                    return None;
                 }
                 std::thread::sleep(std::time::Duration::from_millis(5));
             }
-            Err(_) => return false,
+            Err(_) => return None,
         }
     }
+}
+
+/// Read a finished child's stdout to EOF, bounded by `deadline`.
+///
+/// `wait_with_output` cannot be used directly here: it blocks on the pipes with
+/// no deadline, so a probe would reintroduce exactly the unbounded wait this
+/// whole path exists to remove.
+fn read_bounded_output(child: &mut std::process::Child, deadline: Instant) -> Option<String> {
+    use std::io::Read;
+    let mut stdout = child.stdout.take()?;
+    let mut collected = Vec::new();
+    let mut chunk = [0u8; 4096];
+    loop {
+        if Instant::now() >= deadline {
+            return None;
+        }
+        match stdout.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(read) => collected.extend_from_slice(&chunk[..read]),
+            Err(ref error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(_) => break,
+        }
+    }
+    Some(String::from_utf8_lossy(&collected).to_string())
 }
 
 /// Read-only prefixes the child needs to execute the git binary itself.
@@ -1053,6 +1350,7 @@ mod tests {
             &["ls-files", "-z"],
             None,
             GitStreams::StdoutOnlyBounded(1024),
+            None,
         )
         .expect("the spec is fully determined before any process exists");
 
@@ -1102,7 +1400,8 @@ mod tests {
     fn resolved_git_is_never_a_bare_name() {
         // Resolution must produce a concrete path, because the sandboxed child
         // has a minimal PATH and could not resolve a bare name.
-        if let Some(git) = resolve_git_executable() {
+        if let Some(selection) = resolve_git_executable(None) {
+            let git = selection.program;
             assert!(git.is_absolute());
             assert!(git.is_file());
         }
@@ -1110,7 +1409,8 @@ mod tests {
 
     #[test]
     fn toolchain_grant_never_covers_the_whole_filesystem() {
-        if let Some(git) = resolve_git_executable() {
+        if let Some(selection) = resolve_git_executable(None) {
+            let git = selection.program;
             for root in trusted_toolchain_for(&git) {
                 assert!(
                     root.as_path() != Path::new("/"),
@@ -1130,9 +1430,10 @@ mod tests {
     /// Fixture setup, not model-triggered execution: the repository has to
     /// exist before the broker can confine anything to it.
     fn git_init(root: &Path) -> bool {
-        let Some(git) = resolve_git_executable() else {
+        let Some(selection) = resolve_git_executable(None) else {
             return false;
         };
+        let git = selection.program;
         std::process::Command::new(git)
             .args(["init", "-q"])
             .current_dir(root)
@@ -1467,7 +1768,7 @@ mod tests {
     /// budget instead of waiting on it.
     #[test]
     fn the_drain_join_is_bounded_even_when_the_reader_never_finishes() {
-        let (sender, receiver) = std::sync::mpsc::channel::<Vec<u8>>();
+        let (sender, _receiver) = std::sync::mpsc::channel::<Vec<u8>>();
         let reader = std::thread::spawn(move || {
             // Never send, and never drop `sender`: the receiver must time out
             // rather than observe a disconnect.
@@ -1589,7 +1890,7 @@ mod tests {
             Some(64 * 1024),
             Arc::clone(&stderr_truncated),
         );
-        let mut git = BrokeredGit {
+        let git = BrokeredGit {
             child,
             stdout,
             stdout_truncated: truncated,
@@ -1602,7 +1903,7 @@ mod tests {
     /// Create a git repository, or `None` when this host has no usable git.
     fn git_init_dir() -> Option<tempfile::TempDir> {
         let repo = tempfile::tempdir().ok()?;
-        let git = resolve_git_executable()?;
+        let git = resolve_git_executable(None)?.program;
         // `git init` through a plain `Command` is fixture setup, not a
         // model-reachable execution: the repository has to exist before anything
         // can be confined to it.
@@ -1626,7 +1927,7 @@ mod tests {
     /// read an identity from.
     fn git_init_with_commit() -> Option<tempfile::TempDir> {
         let repo = git_init_dir()?;
-        let git = resolve_git_executable()?;
+        let git = resolve_git_executable(None)?.program;
         let write = |args: &[&str]| {
             std::process::Command::new(&git)
                 .args(args)
@@ -1674,6 +1975,7 @@ mod tests {
                 stdout: 1024,
                 stderr: 1024,
             },
+            None,
         )
         .expect("the spec is fully determined before any process exists");
 
@@ -1731,28 +2033,30 @@ mod tests {
     /// The resolved git must be one that can actually answer, not merely exist.
     ///
     /// F2's root cause was selecting on `is_file()`, which an Apple developer
-    /// tools shim satisfies while being unable to run. Where a functional git
+    /// tools shim satisfies while being unable to run. Where a capable git
     /// exists, the shim must not win merely by being listed first.
     #[test]
-    fn the_resolved_git_is_functional_not_merely_present() {
-        let Some(git) = resolve_git_executable() else {
+    fn the_resolved_git_is_capable_not_merely_present() {
+        let Some(selection) = resolve_git_executable(None) else {
             eprintln!(
-                "P1B_F2_GIT_PROFILE=HOST_UNAVAILABLE no functional git on this host; this is NOT \
+                "P1B_F2_GIT_PROFILE=HOST_UNAVAILABLE no capable git on this host; this is NOT \
                  a pass and NOT a security regression"
             );
             return;
         };
+        let git = selection.program;
         assert!(git.is_absolute(), "a resolved git must be a concrete path");
-        // Re-probe the resolved candidate: resolution claimed it works, so a
-        // second probe must agree. A disagreement means selection is answering
-        // a different question than the one the broker relies on.
+        // Re-probe the resolved candidate: resolution claimed it can do the
+        // work, so a second probe must agree. A disagreement means selection is
+        // answering a different question than the one the broker relies on.
         assert!(
-            is_functional_git(&git),
-            "F2: the resolved git {} cannot answer --version under the child's environment",
+            is_capable_git(&git, None).is_some(),
+            "F2: the resolved git {} cannot perform the metadata operations under the child's \
+             environment",
             git.display()
         );
         eprintln!(
-            "P1B_F2_GIT_PROFILE=PASS resolved functional git {}",
+            "P1B_F2_GIT_PROFILE=PASS resolved capable git {}",
             git.display()
         );
     }
@@ -1760,13 +2064,13 @@ mod tests {
     /// A shim that cannot start must be skipped in favour of a working git.
     ///
     /// Asserted as behaviour of the selection rule rather than as a property of
-    /// any particular host: when a functional candidate exists, whatever
+    /// any particular host: when a capable candidate exists, whatever
     /// `CANDIDATES` lists earlier must not be returned.
     #[test]
-    fn a_non_functional_git_is_never_selected() {
-        // A file that exists but is not an executable git is the cheapest
-        // reproduction of the shim failure mode: present, trusted-prefixed, and
-        // unable to answer.
+    fn a_non_capable_git_is_never_selected() {
+        // A file that exists but is not a working git is the cheapest
+        // reproduction of the failure mode: present, trusted-prefixed, and
+        // unable to create a repository or read one.
         let dir = tempfile::tempdir().unwrap();
         let fake = dir.path().join("git");
         std::fs::write(&fake, b"#!/bin/sh\nexit 1\n").unwrap();
@@ -1778,8 +2082,142 @@ mod tests {
         }
         assert!(fake.is_file(), "the fixture must exist as a file");
         assert!(
-            !is_functional_git(&fake),
-            "F2: a file that cannot answer --version must not pass the functional probe"
+            is_capable_git(&fake, None).is_none(),
+            "F2: a file that cannot perform the metadata operations must not pass the probe"
+        );
+    }
+
+    /// A candidate that answers `--version` but cannot do the work is rejected.
+    ///
+    /// This is the specific false positive the F2 review measured on `/usr/bin/git`:
+    /// a binary that reports a version, creates nothing, and answers no metadata
+    /// query must not be selected. A version probe would have accepted it; only
+    /// the capability probe rejects it.
+    #[test]
+    fn a_git_that_only_reports_its_version_is_not_capable() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake = dir.path().join("git");
+        // Exactly the shape that fooled the old probe: a convincing `--version`.
+        std::fs::write(
+            &fake,
+            b"#!/bin/sh\n\
+              if [ \"$1\" = \"--version\" ]; then echo 'git version 9.9.9 (fake)'; exit 0; fi\n\
+              exit 1\n",
+        )
+        .unwrap();
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&fake).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&fake, perms).unwrap();
+        }
+        // It does answer a version query...
+        let version = run_probe(
+            &fake,
+            &["--version"],
+            dir.path(),
+            &None,
+            Instant::now() + GIT_PROBE_TIMEOUT,
+        );
+        assert_eq!(
+            version,
+            Some(0),
+            "F2: the fixture must answer --version, or it proves nothing"
+        );
+        // ...and it still must not be selected.
+        assert!(
+            is_capable_git(&fake, None).is_none(),
+            "F2: answering --version is not capability; a git that cannot create a repository and \
+             report metadata must be rejected"
+        );
+    }
+
+    /// The whole operation is bounded, and the probe is inside that bound.
+    ///
+    /// F1 measured a 2-second operation that took 8.5 seconds because the
+    /// deadline was created *after* the candidate probe, and the probe's own
+    /// wait had no bound at all. The deadline now exists before the first
+    /// candidate is touched and every probe step draws from it, so the elapsed
+    /// time of a request cannot exceed its own budget.
+    ///
+    /// Proven with a candidate that cannot answer: a script which never exits is
+    /// the cheapest reproduction of an unbounded wait, and it also proves the
+    /// bound is the deadline's rather than the candidate's cooperation. The
+    /// budget is asserted, not merely observed — a fast host must not pass by
+    /// being fast.
+    #[test]
+    fn the_candidate_probe_cannot_outlive_the_operation_timeout() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake = dir.path().join("git");
+        // Exists, is executable, and never terminates. Without a bound this is
+        // the exact hang the review measured.
+        std::fs::write(&fake, b"#!/bin/sh\nwhile :; do :; done\n").unwrap();
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&fake).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&fake, perms).unwrap();
+        }
+
+        let budget = std::time::Duration::from_millis(300);
+        let deadline = Instant::now() + budget;
+        let started = Instant::now();
+        let capable = is_capable_git(&fake, Some(deadline));
+        let elapsed = started.elapsed();
+
+        assert!(
+            capable.is_none(),
+            "F1: a candidate that never terminates cannot be a capable git"
+        );
+        // Generous, because a killed process and a filesystem sync are not the
+        // thing under test — but far below the unbounded case the review
+        // measured at 8.5s against a 2s budget.
+        assert!(
+            elapsed < budget * 4,
+            "F1: the probe must live inside the operation budget, took {elapsed:?} for a budget of \
+             {budget:?}"
+        );
+    }
+
+    /// An existing repository with no commit cannot satisfy the metadata probe.
+    ///
+    /// The other false negative: a candidate pointed at a repository whose `HEAD`
+    /// does not resolve exits 128 on `rev-parse` and `log`. Probing against such a
+    /// repository would report the candidate as unusable when the real problem is
+    /// the fixture, so the probe builds its own committed repository instead —
+    /// which is also why it can distinguish "git cannot do this" from "there was
+    /// nothing to report".
+    #[test]
+    fn the_capability_probe_requires_a_real_commit_to_succeed() {
+        let Some(selection) = resolve_git_executable(None) else {
+            eprintln!(
+                "P1B_F2_GIT_PROFILE=HOST_UNAVAILABLE no capable git on this host; this is NOT a \
+                 pass"
+            );
+            return;
+        };
+        let git = selection.program;
+        let bare = tempfile::tempdir().unwrap();
+        // A repository with no commit: `rev-parse --abbrev-ref HEAD` exits 128.
+        let init = run_probe(
+            &git,
+            &["init", "-q"],
+            bare.path(),
+            &None,
+            Instant::now() + GIT_PROBE_TIMEOUT,
+        );
+        assert_eq!(init, Some(0), "git init must succeed");
+        let headless = run_probe_output(
+            &git,
+            &["rev-parse", "--abbrev-ref", "HEAD"],
+            bare.path(),
+            &None,
+            Instant::now() + GIT_PROBE_TIMEOUT,
+        );
+        assert!(
+            headless.is_none() || headless.as_ref().is_some_and(|(code, _)| *code != 0),
+            "F2: a repository with no commit must not yield a successful rev-parse — this is \
+             why the probe commits before reading"
         );
     }
 

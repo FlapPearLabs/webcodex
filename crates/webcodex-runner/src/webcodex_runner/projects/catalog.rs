@@ -206,6 +206,17 @@ pub(super) struct BoundedGitOutput {
     pub(super) stderr: Vec<u8>,
     pub(super) stdout_capped: bool,
     pub(super) stderr_capped: bool,
+    /// The brokered capture did not finish inside its budget: either the
+    /// deadline elapsed and git was terminated, or a descendant held a pipe
+    /// past the drain budget.
+    ///
+    /// Propagated rather than dropped, because dropping it is what let a
+    /// partial capture be read as a complete answer — the broker reported an
+    /// incomplete read and this layer returned the prefix anyway.
+    pub(super) timed_out: bool,
+    /// A descendant held a pipe open past the drain budget. Folded into
+    /// `timed_out` in effect; kept separate as the evidence for why.
+    pub(super) drain_incomplete: bool,
 }
 
 /// Run `git <args>` in the **canonical** project root under the P1 execution
@@ -274,6 +285,8 @@ pub(super) fn run_brokered_git_bounded(
         stderr: capture.stderr,
         stdout_capped: capture.stdout_capped,
         stderr_capped: capture.stderr_capped,
+        timed_out: capture.timed_out,
+        drain_incomplete: capture.drain_incomplete,
     })
 }
 
@@ -302,6 +315,22 @@ fn run_git_capture(root: &Path, args: &[&str], shutdown: Option<&AtomicBool>) ->
         // Truncated stdout is *not* a git failure — it means the result is
         // incomplete, and reporting a prefix as if it were the whole branch or
         // SHA would be a lie. Degrade to absent, as before.
+        return None;
+    }
+    if output.timed_out {
+        // The broker bounded the request and reported that it did not finish.
+        // Its status byte is a real git exit status for a git that was killed,
+        // not an answer, so this capture cannot be read either way. Dropping
+        // the flag — as this layer did — is what let a descendant-held pipe
+        // surface as a completed empty branch.
+        eprintln!(
+            "webcodex-runner project warning: git {} in {} did not complete inside its budget \
+             (drain_incomplete={}); dropping the partial capture rather than reporting it as an \
+             answer",
+            args.first().copied().unwrap_or("<no subcommand>"),
+            root.display(),
+            output.drain_incomplete,
+        );
         return None;
     }
     Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
@@ -733,6 +762,7 @@ mod brokered_git_tests {
                 "P1B_CATALOG_ACCEPTED_ROOT=HOST_UNAVAILABLE no functional git on this host; this \
                  is NOT a pass"
             );
+            enforce_verdict(GitVerdict::HostUnavailable, "P1B_CATALOG_ACCEPTED_ROOT");
             return;
         };
         let project = project_with_path(repo.path());
@@ -764,14 +794,58 @@ mod brokered_git_tests {
                 );
             }
             // Degraded rather than broken: report which axis blocked it and do
-            // not claim a pass.
+            // not claim a pass. `enforce` turns that report into an exit status,
+            // so a `Fail` fails the test instead of only printing.
             (branch, head) => {
                 let verdict = classify_missing_metadata(&summary);
                 eprintln!(
                     "P1B_CATALOG_ACCEPTED_ROOT={verdict:?} metadata was not extracted \
                      (branch={branch:?} head={head:?}); this is NOT a pass"
                 );
+                enforce_verdict(verdict, "P1B_CATALOG_ACCEPTED_ROOT");
             }
+        }
+    }
+
+    /// Turn a verdict into a test outcome, so accounting is a status rather than
+    /// a message.
+    ///
+    /// F3 was that a verdict only ever reached `eprintln!`: `Fail` printed
+    /// `=Fail` and the harness still counted a pass, and the "cannot measure"
+    /// states printed a disclaimer and returned `Ok(())`. That makes every
+    /// state indistinguishable from success to anything reading an exit code,
+    /// which is the only thing most gate readers look at.
+    ///
+    /// So:
+    ///
+    /// * `Pass` — the test proceeds; nothing to enforce.
+    /// * `Fail` — panic. A broken behaviour is a test failure.
+    /// * `HostUnavailable` / `EnvBlocked` — cannot be measured here. This is
+    ///   *not* a pass and must not be silently graded as one, so it is marked
+    ///   with `#[ignore]`-style honesty: the test reports the state and returns
+    ///   `Err`, which the harness records as a non-pass outcome distinct from
+    ///   green.
+    ///
+    /// The trade-off is deliberate and worth stating: a host whose kernel
+    /// refuses the sandbox cannot show these tests green, where before it
+    /// could. That is the correct direction for an evidence gate — "we could
+    /// not measure this" must not read as "this holds".
+    fn enforce_verdict(verdict: GitVerdict, label: &str) {
+        match verdict {
+            GitVerdict::Pass => {}
+            GitVerdict::Fail => {
+                panic!("{label}: the behaviour under test was observed to be broken (verdict=Fail)")
+            }
+            GitVerdict::HostUnavailable => panic!(
+                "{label}: HOST_UNAVAILABLE — this host cannot run git at all, so the behaviour \
+                 under test is UNMEASURED. This is not a pass; run the suite on a host with a \
+                 usable git toolchain."
+            ),
+            GitVerdict::EnvBlocked => panic!(
+                "{label}: ENV_BLOCKED — the broker was exercised but the environment refused the \
+                 confinement profile, so the behaviour under test is UNMEASURED. This is not a \
+                 pass; run the suite where the sandbox profile can be applied."
+            ),
         }
     }
 
@@ -790,7 +864,20 @@ mod brokered_git_tests {
             64 * 1024,
             std::time::Duration::from_secs(10),
         ) {
-            Ok(read) if read.status.success() => webcodex_workspace::git_broker::GitVerdict::Pass,
+            Ok(read) if read.status.success() => {
+                // The summary lost metadata that a direct retry can recover.
+                // That is not an environment state — it means the capture path
+                // dropped something the broker actually produced, which is the
+                // propagation defect F3 was about. Reporting `Pass` here (as
+                // this function did) is exactly how an accepted root with no
+                // branch and no head was counted as a success.
+                panic!(
+                    "F3: the summary reported no git metadata but a direct brokered retry in the \
+                     same environment succeeded (rev-parse -> {:?}); the capture path is losing a \
+                     result the broker produced",
+                    String::from_utf8_lossy(&read.stdout).trim()
+                );
+            }
             Ok(read) if is_sandbox_profile_refusal(&read.stderr) => {
                 webcodex_workspace::git_broker::GitVerdict::EnvBlocked
             }
@@ -987,6 +1074,7 @@ mod brokered_git_tests {
                 "P1B_CATALOG_GIT_BROKER=HOST_UNAVAILABLE no functional git on this host; this is \
                  NOT a pass"
             );
+            enforce_verdict(GitVerdict::HostUnavailable, "P1B_CATALOG_GIT_BROKER");
             return;
         };
 
@@ -994,23 +1082,30 @@ mod brokered_git_tests {
         // commit. The previous version of this test asserted on `git --version`
         // and only reached it *after* the first command succeeded, so on a
         // no-HEAD fixture the meaningful assertion never ran at all.
-        let expectations: [(&[&str], &str); 3] = [
-            (&["rev-parse", "--abbrev-ref", "HEAD"], "branch"),
-            (&["log", "-1", "--pretty=format:%h"], "head"),
-            (&["status", "--short"], "dirty"),
+        let expectations: [(&[&str], &str, bool); 3] = [
+            (&["rev-parse", "--abbrev-ref", "HEAD"], "branch", true),
+            (&["log", "-1", "--pretty=format:%h"], "head", true),
+            (&["status", "--short"], "dirty", false),
         ];
         let mut verdicts: Vec<GitVerdict> = Vec::new();
 
-        for (argv, what) in expectations {
+        for (argv, what, must_be_non_empty) in expectations {
             let output =
                 match run_brokered_git_bounded(repo.path(), argv, Duration::from_secs(10), None) {
                     Ok(output) => output,
+                    // A broker refusal is not automatically the environment
+                    // refusing. F3 flagged that every `Err` was filed as
+                    // `ENV_BLOCKED`, which made an internal error — including a
+                    // defect in the capture path — indistinguishable from a
+                    // kernel that will not apply the profile. Classify instead,
+                    // and treat an unclassifiable refusal as a failure.
                     Err(error) => {
+                        let verdict = classify_broker_refusal(&error);
                         eprintln!(
-                            "P1B_CATALOG_GIT_BROKER=ENV_BLOCKED broker refused to launch git for \
+                            "P1B_CATALOG_GIT_BROKER={verdict:?} broker refused to launch git for \
                          `git {what}` ({error}); this is NOT a pass"
                         );
-                        verdicts.push(GitVerdict::EnvBlocked);
+                        verdicts.push(verdict);
                         continue;
                     }
                 };
@@ -1035,17 +1130,63 @@ mod brokered_git_tests {
                 // Anything else is a genuine failure: git ran and misbehaved.
                 panic!("git {what} failed unexpectedly through the broker: {stderr}");
             }
+            if output.timed_out {
+                // Exit status came from a git the broker had to terminate, or
+                // from a capture whose reader never reached EOF. Neither is an
+                // answer, and "exited zero" was exactly the shape F3 showed
+                // scoring as a pass with empty stdout.
+                eprintln!(
+                    "P1B_CATALOG_GIT_BROKER=FAIL `git {what}` did not complete inside its budget \
+                     (drain_incomplete={}); a terminated or partial capture is not an answer",
+                    output.drain_incomplete
+                );
+                verdicts.push(GitVerdict::Fail);
+                continue;
+            }
+            // `rev-parse` and `log` must produce an answer. Exiting zero with no
+            // output is not a pass; it is the shape the review measured as a
+            // false positive, where three empty captures scored green.
+            if must_be_non_empty && String::from_utf8_lossy(&output.stdout).trim().is_empty() {
+                eprintln!(
+                    "P1B_CATALOG_GIT_BROKER=FAIL `git {what}` exited 0 with no output; an empty \
+                     answer is not a pass"
+                );
+                verdicts.push(GitVerdict::Fail);
+                continue;
+            }
             verdicts.push(GitVerdict::Pass);
         }
 
-        match GitVerdict::aggregate(verdicts) {
-            GitVerdict::Pass => eprintln!(
-                "P1B_CATALOG_GIT_BROKER=PASS rev-parse, log and status all ran through the broker"
-            ),
-            blocked => eprintln!(
-                "P1B_CATALOG_GIT_BROKER={blocked:?} the catalog's git reads could not be measured \
-                 on this host; this is NOT a pass"
-            ),
+        let verdict = GitVerdict::aggregate(verdicts);
+        eprintln!(
+            "P1B_CATALOG_GIT_BROKER={verdict:?} rev-parse, log and status through the broker{}",
+            if verdict.counts_as_pass() {
+                ""
+            } else {
+                "; this is NOT a pass"
+            }
+        );
+        // The verdict is the outcome, not a message: `Fail` fails the test and
+        // the unmeasurable states stop reading as green.
+        enforce_verdict(verdict, "P1B_CATALOG_GIT_BROKER");
+    }
+
+    /// Why the broker refused before any process existed.
+    ///
+    /// F3 required internal errors to fail rather than be filed as
+    /// "environment said no". Only a refusal that genuinely describes the host
+    /// or the kernel is allowed to be an unmeasurable state; anything else is a
+    /// defect in the request path and is reported as `Fail`.
+    fn classify_broker_refusal(error: &str) -> GitVerdict {
+        if error.contains("git_executable_unavailable") {
+            GitVerdict::HostUnavailable
+        } else if error.contains("sandbox_apply")
+            || error.contains("sandbox-exec")
+            || error.contains("profile")
+        {
+            GitVerdict::EnvBlocked
+        } else {
+            GitVerdict::Fail
         }
     }
 
