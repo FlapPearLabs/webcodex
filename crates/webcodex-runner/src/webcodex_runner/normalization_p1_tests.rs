@@ -1244,27 +1244,31 @@ fn enclosing_function(source: &str, offset: usize) -> Option<String> {
         (trimmed.starts_with("fn ")
             || trimmed.starts_with("pub fn ")
             || trimmed.starts_with("pub(crate) fn ")
+            || trimmed.starts_with("pub(super) fn ")
+            || trimmed.starts_with("pub(in ")
             || trimmed.starts_with("async fn ")
             || trimmed.starts_with("pub async fn ")
             || trimmed.starts_with("pub(crate) async fn "))
             && !trimmed.starts_with("//")
     })?;
     let trimmed = function_line.trim_start();
-    let after_name = trimmed
+    // Strip the visibility/async/`fn` prefixes *before* splitting on `(`.
+    // Splitting first is wrong for `pub(super) fn name(`: the first `(` belongs
+    // to the visibility, so the head would be `pub`, and the caller would be
+    // attributed to a function called "pub".
+    let after_visibility = trimmed
+        .trim_start_matches("pub(in ")
+        .trim_start_matches("pub(crate) ")
+        .trim_start_matches("pub(super) ")
+        .trim_start_matches("pub ")
+        .trim_start_matches("async ")
+        .trim_start_matches("fn ");
+    let after_name = after_visibility
         .split_once('(')
         .map(|(head, _)| head)
-        .unwrap_or(trimmed);
-    Some(
-        after_name
-            .trim_start_matches("pub(crate) ")
-            .trim_start_matches("pub ")
-            .trim_start_matches("async ")
-            .trim_start_matches("fn ")
-            .trim()
-            .to_string(),
-    )
+        .unwrap_or(after_visibility);
+    Some(after_name.trim().to_string())
 }
-
 /// P1B: audit every production caller of `into_command()`.
 ///
 /// This is the structural half of closing the escape hatch. The guard above
@@ -1371,4 +1375,138 @@ fn p1b_routed_paths_forbid_into_command_and_direct_spawn() {
 /// Single-quote a path for `/bin/sh`.
 fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', r"'\''"))
+}
+
+// ---------------------------------------------------------------------------
+// P1B Slice 2A: the catalog git read is brokered, and the remaining
+// unconfined project git is *named* rather than spread across the crate.
+// ---------------------------------------------------------------------------
+
+/// The unconfined project `git` launcher, and nobody else.
+///
+/// Slice 2A routed the model-reachable catalog read (`rev-parse` / `log` /
+/// `status`, reached by `ToolCall::ListProjects` and every inventory push)
+/// through the execution broker. Two callers could not follow it, for a
+/// substantive reason recorded in `projects/unconfined_git.rs`: `managed_worktree`
+/// runs `git worktree add --detach <destination>` where the destination is
+/// *required* to be outside the source root, so the broker's single-root
+/// `SandboxPlan::Confined` would deny the write the feature exists to perform.
+///
+/// This test does not bless that gap. It pins its **extent**: exactly one
+/// function may launch a project git directly, it must live in the file named
+/// for the purpose, and it must carry a doc comment stating why. A second one
+/// appearing anywhere else — including in `catalog.rs` — fails here.
+const P1B_UNCONFINED_PROJECT_GIT_LAUNCHERS: &[(&str, &str)] = &[(
+    "webcodex_runner/projects/unconfined_git.rs",
+    "run_unconfined_git_bounded",
+)];
+
+#[test]
+fn p1b_unconfined_project_git_has_exactly_one_named_launcher() {
+    let mut found: Vec<(String, String)> = Vec::new();
+    for (file, source) in runner_crate_source_files() {
+        // Only project-side code: the Runner legitimately spawns control-plane
+        // processes elsewhere (detached supervisor, browser, computer, plugin,
+        // LSP, jobs), and P1B does not claim those.
+        if !file.contains("webcodex_runner/projects/") {
+            continue;
+        }
+        // Strip every `#[cfg(test)]` item before scanning. Test fixtures
+        // legitimately run `rustc` and `git init` to build a repository, and
+        // `enclosing_function` cannot tell those apart from a production
+        // launcher — it only knows the nearest `fn`. Scanning the production
+        // region is what makes this a claim about shipped code.
+        let production = production_region(&source);
+        for (index, line) in production.lines().enumerate() {
+            let code = line.split("//").next().unwrap_or(line);
+            if !code.contains("Command::new(") {
+                continue;
+            }
+            let offset = production
+                .lines()
+                .take(index)
+                .map(|line| line.len() + 1)
+                .sum::<usize>();
+            let function = enclosing_function(&production, offset).unwrap_or_else(|| {
+                panic!(
+                    "{file}:{}: Command::new( is not inside a recognised fn",
+                    index + 1
+                )
+            });
+            found.push((file.clone(), function));
+        }
+    }
+
+    let mut expected: Vec<(String, String)> = P1B_UNCONFINED_PROJECT_GIT_LAUNCHERS
+        .iter()
+        .map(|(file, function)| ((*file).to_string(), (*function).to_string()))
+        .collect();
+    expected.sort();
+    let mut actual = found.clone();
+    actual.sort();
+    actual.dedup();
+
+    assert_eq!(
+        actual, expected,
+        "the set of direct `Command::new` launchers in projects/ changed. Every one must be \
+         classified in P1B_UNCONFINED_PROJECT_GIT_LAUNCHERS. A new one is either a migrated \
+         path that should have gone through the broker, or a new authority gap that has to be \
+         written down with its reason. Found: {found:?}"
+    );
+}
+
+/// The catalog read path must not regain a direct launcher, and must name the
+/// broker entry point it depends on.
+#[test]
+fn p1b_catalog_reads_git_only_through_the_broker() {
+    let source = read_runner_source("projects/catalog.rs");
+    // `#[cfg(test)]` is the production boundary; the test module below it
+    // builds a fixture and legitimately names the vocabulary.
+    let production = production_region(&source);
+
+    assert!(
+        production.contains("git_broker::run_git_bounded_read"),
+        "catalog must collect git metadata through the broker's bounded both-streams read"
+    );
+    for needle in ["Command::new(", "ManagedChild::spawn("] {
+        assert!(
+            !production.contains(needle),
+            "catalog.rs production code must not contain `{needle}`: the model-reachable git \
+             read is routed through the execution broker"
+        );
+    }
+    // The display path must never become the execution path again.
+    assert!(
+        !production.contains("run_git_capture(&resolved_path"),
+        "git must be run against the canonical root, never the display path"
+    );
+    assert!(
+        production.contains("match canonical_root.as_deref()"),
+        "the git-metadata decision must be driven by the canonical root"
+    );
+}
+
+/// The doc comment on the unconfined launcher is the reason it is allowed to
+/// exist. This is a documentation check with teeth: the entry in
+/// `P1B_UNCONFINED_PROJECT_GIT_LAUNCHERS` cannot be added or kept without the
+/// file itself explaining the authority problem.
+#[test]
+fn p1b_unconfined_launcher_documents_why_it_is_not_routed() {
+    let source = read_runner_source("projects/unconfined_git.rs");
+    for required in [
+        "worktree add",
+        "writable_roots",
+        "ensure_managed_worktree_root",
+        "unrouted",
+    ] {
+        assert!(
+            source.contains(required),
+            "the unconfined launcher must record why routing is not a mechanical change; \
+             expected it to mention `{required}`"
+        );
+    }
+    assert!(
+        source.contains("not a resolution") || source.contains("not a migration"),
+        "the file must state plainly that this is an open item, not a resolved one"
+    );
 }

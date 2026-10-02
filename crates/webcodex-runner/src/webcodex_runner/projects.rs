@@ -22,6 +22,10 @@ mod catalog;
 mod lifecycle;
 mod managed_worktree;
 mod registration;
+// The named home of the project `git` launches that P1B Slice 2A did not
+// route, with the authority reason each one cannot follow the broker. See the
+// module docs before adding a third caller.
+mod unconfined_git;
 
 pub(crate) use catalog::{
     find_project_shell_context, find_project_shell_context_by_id,

@@ -9,7 +9,7 @@ use super::super::config::RunnerPolicy;
 use super::super::shell::canonicalize_existing;
 use super::catalog::{
     effective_registration_source, parse_runner_project_toml, project_lineage, project_revision,
-    project_root_fingerprint, run_git_bounded, EXPLICIT_REGISTRATION_SOURCE,
+    project_root_fingerprint, EXPLICIT_REGISTRATION_SOURCE,
 };
 use super::registration::{
     build_project_toml, sync_dir, sync_parent_dir, sync_project_parent_after_rename,
@@ -18,6 +18,7 @@ use super::registration::{
     validate_project_path_policy, validate_windows_project_root, write_project_toml_atomic,
     ProjectTomlWriteError,
 };
+use super::unconfined_git::run_unconfined_git_bounded;
 use super::{
     project_error_cmd, project_registry_write_lock, structured_project_error_cmd, RunnerProjectFile,
 };
@@ -678,7 +679,8 @@ pub(crate) fn handle_project_operation(
     // git init.
     let mut git_initialized = false;
     if git_init {
-        match run_git_bounded(&path_buf, &["init"], Duration::from_secs(5), None) {
+        match run_unconfined_git_bounded("git", &path_buf, &["init"], Duration::from_secs(5), None)
+        {
             Ok(output) if output.status.success() => {
                 git_initialized = true;
                 created_paths.track(path_buf.join(".git"));

@@ -45,20 +45,42 @@ pub(crate) struct GitOutput {
 /// Outcome of a brokered git invocation whose stdout was captured under a byte
 /// budget and a deadline.
 #[derive(Debug)]
-pub(crate) struct BoundedGitCapture {
-    pub(crate) status: ExitStatus,
-    pub(crate) stdout: Vec<u8>,
+pub struct BoundedGitCapture {
+    pub status: ExitStatus,
+    pub stdout: Vec<u8>,
     /// The whole stdout fit inside the budget and the deadline.
-    pub(crate) complete: bool,
+    pub complete: bool,
     /// The deadline elapsed and git was terminated.
-    pub(crate) timed_out: bool,
+    pub timed_out: bool,
+}
+
+/// Outcome of a brokered git read that captured **both** streams under separate
+/// byte budgets.
+///
+/// Distinct from [`BoundedGitCapture`], which is the stdout-only shape
+/// `project_context` wants (a bounded prefix of `git ls-files`, stderr
+/// discarded). A caller that reports a git *failure message* back to a
+/// human — or that decides a read failed because stderr was truncated — needs
+/// stderr as evidence, so it must not have to infer that from an empty
+/// `String::new()`.
+#[derive(Debug)]
+pub struct BoundedGitRead {
+    pub status: ExitStatus,
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
+    /// stdout hit its byte budget before EOF.
+    pub stdout_capped: bool,
+    /// stderr hit its byte budget before EOF.
+    pub stderr_capped: bool,
+    /// The deadline elapsed and git was terminated.
+    pub timed_out: bool,
 }
 
 /// Why a brokered git invocation was refused before any process existed.
 #[derive(Debug)]
-pub(crate) struct GitRefusal {
-    pub(crate) code: &'static str,
-    pub(crate) detail: String,
+pub struct GitRefusal {
+    pub code: &'static str,
+    pub detail: String,
 }
 
 impl std::fmt::Display for GitRefusal {
@@ -137,6 +159,40 @@ pub(crate) fn run_git_bounded(
     git.finish_bounded(deadline)
 }
 
+/// Run `git <args>` in `root` under a workspace-derived plan, capturing both
+/// streams under independent byte budgets.
+///
+/// This is the read shape a caller needs when it must report *why* a git read
+/// failed, or when a decision depends on stderr being empty rather than merely
+/// uninteresting. It is deliberately a separate entry point rather than a flag
+/// on [`run_git_bounded`]: bounding stderr changes what a truncated diagnostic
+/// looks like, and a caller that did not ask for stderr evidence should not
+/// start receiving a second truncation flag it has to reason about.
+///
+/// # Fail-closed
+///
+/// Identical to [`run_git_bounded`]: the plan and cwd are established before a
+/// process exists, and an unusable root refuses rather than degrading to an
+/// unconfined read.
+pub fn run_git_bounded_read(
+    root: &Path,
+    args: &[&str],
+    stdout_budget: usize,
+    stderr_budget: usize,
+    timeout: std::time::Duration,
+) -> Result<BoundedGitRead, GitRefusal> {
+    let git = BrokeredGit::spawn(
+        root,
+        args,
+        None,
+        GitStreams::BothStreamsBounded {
+            stdout: stdout_budget,
+            stderr: stderr_budget,
+        },
+    )?;
+    git.finish_bounded_read(Instant::now() + timeout)
+}
+
 /// Which of git's streams the caller needs.
 ///
 /// Stated explicitly because `project_context` reads a bounded prefix of
@@ -148,6 +204,8 @@ enum GitStreams {
     BothPiped,
     /// Capture stdout up to a byte budget; discard stderr.
     StdoutOnlyBounded(usize),
+    /// Capture stdout and stderr each up to their own byte budget.
+    BothStreamsBounded { stdout: usize, stderr: usize },
 }
 
 /// A git child that already exists under a workspace-confined profile.
@@ -161,6 +219,10 @@ struct BrokeredGit {
     /// complete capture from a truncated one.
     stdout_truncated: Arc<AtomicBool>,
     stderr: Option<std::thread::JoinHandle<Vec<u8>>>,
+    /// The stderr counterpart of `stdout_truncated`. Always false for the
+    /// shapes that do not bound stderr, because an unbounded read to EOF can
+    /// never report truncation.
+    stderr_truncated: Arc<AtomicBool>,
 }
 
 impl std::fmt::Debug for BrokeredGit {
@@ -200,6 +262,7 @@ fn brokered_git_spec(
     let (stdout_policy, stderr_policy) = match streams {
         GitStreams::BothPiped => (StreamPolicy::Piped, StreamPolicy::Piped),
         GitStreams::StdoutOnlyBounded(_) => (StreamPolicy::Piped, StreamPolicy::Null),
+        GitStreams::BothStreamsBounded { .. } => (StreamPolicy::Piped, StreamPolicy::Piped),
     };
 
     Ok(SpawnSpec::new(git, root.to_path_buf(), plan)
@@ -255,18 +318,23 @@ impl BrokeredGit {
         }
 
         let truncated = Arc::new(AtomicBool::new(false));
+        let stderr_truncated = Arc::new(AtomicBool::new(false));
         let stdout = spawn_reader(
             child.child_mut().stdout.take(),
             match streams {
                 GitStreams::BothPiped => None,
                 GitStreams::StdoutOnlyBounded(budget) => Some(budget),
+                GitStreams::BothStreamsBounded { stdout, .. } => Some(stdout),
             },
             Arc::clone(&truncated),
         );
         let stderr = spawn_reader(
             child.child_mut().stderr.take(),
-            None,
-            Arc::new(AtomicBool::new(false)),
+            match streams {
+                GitStreams::BothStreamsBounded { stderr, .. } => Some(stderr),
+                GitStreams::BothPiped | GitStreams::StdoutOnlyBounded(_) => None,
+            },
+            Arc::clone(&stderr_truncated),
         );
 
         Ok(Self {
@@ -274,6 +342,7 @@ impl BrokeredGit {
             stdout,
             stdout_truncated: truncated,
             stderr,
+            stderr_truncated,
         })
     }
 
@@ -325,6 +394,48 @@ impl BrokeredGit {
             complete: !timed_out && !truncated,
             timed_out,
             stdout,
+        })
+    }
+
+    /// Wait for git under a caller's absolute deadline, collecting both streams
+    /// under their own byte budgets.
+    ///
+    /// The tree-terminate-on-truncation rule from [`Self::finish_bounded`]
+    /// applies to **either** stream here: a git that is still writing into a
+    /// pipe nobody drains cannot finish, so leaving it alive would hold the
+    /// workspace past the caller's deadline.
+    fn finish_bounded_read(mut self, deadline: Instant) -> Result<BoundedGitRead, GitRefusal> {
+        let mut timed_out = false;
+        let status = loop {
+            if self.stdout_truncated.load(Ordering::SeqCst)
+                || self.stderr_truncated.load(Ordering::SeqCst)
+            {
+                let _ = self.child.terminate_tree();
+            }
+            if let Some(status) = self.child.try_wait().map_err(|error| GitRefusal {
+                code: "git_wait_failed",
+                detail: error.to_string(),
+            })? {
+                break status;
+            }
+            if Instant::now() >= deadline {
+                timed_out = true;
+                let _ = self.child.terminate_tree();
+                break self.child.wait().map_err(|error| GitRefusal {
+                    code: "git_wait_failed",
+                    detail: error.to_string(),
+                })?;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        };
+
+        Ok(BoundedGitRead {
+            status,
+            stdout: join_reader(self.stdout, "stdout"),
+            stderr: join_reader(self.stderr, "stderr"),
+            stdout_capped: self.stdout_truncated.load(Ordering::SeqCst),
+            stderr_capped: self.stderr_truncated.load(Ordering::SeqCst),
+            timed_out,
         })
     }
 

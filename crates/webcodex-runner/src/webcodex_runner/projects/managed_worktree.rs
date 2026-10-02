@@ -8,8 +8,7 @@ use super::super::config::RunnerPolicy;
 use super::super::shell::canonicalize_existing;
 use super::catalog::{
     effective_registration_source, parse_runner_project_toml, project_lineage, project_revision,
-    project_root_fingerprint, project_wire_kind, run_git_bounded,
-    AUTO_REGISTERED_REGISTRATION_SOURCE,
+    project_root_fingerprint, project_wire_kind, AUTO_REGISTERED_REGISTRATION_SOURCE,
 };
 use super::registration::{
     bounded_project_name, build_project_toml_with_registration_source, choose_auto_project_id,
@@ -19,6 +18,7 @@ use super::registration::{
     validate_project_path_policy, validate_windows_project_root, write_project_toml_atomic,
     ProjectTomlWriteError,
 };
+use super::unconfined_git::run_unconfined_git_bounded;
 use super::{project_registry_write_lock, structured_project_error_cmd, RunnerProjectFile};
 use crate::{ok_cmd, CommandResult};
 
@@ -88,7 +88,7 @@ fn managed_worktree_error(
 }
 
 fn managed_worktree_git_text(path: &Path, args: &[&str]) -> Result<String, &'static str> {
-    let output = run_git_bounded(path, args, MANAGED_WORKTREE_GIT_TIMEOUT, None)
+    let output = run_unconfined_git_bounded("git", path, args, MANAGED_WORKTREE_GIT_TIMEOUT, None)
         .map_err(|_| "worktree_git_failed")?;
     if !output.status.success() || output.stdout_capped || output.stderr_capped {
         return Err("worktree_git_failed");
@@ -100,7 +100,8 @@ fn managed_worktree_git_text(path: &Path, args: &[&str]) -> Result<String, &'sta
 
 fn exact_git_commit(source: &Path, base_ref: &str) -> Result<String, &'static str> {
     let commit_ref = format!("{base_ref}^{{commit}}");
-    let output = run_git_bounded(
+    let output = run_unconfined_git_bounded(
+        "git",
         source,
         &[
             "rev-parse",
@@ -867,7 +868,8 @@ pub(crate) fn handle_prepare_managed_worktree_operation(
             }
         }
         let destination_string = managed_worktree_git_cli_path(&destination);
-        let add_result = run_git_bounded(
+        let add_result = run_unconfined_git_bounded(
+            "git",
             &source_root,
             &[
                 "worktree",
