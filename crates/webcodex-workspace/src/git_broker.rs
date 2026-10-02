@@ -34,6 +34,19 @@ use webcodex_process::execution_broker::{
     TrustedToolchainRoot,
 };
 
+macro_rules! clock_now {
+    ($point:ident) => {{
+        #[cfg(test)]
+        {
+            tests::clock_now_for_test(tests::ClockPoint::$point)
+        }
+        #[cfg(not(test))]
+        {
+            Instant::now()
+        }
+    }};
+}
+
 /// Outcome of one brokered git invocation.
 #[derive(Debug)]
 pub(crate) struct GitOutput {
@@ -467,32 +480,12 @@ const GIT_READ_PROFILE: &[(&str, &str, &str)] = &[
 /// tools". Reading it is not a grant: the path it returns is only useful to
 /// git if the broker also grants that root, and it does, as a toolchain root.
 ///
-/// # Why this takes the caller's deadline
+/// # Probe bound
 ///
-/// This runs on the request path, inside a capability probe that is itself
-/// inside the caller's budget. Giving it a fresh `GIT_PROBE_TIMEOUT` of its own
-/// meant a host that could not answer `xcode-select` spent that budget *after*
-/// the caller's deadline had already been established — so a request that was
-/// promised a bounded lifetime still waited, and the bound it kept was not the
-/// one the caller agreed to.
-///
-/// `GIT_PROBE_TIMEOUT` is now only a **cap** for the case where the caller
-/// supplied no deadline. It can shorten the wait; it can never extend it. An
-/// already-expired deadline returns `None` without launching anything, because
-/// the answer is no longer worth having.
-///
-/// # Why the caller's `Instant` is propagated verbatim
-///
-/// The obvious way to write this is
-/// `let budget = absolute - now; let deadline = Instant::now() + budget;` — and
-/// that is a **rebase**, not a pass-through. It throws away the instant the
-/// caller chose and rebuilds one from a fresh `now`, so any time already spent
-/// between the caller's decision and this function's start silently refills the
-/// clock. The wait is then bounded by `min(GIT_PROBE_TIMEOUT, remaining + drift)`
-/// rather than by what the caller actually allowed.
-///
-/// So when a deadline exists it is used as-is; `GIT_PROBE_TIMEOUT` is
-/// constructed as a deadline only in the branch where the caller supplied none.
+/// Probe work has its own five-second ceiling. When the caller supplies a live
+/// deadline, the probe uses the earlier of that deadline and the internal cap;
+/// with no caller deadline, it uses the internal cap. An expired caller deadline
+/// skips the probe, so the internal cap never extends it.
 fn developer_dir(deadline: Option<Instant>) -> Option<String> {
     developer_dir_via(Path::new(XCODE_SELECT), deadline)
 }
@@ -506,35 +499,16 @@ fn developer_dir(deadline: Option<Instant>) -> Option<String> {
 /// never exercised.
 const XCODE_SELECT: &str = "/usr/bin/xcode-select";
 
-/// The deadline a probe helper runs under, derived from its caller's.
+/// The deadline a probe helper runs under, bounded by both the caller and the
+/// internal probe ceiling.
 ///
-/// This is the single seam through which every probe (`xcode-select`, the
-/// capability probe and its metadata reads) inherits a bound, so the propagation
-/// rule is stated once and is directly assertable:
-///
-/// * A caller-supplied `Instant` comes back **as that instant** — never converted
-///   to a duration and rebuilt from a fresh `now`. The conversion-and-rebuild
-///   form (`budget = absolute - now; deadline = now + budget`) is a *rebase*: the
-///   second `now` is later than the first, so the rebuilt instant is later than
-///   the one the caller chose, and whatever elapsed in between silently refills
-///   the budget. A helper must never receive a later deadline than its caller.
-/// * `GIT_PROBE_TIMEOUT` is a deadline only in the branch where the caller
-///   supplied none. It shortens a generous caller's deadline; it never extends an
-///   imminent one.
-/// * An already-expired deadline yields `None`, so the caller's clock is not
-///   converted into a fresh grant at the moment it runs out.
-///
-/// Returns `None` when there is no budget to probe under.
+/// Returns `None` when a supplied caller deadline has already expired.
 fn probe_deadline(caller: Option<Instant>) -> Option<Instant> {
+    let now = clock_now!(Probe);
     match caller {
-        Some(absolute) if absolute > Instant::now() => {
-            Some(std::cmp::min(absolute, Instant::now() + GIT_PROBE_TIMEOUT))
-        }
-        // The caller's budget is spent; a probe under it measures nothing.
+        Some(absolute) if absolute > now => Some(std::cmp::min(absolute, now + GIT_PROBE_TIMEOUT)),
         Some(_) => None,
-        // No caller deadline exists — *this* is the branch where a fresh cap is
-        // constructed, and the only one.
-        None => Some(Instant::now() + GIT_PROBE_TIMEOUT),
+        None => Some(now + GIT_PROBE_TIMEOUT),
     }
 }
 
@@ -682,43 +656,20 @@ impl BrokeredGit {
     /// Wait for git under a caller's absolute deadline and report whether the
     /// bounded capture was complete.
     fn finish_bounded(mut self, deadline: Instant) -> Result<BoundedGitCapture, GitRefusal> {
-        // ONE tail, opened before the first blocking stage and never reopened.
-        // The tree wait and the stdout drain below both draw from this instant,
-        // so together they cannot exceed `DRAIN_TAIL_BUDGET` even when the
-        // caller's own deadline is still minutes away.
-        let tail_deadline = open_drain_tail(deadline);
         let mut timed_out = false;
-        let status = loop {
+        let mut status = loop {
             if self.stdout_truncated.load(Ordering::SeqCst) {
-                // The reader stopped early, which means git still has output to
-                // write into a pipe nobody is draining. Terminate rather than
-                // wait on a child that cannot finish.
+                // The reader stopped early, so nobody is draining a pipe git may
+                // still be writing to. Terminate rather than wait on it.
                 let _ = self.child.terminate_tree();
             }
             if let Some(status) = self.child.try_wait().map_err(|error| GitRefusal {
                 code: "git_wait_failed",
                 detail: error.to_string(),
             })? {
-                // The direct child is gone, but its pipe may not be. Descendants
-                // inherit the write end, so EOF is not implied by this status.
-                // Give the tree a bounded moment to clear it so the readers can
-                // finish normally; if it does not, terminate it, so the drain
-                // join below is bounded by the remaining tail instead of by
-                // however long a descendant lives.
-                if self
-                    .child
-                    .wait_tree_exit(remaining_tail(tail_deadline))
-                    .unwrap_or(false)
-                {
-                    break status;
-                }
-                let _ = self.child.terminate_tree();
-                break self.child.wait().map_err(|error| GitRefusal {
-                    code: "git_wait_failed",
-                    detail: error.to_string(),
-                })?;
+                break status;
             }
-            if Instant::now() >= deadline {
+            if clock_now!(Operation) >= deadline {
                 timed_out = true;
                 let _ = self.child.terminate_tree();
                 break self.child.wait().map_err(|error| GitRefusal {
@@ -728,6 +679,21 @@ impl BrokeredGit {
             }
             std::thread::sleep(std::time::Duration::from_millis(2));
         };
+
+        // Open the single cleanup tail after the direct child is accounted for.
+        // Tree exit and the stdout drain draw from this same absolute instant.
+        let tail_deadline = open_drain_tail(deadline);
+        if !self
+            .child
+            .wait_tree_exit(remaining_tail(tail_deadline))
+            .unwrap_or(false)
+        {
+            let _ = self.child.terminate_tree();
+            status = self.child.wait().map_err(|error| GitRefusal {
+                code: "git_wait_failed",
+                detail: error.to_string(),
+            })?;
+        }
 
         let stdout = join_reader(self.stdout, "stdout", tail_deadline);
         let truncated = self.stdout_truncated.load(Ordering::SeqCst);
@@ -747,12 +713,8 @@ impl BrokeredGit {
     /// pipe nobody drains cannot finish, so leaving it alive would hold the
     /// workspace past the caller's deadline.
     fn finish_bounded_read(mut self, deadline: Instant) -> Result<BoundedGitRead, GitRefusal> {
-        // ONE tail, opened here and never reopened. Tree wait, stdout drain and
-        // stderr drain are three blocking stages; all three draw from this single
-        // instant, so their combined cost cannot exceed `DRAIN_TAIL_BUDGET`.
-        let tail_deadline = open_drain_tail(deadline);
         let mut timed_out = false;
-        let status = loop {
+        let mut status = loop {
             if self.stdout_truncated.load(Ordering::SeqCst)
                 || self.stderr_truncated.load(Ordering::SeqCst)
             {
@@ -762,23 +724,9 @@ impl BrokeredGit {
                 code: "git_wait_failed",
                 detail: error.to_string(),
             })? {
-                // See `finish_bounded`: a reaped direct child does not imply its
-                // pipes reached EOF, so the tree gets a bounded chance to clear
-                // them before the readers are joined under a deadline.
-                if self
-                    .child
-                    .wait_tree_exit(remaining_tail(tail_deadline))
-                    .unwrap_or(false)
-                {
-                    break status;
-                }
-                let _ = self.child.terminate_tree();
-                break self.child.wait().map_err(|error| GitRefusal {
-                    code: "git_wait_failed",
-                    detail: error.to_string(),
-                })?;
+                break status;
             }
-            if Instant::now() >= deadline {
+            if clock_now!(Operation) >= deadline {
                 timed_out = true;
                 let _ = self.child.terminate_tree();
                 break self.child.wait().map_err(|error| GitRefusal {
@@ -789,22 +737,27 @@ impl BrokeredGit {
             std::thread::sleep(std::time::Duration::from_millis(2));
         };
 
-        // The drain tail is drawn from the ONE instant opened above, not granted
-        // afresh per stage. Handing each stage its own `DRAIN_TAIL_BUDGET` let the
-        // tail add up: tree wait, then stdout, then stderr, so a request could
-        // finish up to three budgets past the deadline the caller agreed to. Each
-        // stage below therefore consumes what is left of the same tail rather
-        // than re-measuring it — asking "how much is left now" is what makes the
-        // stages share one budget rather than merely start from the same number.
+        // Tree exit and both reader drains share one tail opened after the direct
+        // child is accounted for.
+        let tail_deadline = open_drain_tail(deadline);
+        if !self
+            .child
+            .wait_tree_exit(remaining_tail(tail_deadline))
+            .unwrap_or(false)
+        {
+            let _ = self.child.terminate_tree();
+            status = self.child.wait().map_err(|error| GitRefusal {
+                code: "git_wait_failed",
+                detail: error.to_string(),
+            })?;
+        }
+
         let stdout_budget = remaining_tail(tail_deadline);
         let (stdout, stdout_drain_incomplete) =
             join_reader_bounded(self.stdout, "stdout", stdout_budget);
         let stderr_budget = remaining_tail(tail_deadline);
         let (stderr, stderr_drain_incomplete) =
             join_reader_bounded(self.stderr, "stderr", stderr_budget);
-        // A drain that could not finish means the request outlived its budget in
-        // the only way a caller cares about. Reporting `timed_out` here is what
-        // stops a caller from treating a partial capture as a complete answer.
         let drain_incomplete = stdout_drain_incomplete || stderr_drain_incomplete;
         if drain_incomplete {
             eprintln!(
@@ -958,7 +911,7 @@ const DRAIN_TAIL_BUDGET: std::time::Duration = std::time::Duration::from_millis(
 /// window inside it: the git deadline and the cleanup deadline stay separate
 /// claims, and the cleanup claim is the smaller of the two.
 fn open_drain_tail(deadline: Instant) -> Instant {
-    std::cmp::min(deadline, Instant::now() + DRAIN_TAIL_BUDGET)
+    std::cmp::min(deadline, clock_now!(TailOpen) + DRAIN_TAIL_BUDGET)
 }
 
 /// What is left of an **already-open** drain tail.
@@ -968,7 +921,10 @@ fn open_drain_tail(deadline: Instant) -> Instant {
 /// budget to re-cap: capping here would let each stage take a fresh full
 /// allowance, which is the accumulation defect this function exists to prevent.
 fn remaining_tail(tail_deadline: Instant) -> std::time::Duration {
-    tail_deadline.saturating_duration_since(Instant::now())
+    let budget = tail_deadline.saturating_duration_since(clock_now!(TailRemaining));
+    #[cfg(test)]
+    tests::record_test_remaining(tail_deadline, budget);
+    budget
 }
 
 /// Collect one drained pipe, giving up on it if it cannot finish in time.
@@ -1179,11 +1135,8 @@ fn is_capable_git(candidate: &Path, deadline: Option<Instant>) -> Option<GitSele
     if !candidate.is_file() {
         return None;
     }
-    // Same rule as `developer_dir_via`: a caller deadline is **propagated**, never
-    // rebased. `GIT_PROBE_TIMEOUT` shortens it when the caller allowed more, and
-    // an already-expired deadline fails the probe without launching anything —
-    // but the instant the caller's request started counting is the instant that
-    // bounds this probe.
+    // `probe_deadline` applies the independent five-second ceiling without ever
+    // extending a live caller deadline; an expired caller deadline skips probing.
     let probe_deadline = probe_deadline(deadline)?;
 
     // Step 1 — try the candidate with **no** `DEVELOPER_DIR`, which is what a
@@ -1473,6 +1426,131 @@ fn trusted_toolchain_for(program: &Path) -> Vec<TrustedToolchainRoot> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) enum ClockPoint {
+        Operation,
+        TailOpen,
+        TailRemaining,
+        Probe,
+    }
+
+    struct TestClockState {
+        now: Instant,
+        events: Vec<ClockPoint>,
+        tail_opens: Vec<Instant>,
+        remaining: Vec<(Instant, std::time::Duration)>,
+        probe_samples: Vec<Instant>,
+        simulated_elapsed: std::time::Duration,
+        operation_advanced: bool,
+        operation_count: usize,
+        operation_limit: usize,
+        stdin_to_close: Option<std::process::ChildStdin>,
+    }
+
+    thread_local! {
+        static TEST_CLOCK: std::cell::RefCell<Option<TestClockState>> = const { std::cell::RefCell::new(None) };
+    }
+
+    struct TestClockGuard;
+
+    impl TestClockGuard {
+        fn new(now: Instant, operation_limit: usize) -> Self {
+            TEST_CLOCK.with(|clock| {
+                *clock.borrow_mut() = Some(TestClockState {
+                    now,
+                    events: Vec::new(),
+                    tail_opens: Vec::new(),
+                    remaining: Vec::new(),
+                    probe_samples: Vec::new(),
+                    simulated_elapsed: std::time::Duration::ZERO,
+                    operation_advanced: false,
+                    operation_count: 0,
+                    operation_limit,
+                    stdin_to_close: None,
+                });
+            });
+            Self
+        }
+
+        fn close_stdin_on_operation(&self, stdin: std::process::ChildStdin) {
+            TEST_CLOCK.with(|clock| {
+                clock
+                    .borrow_mut()
+                    .as_mut()
+                    .expect("test clock is active")
+                    .stdin_to_close = Some(stdin);
+            });
+        }
+
+        fn snapshot(&self) -> TestClockSnapshot {
+            TEST_CLOCK.with(|clock| {
+                let clock = clock.borrow();
+                let clock = clock.as_ref().expect("test clock is active");
+                TestClockSnapshot {
+                    events: clock.events.clone(),
+                    tail_opens: clock.tail_opens.clone(),
+                    remaining: clock.remaining.clone(),
+                    probe_samples: clock.probe_samples.clone(),
+                    simulated_elapsed: clock.simulated_elapsed,
+                }
+            })
+        }
+    }
+
+    impl Drop for TestClockGuard {
+        fn drop(&mut self) {
+            TEST_CLOCK.with(|clock| *clock.borrow_mut() = None);
+        }
+    }
+
+    struct TestClockSnapshot {
+        events: Vec<ClockPoint>,
+        tail_opens: Vec<Instant>,
+        remaining: Vec<(Instant, std::time::Duration)>,
+        probe_samples: Vec<Instant>,
+        simulated_elapsed: std::time::Duration,
+    }
+
+    pub(super) fn clock_now_for_test(point: ClockPoint) -> Instant {
+        TEST_CLOCK.with(|clock| {
+            let mut clock = clock.borrow_mut();
+            let Some(clock) = clock.as_mut() else {
+                return Instant::now();
+            };
+            clock.events.push(point);
+            if point == ClockPoint::TailOpen {
+                clock.tail_opens.push(clock.now);
+            }
+            if point == ClockPoint::Operation {
+                clock.operation_count += 1;
+                assert!(
+                    clock.operation_count <= clock.operation_limit,
+                    "bounded finish exceeded the test poll limit"
+                );
+                if !clock.operation_advanced {
+                    clock.now += std::time::Duration::from_secs(1);
+                    clock.operation_advanced = true;
+                    drop(clock.stdin_to_close.take());
+                }
+            }
+            if point == ClockPoint::Probe {
+                clock.probe_samples.push(clock.now);
+            }
+            clock.now
+        })
+    }
+
+    pub(super) fn record_test_remaining(tail: Instant, budget: std::time::Duration) {
+        TEST_CLOCK.with(|clock| {
+            if let Some(clock) = clock.borrow_mut().as_mut() {
+                clock.remaining.push((tail, budget));
+                let elapsed = std::time::Duration::from_millis(100).min(budget);
+                clock.now += elapsed;
+                clock.simulated_elapsed += elapsed;
+            }
+        });
+    }
 
     /// Gate a native-evidence test on its verdict, exactly as the catalog does.
     ///
@@ -2207,6 +2285,191 @@ mod tests {
             stderr_truncated,
         };
         git.finish_bounded_read(Instant::now() + timeout)
+    }
+
+    #[test]
+    fn probe_deadline_applies_one_fixed_internal_cap_without_extending_caller() {
+        let t0 = Instant::now();
+        let _clock = TestClockGuard::new(t0, 1);
+        let tight = t0 + std::time::Duration::from_secs(3);
+        let generous = t0 + std::time::Duration::from_secs(60);
+        let expired = t0 - std::time::Duration::from_secs(1);
+
+        let tight_result = probe_deadline(Some(tight));
+        let generous_result = probe_deadline(Some(generous));
+        let no_caller_result = probe_deadline(None);
+        let expired_result = probe_deadline(Some(expired));
+        assert_eq!(tight_result, Some(tight));
+        assert_eq!(generous_result, Some(t0 + GIT_PROBE_TIMEOUT));
+        assert_eq!(no_caller_result, Some(t0 + GIT_PROBE_TIMEOUT));
+        assert_eq!(expired_result, None);
+        assert!(tight_result.is_some_and(|result| result <= tight));
+        assert!(generous_result.is_some_and(|result| result <= generous));
+
+        let observed = _clock.snapshot();
+        assert_eq!(observed.probe_samples, [t0, t0, t0, t0]);
+    }
+
+    #[cfg(unix)]
+    fn bounded_clock_fixture() -> (BrokeredGit, std::process::ChildStdin) {
+        let mut command = std::process::Command::new("/bin/sh");
+        command
+            .args(["-c", "read line"])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+        let mut child = webcodex_process::ManagedChild::spawn(&mut command)
+            .expect("spawn blocking stdin fixture");
+        let stdin = child.child_mut().stdin.take().expect("fixture stdin pipe");
+        let stdout_truncated = Arc::new(AtomicBool::new(false));
+        let stderr_truncated = Arc::new(AtomicBool::new(false));
+        (
+            BrokeredGit {
+                child,
+                stdout: None,
+                stdout_truncated,
+                stderr: None,
+                stderr_truncated,
+            },
+            stdin,
+        )
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bounded_capture_opens_its_tail_after_the_direct_child_wait() {
+        let t0 = Instant::now();
+        let (git, stdin) = bounded_clock_fixture();
+        let clock = TestClockGuard::new(t0, 500);
+        clock.close_stdin_on_operation(stdin);
+
+        let capture = git
+            .finish_bounded(t0 + std::time::Duration::from_secs(10))
+            .expect("finish bounded capture");
+        let observed = clock.snapshot();
+        let operation = observed
+            .events
+            .iter()
+            .position(|event| *event == ClockPoint::Operation);
+        let tail_open = observed
+            .events
+            .iter()
+            .position(|event| *event == ClockPoint::TailOpen);
+        assert!(
+            matches!((operation, tail_open), (Some(operation), Some(tail_open)) if operation < tail_open),
+            "the wait loop must finish before the one drain tail is opened: {:?}",
+            observed.events
+        );
+        assert_eq!(
+            observed
+                .events
+                .iter()
+                .filter(|event| **event == ClockPoint::TailOpen)
+                .count(),
+            1,
+            "one cleanup tail must be opened"
+        );
+        let expected_open = t0 + std::time::Duration::from_secs(1);
+        let expected_tail = expected_open + DRAIN_TAIL_BUDGET;
+        assert_eq!(observed.tail_opens, [expected_open]);
+        assert!(observed
+            .remaining
+            .iter()
+            .all(|(tail, _)| *tail == expected_tail));
+        assert!(
+            capture.complete,
+            "fixture output has no reader and must complete"
+        );
+        assert_eq!(
+            observed.remaining.len(),
+            2,
+            "tree and stdout each draw once"
+        );
+        assert_eq!(
+            observed
+                .remaining
+                .iter()
+                .map(|(_, budget)| *budget)
+                .collect::<Vec<_>>(),
+            [
+                std::time::Duration::from_millis(250),
+                std::time::Duration::from_millis(150),
+            ],
+            "stdout-only path should share 250ms as 250ms then 150ms"
+        );
+        assert_eq!(
+            observed.simulated_elapsed,
+            std::time::Duration::from_millis(200)
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bounded_read_opens_its_tail_after_the_direct_child_wait() {
+        let t0 = Instant::now();
+        let (git, stdin) = bounded_clock_fixture();
+        let clock = TestClockGuard::new(t0, 500);
+        clock.close_stdin_on_operation(stdin);
+
+        let read = git
+            .finish_bounded_read(t0 + std::time::Duration::from_secs(10))
+            .expect("finish bounded read");
+        let observed = clock.snapshot();
+        let operation = observed
+            .events
+            .iter()
+            .position(|event| *event == ClockPoint::Operation);
+        let tail_open = observed
+            .events
+            .iter()
+            .position(|event| *event == ClockPoint::TailOpen);
+        assert!(
+            matches!((operation, tail_open), (Some(operation), Some(tail_open)) if operation < tail_open),
+            "the wait loop must finish before the one drain tail is opened: {:?}",
+            observed.events
+        );
+        assert_eq!(
+            observed
+                .events
+                .iter()
+                .filter(|event| **event == ClockPoint::TailOpen)
+                .count(),
+            1,
+            "one cleanup tail must be opened"
+        );
+        let expected_open = t0 + std::time::Duration::from_secs(1);
+        let expected_tail = expected_open + DRAIN_TAIL_BUDGET;
+        assert_eq!(observed.tail_opens, [expected_open]);
+        assert!(observed
+            .remaining
+            .iter()
+            .all(|(tail, _)| *tail == expected_tail));
+        assert!(
+            !read.timed_out,
+            "fixture output has no readers and must complete"
+        );
+        assert_eq!(
+            observed.remaining.len(),
+            3,
+            "tree, stdout, and stderr each draw once"
+        );
+        assert_eq!(
+            observed
+                .remaining
+                .iter()
+                .map(|(_, budget)| *budget)
+                .collect::<Vec<_>>(),
+            [
+                std::time::Duration::from_millis(250),
+                std::time::Duration::from_millis(150),
+                std::time::Duration::from_millis(50),
+            ],
+            "both streams should share 250ms as 250ms, 150ms, then 50ms"
+        );
+        assert_eq!(
+            observed.simulated_elapsed,
+            std::time::Duration::from_millis(250)
+        );
     }
 
     /// Create a git repository, or `None` when this host has no usable git.
