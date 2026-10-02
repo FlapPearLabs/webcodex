@@ -670,6 +670,15 @@ mod tests {
     /// No repository is touched, no patch is read, and no confinement decision is
     /// made — so this is a property of the machine and is classified as
     /// HOST_UNAVAILABLE rather than blamed on the broker.
+    ///
+    /// `not a git repository` is deliberately excluded: git emitted it, so git
+    /// ran, and it is telling us the workspace was outside a repository — which
+    /// is the invariant under test, not a missing tool.
+    ///
+    /// `git_executable_unavailable` is excluded for a different reason: that is
+    /// a `GitRefusal` *code*, not something git writes to stderr. It is matched
+    /// on the refusal itself, where the broker reports never having started a
+    /// process, so it is classified there rather than inferred from text here.
     fn is_host_unavailable(stderr: &[u8]) -> bool {
         let text = String::from_utf8_lossy(stderr);
         text.contains("xcode-select")
@@ -678,7 +687,6 @@ mod tests {
             || text.contains("no developer tools")
             || text.contains("unable to locate developer tools")
             || text.contains("Cannot find a developer tool")
-            || text.contains("not a git repository")
     }
 
     /// **P1-H** The git helper gains no authority beyond the project root.
@@ -714,5 +722,47 @@ mod tests {
         let missing = Path::new("/webcodex/definitely/not/here");
         let refusal = run_git(missing, &["status"], None, None).expect_err("must refuse");
         assert_eq!(refusal.code, "git_workspace_root_invalid");
+    }
+
+    /// The HOST_UNAVAILABLE / FAIL boundary is the whole point of the four-state
+    /// classification, so it is pinned rather than left to a comment. Widening
+    /// `is_host_unavailable` is easy and quiet; this is what makes it fail loudly.
+    #[test]
+    fn host_unavailable_never_swallows_a_security_or_env_signal() {
+        // Host gaps: the toolchain is missing, so nothing was measured. These
+        // are the shapes macOS actually emits — the `/usr/bin/git` shim exists
+        // and fails at `xcode-select` when developer tools are absent.
+        for missing in [
+            "xcode-select: error: tool 'git' requires Xcode",
+            "xcode-select: error: unable to locate developer tools",
+            "No developer tools were found, install them and retry",
+        ] {
+            assert!(
+                is_host_unavailable(missing.as_bytes()),
+                "must be HOST_UNAVAILABLE: {missing}"
+            );
+        }
+
+        // git ran and told us something about the workspace. These are the
+        // invariant under test, or an environment refusal, and neither may be
+        // filed as a missing tool.
+        for security in [
+            "fatal: not a git repository (or any of the parent directories): .git",
+            "error: pathspec 'x.txt' did not match any file(s) known to git",
+            "fatal: patch failed: checkpoint-added.txt: No such file or directory",
+        ] {
+            assert!(
+                !is_host_unavailable(security.as_bytes()),
+                "must NOT be HOST_UNAVAILABLE, or a real defect hides as a host gap: {security}"
+            );
+        }
+
+        // The profile refusal belongs to the ENV_BLOCKED axis, not this one.
+        assert!(is_profile_refusal(
+            b"sandbox-exec: sandbox_apply: Operation not permitted"
+        ));
+        assert!(!is_host_unavailable(
+            b"sandbox-exec: sandbox_apply: Operation not permitted"
+        ));
     }
 }

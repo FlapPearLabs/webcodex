@@ -940,6 +940,12 @@ mod tests {
     /// `git_spawn_refused` is deliberately NOT here: that is the broker's own
     /// fail-closed path and says the confinement declined to start git, which is
     /// a statement about the broker, not about the host's toolchain.
+    ///
+    /// `not a git repository` is deliberately NOT here either, even though it
+    /// reads like an environment problem. It is what git says when it *ran* and
+    /// found the workspace outside a repository — that is the sandbox invariant
+    /// this gate exists to check, so treating it as a missing tool would let a
+    /// confinement failure be filed as a host limitation.
     fn is_host_unavailable(detail: &str) -> bool {
         detail.contains("xcode-select")
             || detail.contains("xcode_select")
@@ -949,7 +955,6 @@ mod tests {
             || detail.contains("unable to locate developer tools")
             || detail.contains("Cannot find a developer tool")
             || detail.contains("git_executable_unavailable")
-            || detail.contains("not a git repository")
     }
 
     /// **P1-G, checkpoint-wrapper half.** The production chain the model can
@@ -1075,5 +1080,37 @@ mod tests {
                 panic!("P1-G checkpoint git apply failed on an unconfined-capable host: {detail}");
             }
         }
+    }
+
+    /// The checkpoint half of the HOST_UNAVAILABLE / FAIL boundary. Kept as its
+    /// own test because the two suites classify independently, and a rule that
+    /// held in one but not the other would let the same host read as a security
+    /// regression on one path and an environment gap on the other.
+    #[test]
+    fn checkpoint_host_unavailable_never_swallows_a_git_rejection() {
+        for missing in [
+            "xcode-select: error: tool 'git' requires Xcode",
+            "unable to locate developer tools",
+            "git_executable_unavailable: no trusted git",
+        ] {
+            assert!(
+                is_host_unavailable(missing),
+                "must be HOST_UNAVAILABLE: {missing}"
+            );
+        }
+        for security in [
+            "fatal: not a git repository (or any of the parent directories): .git",
+            "error: corrupt patch at line 3",
+        ] {
+            assert!(
+                !is_host_unavailable(security),
+                "must NOT be HOST_UNAVAILABLE, or a real defect hides as a host gap: {security}"
+            );
+        }
+        // The broker's own fail-closed code is a statement about the broker.
+        assert!(!is_host_unavailable("git_spawn_refused: refused"));
+        assert!(is_profile_refusal(
+            "sandbox-exec: sandbox_apply: Operation not permitted"
+        ));
     }
 }
