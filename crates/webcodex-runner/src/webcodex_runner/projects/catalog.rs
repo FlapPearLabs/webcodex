@@ -622,6 +622,9 @@ impl RunnerProjectCache {
 #[cfg(test)]
 mod brokered_git_tests {
     use super::*;
+    // The four-state outcome type the F3 review asked for. Imported explicitly so
+    // a test in this module cannot quietly fall back to reporting a bool.
+    use webcodex_workspace::git_broker::GitVerdict;
 
     fn project_with_path(path: &Path) -> RunnerProjectFile {
         RunnerProjectFile {
@@ -645,38 +648,93 @@ mod brokered_git_tests {
         }
     }
 
-    /// A real git repository, so the accepted-root case exercises real argv
-    /// rather than a refusal.
+    /// A real git repository **with a commit in it**.
+    ///
+    /// Two corrections the F2/F3 review forced, both about what this fixture has
+    /// to be for its test to mean anything:
+    ///
+    /// * The git is resolved by *asking the broker's own selector*, not by
+    ///   `is_file()`. `is_file()` is satisfied by Apple's developer-tools shim,
+    ///   which cannot run under confinement — so a fixture built that way sets
+    ///   up a repository whose metadata reads will fail for reasons that have
+    ///   nothing to do with the code under test.
+    /// * It contains a **commit**. A bare `git init` has no `HEAD`, so
+    ///   `rev-parse --abbrev-ref HEAD` and `log -1` both exit 128. The accepted
+    ///   -root test then "passes" while never observing a successful metadata
+    ///   extraction at all.
     fn init_repo() -> tempfile::TempDir {
-        let dir = tempfile::tempdir().unwrap();
-        let git = [
-            "/usr/bin/git",
-            "/bin/git",
-            "/usr/local/bin/git",
-            "/opt/homebrew/bin/git",
-            "/opt/local/bin/git",
-        ]
-        .iter()
-        .map(PathBuf::from)
-        .find(|candidate| candidate.is_file())
-        .expect("a trusted git is required for this test");
-        let status = std::process::Command::new(git)
-            .args(["init", "-q"])
-            .current_dir(dir.path())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .expect("run git init");
-        assert!(status.success(), "git init must succeed");
-        dir
+        try_init_repo().expect("a functional git is required for this test")
+    }
+
+    /// [`init_repo`], or `None` when this host has no functional git.
+    ///
+    /// The fallible form exists so a *success-path* test can report
+    /// `HOST_UNAVAILABLE` and return, instead of panicking on a host that simply
+    /// cannot run git. That distinction is the F3 finding: "this machine has no
+    /// git" and "this code is broken" must not share an outcome.
+    fn try_init_repo() -> Option<tempfile::TempDir> {
+        let dir = tempfile::tempdir().ok()?;
+        let git = trusted_functional_git()?;
+        let run = |args: &[&str]| {
+            std::process::Command::new(&git)
+                .args(args)
+                .current_dir(dir.path())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .is_ok_and(|status| status.success())
+        };
+        assert!(run(&["init", "-q"]), "git init must succeed");
+        std::fs::write(dir.path().join("fixture.txt"), b"fixture\n").unwrap();
+        assert!(run(&["add", "fixture.txt"]), "git add must succeed");
+        // Identity comes from the command line because the fixture must not
+        // depend on any global git configuration being present.
+        assert!(
+            run(&[
+                "-c",
+                "user.email=webcodex@example.invalid",
+                "-c",
+                "user.name=webcodex",
+                "commit",
+                "-q",
+                "-m",
+                "fixture commit"
+            ]),
+            "git commit must succeed: the metadata reads under test need a real HEAD"
+        );
+        Some(dir)
+    }
+
+    /// The git the broker would actually use, resolved the same way.
+    ///
+    /// Reading it through `run_git_bounded_read`'s own resolution keeps the
+    /// fixture and the production path from disagreeing about which git is
+    /// usable — the disagreement that made the previous fixture select a shim.
+    fn trusted_functional_git() -> Option<PathBuf> {
+        webcodex_workspace::git_broker::functional_git_for_tests()
     }
 
     /// A git-backed project whose root resolved: the summary must still be
-    /// produced, and `root_fingerprint` proves the canonical root was the one
-    /// used for authority.
+    /// produced, **and the git metadata must actually have been extracted**.
+    ///
+    /// The F3 review found this test asserted only the inventory row and the
+    /// fingerprint — which stay intact whether or not any git read succeeded. So
+    /// it could not tell "the accepted root produced its metadata" from "the
+    /// accepted root produced a row and silently no metadata".
+    ///
+    /// It now asserts the metadata itself, and separates the two ways that can
+    /// legitimately fail to produce it: a host that cannot run git at all, and a
+    /// kernel that refuses the profile. Neither may be reported as a pass, and
+    /// neither may panic as if the code were broken.
     #[test]
     fn valid_canonical_project_root_is_accepted_and_reported() {
-        let repo = init_repo();
+        let Some(repo) = try_init_repo() else {
+            eprintln!(
+                "P1B_CATALOG_ACCEPTED_ROOT=HOST_UNAVAILABLE no functional git on this host; this \
+                 is NOT a pass"
+            );
+            return;
+        };
         let project = project_with_path(repo.path());
         let summary = runner_project_summary_with_shutdown(&project, 0, true, None);
 
@@ -690,6 +748,69 @@ mod brokered_git_tests {
             summary.root_fingerprint.is_some(),
             "a resolvable root must produce a fingerprint"
         );
+
+        // And the metadata itself. The repository has one commit on a known
+        // branch, so `git_branch` and `git_head` have concrete values to be.
+        match (summary.git_branch.as_deref(), summary.git_head.as_deref()) {
+            (Some(branch), Some(head)) => {
+                assert!(
+                    !branch.trim().is_empty() && !head.trim().is_empty(),
+                    "F3: an accepted root must yield non-empty metadata, got branch={branch:?} \
+                     head={head:?}"
+                );
+                eprintln!(
+                    "P1B_CATALOG_ACCEPTED_ROOT=PASS branch={branch} head={head} dirty={:?}",
+                    summary.git_dirty
+                );
+            }
+            // Degraded rather than broken: report which axis blocked it and do
+            // not claim a pass.
+            (branch, head) => {
+                let verdict = classify_missing_metadata(&summary);
+                eprintln!(
+                    "P1B_CATALOG_ACCEPTED_ROOT={verdict:?} metadata was not extracted \
+                     (branch={branch:?} head={head:?}); this is NOT a pass"
+                );
+            }
+        }
+    }
+
+    /// Why metadata is absent for an accepted root: a refused profile or a
+    /// missing toolchain, never a defect.
+    fn classify_missing_metadata(
+        summary: &super::RunnerProjectSummary,
+    ) -> webcodex_workspace::git_broker::GitVerdict {
+        // Re-run one read to see *why* it produced nothing, rather than guessing
+        // from the summary alone.
+        let path = std::path::Path::new(&summary.path);
+        match webcodex_workspace::git_broker::run_git_bounded_read(
+            path,
+            &["rev-parse", "--abbrev-ref", "HEAD"],
+            64 * 1024,
+            64 * 1024,
+            std::time::Duration::from_secs(10),
+        ) {
+            Ok(read) if read.status.success() => webcodex_workspace::git_broker::GitVerdict::Pass,
+            Ok(read) if is_sandbox_profile_refusal(&read.stderr) => {
+                webcodex_workspace::git_broker::GitVerdict::EnvBlocked
+            }
+            Ok(read) if is_missing_toolchain(&String::from_utf8_lossy(&read.stderr)) => {
+                webcodex_workspace::git_broker::GitVerdict::HostUnavailable
+            }
+            // Git ran and failed on a root we accepted. That is a real defect
+            // and the summary silently swallowing it is exactly what F3 flagged.
+            Ok(read) => panic!(
+                "F3: an accepted project root produced no metadata but git ran and reported: {}",
+                String::from_utf8_lossy(&read.stderr)
+            ),
+            Err(refusal) if refusal.code == "git_executable_unavailable" => {
+                webcodex_workspace::git_broker::GitVerdict::HostUnavailable
+            }
+            Err(refusal) => {
+                eprintln!("P1B_CATALOG_ACCEPTED_ROOT the broker refused: {refusal}");
+                webcodex_workspace::git_broker::GitVerdict::Fail
+            }
+        }
     }
 
     /// The authority requirement, stated as a test: a root that does not
@@ -861,51 +982,83 @@ mod brokered_git_tests {
     /// and returns without asserting — explicitly **not** a pass.
     #[test]
     fn real_git_smoke_runs_through_the_broker() {
-        let repo = init_repo();
-        match run_brokered_git_bounded(
-            repo.path(),
-            &["rev-parse", "--abbrev-ref", "HEAD"],
-            Duration::from_secs(5),
-            None,
-        ) {
-            Ok(output) => {
-                if !output.status.success() {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    if stderr.contains("sandbox_apply")
-                        || stderr.contains("Operation not permitted")
-                    {
+        let Some(repo) = try_init_repo() else {
+            eprintln!(
+                "P1B_CATALOG_GIT_BROKER=HOST_UNAVAILABLE no functional git on this host; this is \
+                 NOT a pass"
+            );
+            return;
+        };
+
+        // The catalog's own three reads, against a repository that has a real
+        // commit. The previous version of this test asserted on `git --version`
+        // and only reached it *after* the first command succeeded, so on a
+        // no-HEAD fixture the meaningful assertion never ran at all.
+        let expectations: [(&[&str], &str); 3] = [
+            (&["rev-parse", "--abbrev-ref", "HEAD"], "branch"),
+            (&["log", "-1", "--pretty=format:%h"], "head"),
+            (&["status", "--short"], "dirty"),
+        ];
+        let mut verdicts: Vec<GitVerdict> = Vec::new();
+
+        for (argv, what) in expectations {
+            let output =
+                match run_brokered_git_bounded(repo.path(), argv, Duration::from_secs(10), None) {
+                    Ok(output) => output,
+                    Err(error) => {
                         eprintln!(
-                            "P1B_CATALOG_GIT_BROKER=ENV_BLOCKED broker launched but the kernel \
-                             refused the profile ({stderr}); this is NOT a pass"
+                            "P1B_CATALOG_GIT_BROKER=ENV_BLOCKED broker refused to launch git for \
+                         `git {what}` ({error}); this is NOT a pass"
                         );
-                        return;
+                        verdicts.push(GitVerdict::EnvBlocked);
+                        continue;
                     }
-                    panic!("git rev-parse failed unexpectedly: {stderr}");
+                };
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if is_sandbox_profile_refusal(&output.stderr) {
+                    eprintln!(
+                        "P1B_CATALOG_GIT_BROKER=ENV_BLOCKED the kernel refused the profile for \
+                         `git {what}` ({stderr}); this is NOT a pass"
+                    );
+                    verdicts.push(GitVerdict::EnvBlocked);
+                    continue;
                 }
-                // A fresh `git init` repository has no commits, so `rev-parse
-                // --abbrev-ref HEAD` legitimately fails; assert on a command that
-                // always succeeds in a repository instead.
-                let version = run_brokered_git_bounded(
-                    repo.path(),
-                    &["--version"],
-                    Duration::from_secs(5),
-                    None,
-                )
-                .expect("git --version must run through the broker");
-                assert!(version.status.success());
-                assert!(
-                    String::from_utf8_lossy(&version.stdout).contains("git version"),
-                    "unexpected git --version output"
-                );
+                if is_missing_toolchain(&stderr) {
+                    eprintln!(
+                        "P1B_CATALOG_GIT_BROKER=HOST_UNAVAILABLE git could not run for \
+                         `git {what}` ({stderr}); this is NOT a pass"
+                    );
+                    verdicts.push(GitVerdict::HostUnavailable);
+                    continue;
+                }
+                // Anything else is a genuine failure: git ran and misbehaved.
+                panic!("git {what} failed unexpectedly through the broker: {stderr}");
             }
-            Err(error) => {
-                // A refusal before the process existed is fail-closed, and is
-                // reported as such rather than counted as a pass.
-                eprintln!(
-                    "P1B_CATALOG_GIT_BROKER=ENV_BLOCKED broker refused to launch git ({error}); \
-                     this is NOT a pass"
-                );
-            }
+            verdicts.push(GitVerdict::Pass);
         }
+
+        match GitVerdict::aggregate(verdicts) {
+            GitVerdict::Pass => eprintln!(
+                "P1B_CATALOG_GIT_BROKER=PASS rev-parse, log and status all ran through the broker"
+            ),
+            blocked => eprintln!(
+                "P1B_CATALOG_GIT_BROKER={blocked:?} the catalog's git reads could not be measured \
+                 on this host; this is NOT a pass"
+            ),
+        }
+    }
+
+    /// The sandbox launcher refusing the profile, as opposed to git failing.
+    fn is_sandbox_profile_refusal(stderr: &[u8]) -> bool {
+        let text = String::from_utf8_lossy(stderr);
+        text.contains("sandbox_apply") || text.contains("sandbox-exec")
+    }
+
+    /// The host lacking a usable toolchain, as opposed to git running.
+    fn is_missing_toolchain(stderr: &str) -> bool {
+        stderr.contains("xcode-select")
+            || stderr.contains("requires Xcode")
+            || stderr.contains("developer tools")
     }
 }
