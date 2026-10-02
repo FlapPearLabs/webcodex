@@ -5,8 +5,10 @@
 >   （该路径属于一个隔离 git worktree，不是主工作区；主工作区见下文「⚠️ 工作区冲突」）
 > - **远端分支**：`origin/handoff/p1b-slice2a-review`
 >   取回方式：`git fetch origin handoff/p1b-slice2a-review && git checkout FETCH_HEAD`
-> - **本文档 commit**：`83a58939b6bc25a31920f54dcf5d5adc0852bc9d`（本文件所在 commit）
->   已由 `git ls-remote origin refs/heads/handoff/p1b-slice2a-review` 实证返回一致。
+> - **本文档位置**：分支 `handoff/p1b-slice2a-review` 的**根目录**，
+>   即 `git show handoff/p1b-slice2a-review:P1B_SLICE2A_HANDOFF.md`。
+>   （刻意不写死自身 SHA：自引用无法收敛——每次修正文档都会产生新 SHA。
+>   请以上面这条命令的输出为准，或直接 `git ls-remote origin refs/heads/handoff/p1b-slice2a-review` 取当前 tip。）
 > - **本文档评审基线**：`0f56dd81aed0e63100d537a1dbc4e820e0356424`
 >   取回后请 `git checkout 0f56dd81aed0e63100d537a1dbc4e820e0356424` 读真实代码；
 >   本文档基于该 SHA 的**静态审阅**（未运行测试）。
