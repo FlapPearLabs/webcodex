@@ -1591,7 +1591,9 @@ mod git_index_tests {
             );
             // The filesystem fallback must still produce a coherent overview:
             // that is the fail-closed degradation path, and it is the one thing
-            // this host can still prove.
+            // this host can still prove. It is worth asserting — a broken
+            // fallback would be a real defect — but it is **not** evidence for
+            // the tracked-index behaviour this test is named after.
             let output = build_project_overview(root, "", None, None).unwrap();
             let kinds: Vec<&str> = output["project_types"]
                 .as_array()
@@ -1603,7 +1605,18 @@ mod git_index_tests {
                 kinds.contains(&"python"),
                 "the degraded path must still find tracked source: {kinds:?}"
             );
-            return;
+            // The degraded-path assertion above passed, and that is still not a
+            // pass for *this* test: the tracked-index semantics it exists to
+            // check never ran. Returning here would let cargo grade an
+            // unexercised behaviour as green, which is the false-green shape
+            // F3 rejected. The state is therefore reported through the harness
+            // as the non-pass it is.
+            panic!(
+                "ENV_BLOCKED: brokered git is unavailable on this host, so the tracked-index \
+                 semantics this test exists to verify are UNMEASURED — this is not a pass. The \
+                 degraded filesystem path was asserted and holds, but that is a different \
+                 claim. Run the suite where a restrictive Seatbelt profile can be applied."
+            );
         }
 
         let output = build_project_overview(root, "", None, None).unwrap();

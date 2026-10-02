@@ -1111,53 +1111,59 @@ mod tests {
     /// Seatbelt profile (`sandbox_apply: Operation not permitted` — a nested
     /// sandbox, a container, a locked-down CI runner) git cannot run at all.
     ///
-    /// That is the correct fail-closed outcome in production, but it means these
-    /// tests would fail for an *environmental* reason while asserting about
-    /// fingerprinting logic. So they detect the condition once and skip loudly
-    /// rather than silently passing — a skip is never reported as a pass.
-    static BROKERED_GIT_USABLE: OnceLock<bool> = OnceLock::new();
+    /// That is the correct fail-closed outcome in production, and it means the
+    /// behaviour these tests assert about **cannot be measured here**. The one
+    /// thing that must never happen is for that to be graded green: a test that
+    /// cannot run has produced no evidence, and cargo reads only the exit status,
+    /// so a `return` after printing a disclaimer is indistinguishable from a
+    /// measured pass. [`require_brokered_git`] therefore *fails* the test rather
+    /// than returning from it. A red suite on a blocked host is the honest
+    /// reading of "we could not check".
+    static BROKERED_GIT_USABLE: OnceLock<Result<(), String>> = OnceLock::new();
 
-    fn brokered_git_usable() -> bool {
-        *BROKERED_GIT_USABLE.get_or_init(|| {
-            let Ok(repo) = tempfile::tempdir() else {
-                return false;
-            };
-            let probe = crate::git_broker::run_git(repo.path(), &["--version"], None, None);
-            match probe {
-                Ok(output) if output.status.success() => true,
-                Ok(output) => {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    if stderr.contains("sandbox_apply") || stderr.contains("sandbox-exec") {
-                        eprintln!(
-                            "SKIP ENV_BLOCKED: this host cannot apply a restrictive Seatbelt \
-                             profile, so brokered git cannot run ({stderr})"
-                        );
-                        false
-                    } else {
-                        true
+    fn brokered_git_unusable_reason() -> Option<&'static str> {
+        BROKERED_GIT_USABLE
+            .get_or_init(|| {
+                let repo = tempfile::tempdir()
+                    .map_err(|error| format!("no scratch directory for the probe: {error}"))?;
+                let probe = crate::git_broker::run_git(repo.path(), &["--version"], None, None);
+                match probe {
+                    Ok(output) if output.status.success() => Ok(()),
+                    Ok(output) => {
+                        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                        Err(format!("git --version did not succeed: {stderr}"))
                     }
+                    Err(refusal) => Err(format!("brokered git was refused: {refusal}")),
                 }
-                Err(refusal) => {
-                    eprintln!(
-                        "SKIP ENV_BLOCKED: brokered git was refused ({refusal}); \
-                         this host cannot run git under the P1 plan"
-                    );
-                    false
-                }
-            }
-        })
+            })
+            .as_ref()
+            .err()
+            .map(String::as_str)
     }
 
-    /// Skip the calling test when brokered git is unavailable on this host.
+    /// Fail the calling test when brokered git is unavailable on this host.
+    ///
+    /// # Why this fails rather than skips
+    ///
+    /// This used to print `SKIPPED ... (ENV_BLOCKED, not a pass)` and `return`,
+    /// which cargo records as **green**. On a host that refuses the sandbox —
+    /// this one — eight tests asserting git-fingerprinting behaviour were
+    /// therefore reported as passing while none of them had run. That is the
+    /// same false-green shape the F3 review rejected in `git_broker`'s own
+    /// evidence tests, one level up.
+    ///
+    /// So the state is reported through the harness as a non-pass. The cost is a
+    /// red local suite on a blocked host; the benefit is that a green run means
+    /// the assertions actually held. There is no "blocked but ok" reading of an
+    /// evidence gate.
     macro_rules! require_brokered_git {
         () => {
-            if !brokered_git_usable() {
-                eprintln!(
-                    "SKIPPED {}: brokered git is unavailable on this host \
-                     (ENV_BLOCKED, not a pass)",
-                    env!("CARGO_PKG_NAME")
+            if let Some(reason) = brokered_git_unusable_reason() {
+                panic!(
+                    "ENV_BLOCKED: brokered git is unavailable on this host, so this test's \
+                     behaviour is UNMEASURED — this is not a pass. Reason: {reason}. Run the \
+                     suite where a restrictive Seatbelt profile can be applied."
                 );
-                return;
             }
         };
     }

@@ -480,6 +480,19 @@ const GIT_READ_PROFILE: &[(&str, &str, &str)] = &[
 /// supplied no deadline. It can shorten the wait; it can never extend it. An
 /// already-expired deadline returns `None` without launching anything, because
 /// the answer is no longer worth having.
+///
+/// # Why the caller's `Instant` is propagated verbatim
+///
+/// The obvious way to write this is
+/// `let budget = absolute - now; let deadline = Instant::now() + budget;` — and
+/// that is a **rebase**, not a pass-through. It throws away the instant the
+/// caller chose and rebuilds one from a fresh `now`, so any time already spent
+/// between the caller's decision and this function's start silently refills the
+/// clock. The wait is then bounded by `min(GIT_PROBE_TIMEOUT, remaining + drift)`
+/// rather than by what the caller actually allowed.
+///
+/// So when a deadline exists it is used as-is; `GIT_PROBE_TIMEOUT` is
+/// constructed as a deadline only in the branch where the caller supplied none.
 fn developer_dir(deadline: Option<Instant>) -> Option<String> {
     developer_dir_via(Path::new(XCODE_SELECT), deadline)
 }
@@ -493,20 +506,45 @@ fn developer_dir(deadline: Option<Instant>) -> Option<String> {
 /// never exercised.
 const XCODE_SELECT: &str = "/usr/bin/xcode-select";
 
+/// The deadline a probe helper runs under, derived from its caller's.
+///
+/// This is the single seam through which every probe (`xcode-select`, the
+/// capability probe and its metadata reads) inherits a bound, so the propagation
+/// rule is stated once and is directly assertable:
+///
+/// * A caller-supplied `Instant` comes back **as that instant** — never converted
+///   to a duration and rebuilt from a fresh `now`. The conversion-and-rebuild
+///   form (`budget = absolute - now; deadline = now + budget`) is a *rebase*: the
+///   second `now` is later than the first, so the rebuilt instant is later than
+///   the one the caller chose, and whatever elapsed in between silently refills
+///   the budget. A helper must never receive a later deadline than its caller.
+/// * `GIT_PROBE_TIMEOUT` is a deadline only in the branch where the caller
+///   supplied none. It shortens a generous caller's deadline; it never extends an
+///   imminent one.
+/// * An already-expired deadline yields `None`, so the caller's clock is not
+///   converted into a fresh grant at the moment it runs out.
+///
+/// Returns `None` when there is no budget to probe under.
+fn probe_deadline(caller: Option<Instant>) -> Option<Instant> {
+    match caller {
+        Some(absolute) if absolute > Instant::now() => {
+            Some(std::cmp::min(absolute, Instant::now() + GIT_PROBE_TIMEOUT))
+        }
+        // The caller's budget is spent; a probe under it measures nothing.
+        Some(_) => None,
+        // No caller deadline exists — *this* is the branch where a fresh cap is
+        // constructed, and the only one.
+        None => Some(Instant::now() + GIT_PROBE_TIMEOUT),
+    }
+}
+
 /// [`developer_dir`], against an explicit command.
 ///
 /// The command is a parameter so the deadline logic can be tested with a
 /// process that hangs. It is not a grant: the value is only useful to git if
 /// the broker also grants that root, which it does as a toolchain root.
 fn developer_dir_via(command: &Path, deadline: Option<Instant>) -> Option<String> {
-    let budget = match deadline {
-        Some(absolute) => absolute.saturating_duration_since(Instant::now()),
-        None => GIT_PROBE_TIMEOUT,
-    };
-    if budget.is_zero() {
-        return None;
-    }
-    let deadline = Instant::now() + budget;
+    let deadline = probe_deadline(deadline)?;
 
     let mut child = std::process::Command::new(command)
         .arg("-p")
@@ -607,27 +645,33 @@ impl BrokeredGit {
     /// On timeout the tree is terminated rather than abandoned: a git that
     /// outlives its budget would keep holding the workspace.
     ///
-    /// # Why the drain here is not drawn from a caller deadline
+    /// # Why the drain here is a fresh budget per stream, not one shared tail
     ///
     /// This path has no caller deadline: `timeout` is consumed by
     /// [`Self::wait_for`] to bound the *wait*, and what remains afterwards is
     /// whatever the caller allowed minus however long git took — a value this
     /// function does not have, because `wait_for` does not return it.
     ///
-    /// So the drain is bounded by [`DRAIN_TAIL_BUDGET`] instead, and each
-    /// stream recomputes it, rather than reusing one measurement for both. That
-    /// keeps the two streams from sharing a single allowance — the defect the
-    /// review measured in the bounded path — without pretending this path has a
-    /// deadline it was never given. Callers that need one absolute bound use
-    /// [`Self::finish_bounded`], which does have one.
+    /// So each stream draws a full [`DRAIN_TAIL_BUDGET`] of its own. That is not
+    /// the accumulation defect: there is no caller deadline here to accumulate
+    /// *past*. The guarantee a bounded caller needs — "cleanup ends by the
+    /// instant I named" — is [`Self::finish_bounded`]'s, which opens one tail
+    /// from that instant and shares it.
+    ///
+    /// Sharing a single 250ms tail between the two streams here was tried and is
+    /// wrong: the second stream is then handed whatever the first left, which is
+    /// typically nothing, so a stream that was merely slow comes back **empty**
+    /// while the call still reports success. `brokered_git_usable` probes with
+    /// `--version` and reads stderr to decide whether the sandbox refused the
+    /// profile; an empty stderr makes a refused profile look like a working
+    /// one, and every environment-gated test then runs against a host that
+    /// cannot run git at all.
     fn finish(mut self, timeout: Option<std::time::Duration>) -> Result<GitOutput, GitRefusal> {
         let status = self.wait_for(timeout)?;
-        // Recomputed per stream: handing both the same measured duration would
-        // let the second stream spend what the first had already consumed.
-        let stdout_budget = DRAIN_TAIL_BUDGET;
-        let (stdout, _) = join_reader_bounded(self.stdout, "stdout", stdout_budget);
-        let stderr_budget = DRAIN_TAIL_BUDGET;
-        let (stderr, _) = join_reader_bounded(self.stderr, "stderr", stderr_budget);
+        // One full budget per stream: independent allowances, because there is
+        // no caller clock for them to spend in common.
+        let (stdout, _) = join_reader_bounded(self.stdout, "stdout", DRAIN_TAIL_BUDGET);
+        let (stderr, _) = join_reader_bounded(self.stderr, "stderr", DRAIN_TAIL_BUDGET);
         Ok(GitOutput {
             status,
             stdout,
@@ -638,6 +682,11 @@ impl BrokeredGit {
     /// Wait for git under a caller's absolute deadline and report whether the
     /// bounded capture was complete.
     fn finish_bounded(mut self, deadline: Instant) -> Result<BoundedGitCapture, GitRefusal> {
+        // ONE tail, opened before the first blocking stage and never reopened.
+        // The tree wait and the stdout drain below both draw from this instant,
+        // so together they cannot exceed `DRAIN_TAIL_BUDGET` even when the
+        // caller's own deadline is still minutes away.
+        let tail_deadline = open_drain_tail(deadline);
         let mut timed_out = false;
         let status = loop {
             if self.stdout_truncated.load(Ordering::SeqCst) {
@@ -658,7 +707,7 @@ impl BrokeredGit {
                 // however long a descendant lives.
                 if self
                     .child
-                    .wait_tree_exit(remaining_tail(deadline))
+                    .wait_tree_exit(remaining_tail(tail_deadline))
                     .unwrap_or(false)
                 {
                     break status;
@@ -680,7 +729,7 @@ impl BrokeredGit {
             std::thread::sleep(std::time::Duration::from_millis(2));
         };
 
-        let stdout = join_reader(self.stdout, "stdout", deadline);
+        let stdout = join_reader(self.stdout, "stdout", tail_deadline);
         let truncated = self.stdout_truncated.load(Ordering::SeqCst);
         Ok(BoundedGitCapture {
             status,
@@ -698,6 +747,10 @@ impl BrokeredGit {
     /// pipe nobody drains cannot finish, so leaving it alive would hold the
     /// workspace past the caller's deadline.
     fn finish_bounded_read(mut self, deadline: Instant) -> Result<BoundedGitRead, GitRefusal> {
+        // ONE tail, opened here and never reopened. Tree wait, stdout drain and
+        // stderr drain are three blocking stages; all three draw from this single
+        // instant, so their combined cost cannot exceed `DRAIN_TAIL_BUDGET`.
+        let tail_deadline = open_drain_tail(deadline);
         let mut timed_out = false;
         let status = loop {
             if self.stdout_truncated.load(Ordering::SeqCst)
@@ -712,14 +765,9 @@ impl BrokeredGit {
                 // See `finish_bounded`: a reaped direct child does not imply its
                 // pipes reached EOF, so the tree gets a bounded chance to clear
                 // them before the readers are joined under a deadline.
-                //
-                // Drawn from the caller's deadline rather than granted fresh: a
-                // fixed budget here would start a second clock after the first
-                // one had already been spent, which is how the tail came to be
-                // three budgets long.
                 if self
                     .child
-                    .wait_tree_exit(remaining_tail(deadline))
+                    .wait_tree_exit(remaining_tail(tail_deadline))
                     .unwrap_or(false)
                 {
                     break status;
@@ -741,22 +789,17 @@ impl BrokeredGit {
             std::thread::sleep(std::time::Duration::from_millis(2));
         };
 
-        // The drain tail is drawn from the caller's deadline, not granted afresh.
-        // Handing each stage its own `DRAIN_TAIL_BUDGET` let the tail add up: tree
-        // wait, then stdout, then stderr, so a request could finish up to three budgets
-        // past the deadline the caller agreed to. One shared tail, spent once, keeps
-        // "the whole operation is bounded" a single measurable claim.
-        //
-        // Recomputed before **each** blocking stage, not measured once and reused.
-        // Measuring once would be the same defect in a subtler form: the stdout
-        // drain would still be handed the budget the tree wait had already
-        // consumed, so the total would still exceed what the caller allowed. Only
-        // asking "how much is left now" makes the three stages share one budget
-        // rather than merely start from the same number.
-        let tail_budget = remaining_tail(deadline);
+        // The drain tail is drawn from the ONE instant opened above, not granted
+        // afresh per stage. Handing each stage its own `DRAIN_TAIL_BUDGET` let the
+        // tail add up: tree wait, then stdout, then stderr, so a request could
+        // finish up to three budgets past the deadline the caller agreed to. Each
+        // stage below therefore consumes what is left of the same tail rather
+        // than re-measuring it — asking "how much is left now" is what makes the
+        // stages share one budget rather than merely start from the same number.
+        let stdout_budget = remaining_tail(tail_deadline);
         let (stdout, stdout_drain_incomplete) =
-            join_reader_bounded(self.stdout, "stdout", tail_budget);
-        let stderr_budget = remaining_tail(deadline);
+            join_reader_bounded(self.stdout, "stdout", stdout_budget);
+        let stderr_budget = remaining_tail(tail_deadline);
         let (stderr, stderr_drain_incomplete) =
             join_reader_bounded(self.stderr, "stderr", stderr_budget);
         // A drain that could not finish means the request outlived its budget in
@@ -765,9 +808,10 @@ impl BrokeredGit {
         let drain_incomplete = stdout_drain_incomplete || stderr_drain_incomplete;
         if drain_incomplete {
             eprintln!(
-                "webcodex-workspace: git reader drain exceeded its {tail_budget:?} tail after \
-                 the child was accounted for; reporting the capture as incomplete rather than \
-                 blocking the caller on a descendant-held pipe"
+                "webcodex-workspace: git reader drain exceeded its one shared drain tail \
+                 (opened at cleanup entry, {DRAIN_TAIL_BUDGET:?} at most, stdout had {stdout_budget:?} \
+                 left) after the child was accounted for; reporting the capture as incomplete \
+                 rather than blocking the caller on a descendant-held pipe"
             );
         }
 
@@ -879,23 +923,52 @@ fn spawn_reader<R: Read + Send + 'static>(
 /// observable degradation, the other is a hang.
 const DRAIN_TAIL_BUDGET: std::time::Duration = std::time::Duration::from_millis(250);
 
-/// The drain tail still available at `deadline`, never more than
-/// [`DRAIN_TAIL_BUDGET`].
+/// Open **one** drain tail for a request and return it as an absolute instant.
 ///
-/// Two properties matter, and both come from the same place:
+/// This is the only place a drain tail is created. Everything that can block
+/// during cleanup — the tree wait, the stdout drain, the stderr drain — draws
+/// from the instant this returns, via [`remaining_tail`], and that instant is
+/// never recomputed. The distinction is the whole point:
 ///
-/// * **Bounded.** A deadline already in the past yields a zero tail, so the
-///   readers are not joined at all rather than joined for another fixed period.
-///   Without this, every stage after an expired deadline would still be granted
-///   a fresh budget and the totals would accumulate past what the caller agreed
-///   to.
-/// * **Capped.** The tail never exceeds [`DRAIN_TAIL_BUDGET`], so a caller that
-///   allowed ten seconds does not silently get an unbounded cleanup window
-///   inside it — the git deadline and the cleanup deadline stay separate claims.
-fn remaining_tail(deadline: Instant) -> std::time::Duration {
-    deadline
-        .saturating_duration_since(Instant::now())
-        .min(DRAIN_TAIL_BUDGET)
+/// ```text
+/// let tail_deadline = open_drain_tail(deadline);
+/// // stage 1 consumes what is left of tail_deadline
+/// let a = remaining_tail(tail_deadline);
+/// // ... stage 2 consumes what is left of the SAME instant
+/// let b = remaining_tail(tail_deadline);
+/// ```
+///
+/// # Why one absolute instant and not a per-stage budget
+///
+/// An earlier version recomputed `min(deadline - now, DRAIN_TAIL_BUDGET)` at
+/// every stage. That expression is capped but not *shared*: whenever the
+/// caller's deadline was further out than [`DRAIN_TAIL_BUDGET`], every stage
+/// received the full cap, so three stages cost up to three caps. With a caller
+/// deadline ten seconds away the cleanup was measured at up to 750ms — three
+/// times what a reader of the code would call "a 250ms tail".
+///
+/// Taking the minimum **once** and threading the resulting `Instant` makes the
+/// bound a single measurable claim: the whole of cleanup ends by
+/// `min(caller_deadline, cleanup_start + DRAIN_TAIL_BUDGET)`, no matter how many
+/// stages there are or which ones actually block.
+///
+/// # Why the cap still applies
+///
+/// A caller that allowed ten seconds does not silently get an unbounded cleanup
+/// window inside it: the git deadline and the cleanup deadline stay separate
+/// claims, and the cleanup claim is the smaller of the two.
+fn open_drain_tail(deadline: Instant) -> Instant {
+    std::cmp::min(deadline, Instant::now() + DRAIN_TAIL_BUDGET)
+}
+
+/// What is left of an **already-open** drain tail.
+///
+/// The argument must be an instant produced by [`open_drain_tail`] (or the
+/// caller's own deadline, which is never later than that tail). It is *not* a
+/// budget to re-cap: capping here would let each stage take a fresh full
+/// allowance, which is the accumulation defect this function exists to prevent.
+fn remaining_tail(tail_deadline: Instant) -> std::time::Duration {
+    tail_deadline.saturating_duration_since(Instant::now())
 }
 
 /// Collect one drained pipe, giving up on it if it cannot finish in time.
@@ -960,13 +1033,14 @@ fn join_reader_bounded(
 /// This previously took the constant [`DRAIN_TAIL_BUDGET`], which granted a
 /// fresh fixed budget at a point where the caller's clock was already spent —
 /// the same accumulation defect as the tree wait, in a different function. The
-/// caller now passes what is left of its own deadline.
+/// caller now passes the single tail instant it opened, so this only ever
+/// consumes what earlier stages left.
 fn join_reader(
     reader: Option<std::thread::JoinHandle<Vec<u8>>>,
     stream: &'static str,
-    deadline: Instant,
+    tail_deadline: Instant,
 ) -> Vec<u8> {
-    join_reader_bounded(reader, stream, remaining_tail(deadline)).0
+    join_reader_bounded(reader, stream, remaining_tail(tail_deadline)).0
 }
 
 /// Resolve `git` from a fixed set of trusted system prefixes.
@@ -1105,19 +1179,12 @@ fn is_capable_git(candidate: &Path, deadline: Option<Instant>) -> Option<GitSele
     if !candidate.is_file() {
         return None;
     }
-    let budget = match deadline {
-        // Never spend more than the caller allowed, and never less than a
-        // usable minimum: a deadline already in the past simply fails the probe
-        // rather than launching anything.
-        Some(absolute) => absolute
-            .saturating_duration_since(Instant::now())
-            .min(GIT_PROBE_TIMEOUT),
-        None => GIT_PROBE_TIMEOUT,
-    };
-    if budget.is_zero() {
-        return None;
-    }
-    let probe_deadline = Instant::now() + budget;
+    // Same rule as `developer_dir_via`: a caller deadline is **propagated**, never
+    // rebased. `GIT_PROBE_TIMEOUT` shortens it when the caller allowed more, and
+    // an already-expired deadline fails the probe without launching anything —
+    // but the instant the caller's request started counting is the instant that
+    // bounds this probe.
+    let probe_deadline = probe_deadline(deadline)?;
 
     // Step 1 — try the candidate with **no** `DEVELOPER_DIR`, which is what a
     // real git needs and what the brokered child will normally get. This is the
@@ -1407,6 +1474,63 @@ fn trusted_toolchain_for(program: &Path) -> Vec<TrustedToolchainRoot> {
 mod tests {
     use super::*;
 
+    /// Gate a native-evidence test on its verdict, exactly as the catalog does.
+    ///
+    /// # Why this exists
+    ///
+    /// The F3 review found tests that printed `HOST_UNAVAILABLE` or
+    /// `ENV_BLOCKED` — with a disclaimer in the message that this "is NOT a
+    /// pass" — and then `return`ed. Cargo counts a returned test as **green**. So
+    /// a host whose kernel refuses the sandbox produced a suite where every
+    /// evidence test was green and none of them had measured anything. That is
+    /// the worst possible reading: not "we could not check", but "checked, and
+    /// fine".
+    ///
+    /// Printing a state is not accounting for it. The accounting has to reach the
+    /// harness, and the only channel cargo listens to is the exit status.
+    ///
+    /// # The four outcomes
+    ///
+    /// | verdict | meaning | outcome |
+    /// |---|---|---|
+    /// | `Pass` | the behaviour was observed | test proceeds, green |
+    /// | `Fail` | the behaviour was observed broken | **panic** |
+    /// | `HostUnavailable` | no git toolchain; broker never exercised | **panic** |
+    /// | `EnvBlocked` | broker ran, kernel refused the profile | **panic** |
+    ///
+    /// This mirrors `enforce_verdict` in the catalog adapter so both sides of the
+    /// product agree on what a blocked state means. The catalog's own doc comment
+    /// states the trade-off, and it is worth restating because it is the whole
+    /// point: **a host that cannot measure these tests cannot show them green.**
+    /// That is the correct direction for an evidence gate. A red or non-pass
+    /// local suite on a blocked host is more honest than a green one that
+    /// proves nothing.
+    ///
+    /// # What is deliberately *not* done
+    ///
+    /// `std::process::exit` is not used: it would kill the whole test binary and
+    /// destroy every other test's result, which is the opposite of honest
+    /// accounting. Nor is the verdict downgraded to a warning. The state is
+    /// reported through the harness as what it is — a failure to measure.
+    fn enforce_verdict(verdict: GitVerdict, label: &str) {
+        match verdict {
+            GitVerdict::Pass => {}
+            GitVerdict::Fail => {
+                panic!("{label}: the behaviour under test was observed to be broken (verdict=Fail)")
+            }
+            GitVerdict::HostUnavailable => panic!(
+                "{label}: HOST_UNAVAILABLE — this host cannot run git at all, so the behaviour \
+                 under test is UNMEASURED. This is not a pass; run the suite on a host with a \
+                 usable git toolchain."
+            ),
+            GitVerdict::EnvBlocked => panic!(
+                "{label}: ENV_BLOCKED — the broker was exercised but the environment refused the \
+                 confinement profile, so the behaviour under test is UNMEASURED. This is not a \
+                 pass; run the suite where the sandbox profile can be applied."
+            ),
+        }
+    }
+
     #[test]
     fn plan_grants_only_the_project_root() {
         let dir = tempfile::tempdir().unwrap();
@@ -1599,12 +1723,10 @@ mod tests {
     fn g_git_apply_still_applies_a_real_patch_through_the_broker() {
         let repo = tempfile::tempdir().unwrap();
         if !git_init(repo.path()) {
-            eprintln!("P1_GIT_APPLY_REASON=no_trusted_git_executable");
-            eprintln!(
-                "P1_NATIVE_GIT_BROKER_FIDELITY=HOST_UNAVAILABLE no trusted git executable on this \
-                 host; this is NOT a pass and NOT a security regression"
+            enforce_verdict(
+                GitVerdict::HostUnavailable,
+                "P1_NATIVE_GIT_BROKER_FIDELITY: no trusted git executable on this host",
             );
-            return;
         }
 
         let patch = concat!(
@@ -1637,9 +1759,12 @@ mod tests {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 if is_profile_refusal(&output.stderr) {
                     eprintln!("P1_GIT_APPLY_REASON=sandbox_profile_refused");
-                    eprintln!(
-                        "P1_NATIVE_GIT_BROKER_FIDELITY=ENV_BLOCKED broker launched but the kernel \
-                         refused the profile ({stderr}); this is NOT a pass"
+                    enforce_verdict(
+                        GitVerdict::EnvBlocked,
+                        &format!(
+                            "P1_NATIVE_GIT_BROKER_FIDELITY: broker launched but the kernel \
+                             refused the profile ({stderr})"
+                        ),
                     );
                     assert!(
                         !repo.path().join("added.txt").exists(),
@@ -1654,10 +1779,12 @@ mod tests {
                 // backwards.
                 if is_host_unavailable(stderr.as_bytes()) {
                     eprintln!("P1_GIT_APPLY_REASON=host_toolchain_unavailable");
-                    eprintln!(
-                        "P1_NATIVE_GIT_BROKER_FIDELITY=HOST_UNAVAILABLE git could not run because \
-                         the host toolchain is incomplete ({stderr}); this is NOT a pass and NOT \
-                         a security regression"
+                    enforce_verdict(
+                        GitVerdict::HostUnavailable,
+                        &format!(
+                            "P1_NATIVE_GIT_BROKER_FIDELITY: git could not run because the host \
+                             toolchain is incomplete ({stderr})"
+                        ),
                     );
                     assert!(
                         !repo.path().join("added.txt").exists(),
@@ -1674,9 +1801,11 @@ mod tests {
             Err(refusal) => {
                 if refusal.code == "git_executable_unavailable" {
                     eprintln!("P1_GIT_APPLY_REASON=git_executable_unavailable");
-                    eprintln!(
-                        "P1_NATIVE_GIT_BROKER_FIDELITY=HOST_UNAVAILABLE no trusted git executable \
-                         ({refusal}); this is NOT a pass and NOT a security regression"
+                    enforce_verdict(
+                        GitVerdict::HostUnavailable,
+                        &format!(
+                            "P1_NATIVE_GIT_BROKER_FIDELITY: no trusted git executable ({refusal})"
+                        ),
                     );
                     return;
                 }
@@ -1685,6 +1814,13 @@ mod tests {
                     "P1_NATIVE_GIT_BROKER_FIDELITY=ENV_BLOCKED broker refused to launch git ({refusal})"
                 );
                 assert_eq!(refusal.code, "git_spawn_refused");
+                // The assert above pins the *shape* of the refusal; the gate
+                // below pins that a refused launch is still not a pass. One does
+                // not stand in for the other.
+                enforce_verdict(
+                    GitVerdict::EnvBlocked,
+                    "P1_NATIVE_GIT_BROKER_FIDELITY: broker refused to launch git",
+                );
             }
         }
     }
@@ -1821,9 +1957,9 @@ mod tests {
     #[test]
     fn a_descendant_holding_the_pipe_cannot_extend_the_request() {
         let Some(repo) = git_init_dir() else {
-            eprintln!(
-                "P1B_F1_DRAIN_BOUND=HOST_UNAVAILABLE no functional git to create a workspace; \
-                 this is NOT a pass"
+            enforce_verdict(
+                GitVerdict::HostUnavailable,
+                "P1B_F1_DRAIN_BOUND: no functional git to create a workspace",
             );
             return;
         };
@@ -1842,20 +1978,22 @@ mod tests {
         let outcome = run_sh_bounded_read(repo.path(), script, deadline);
         let elapsed = started.elapsed();
 
-        let (verdict, read) = match outcome {
-            Ok(read) => (GitVerdict::Pass, read),
+        let read = match outcome {
+            Ok(read) => read,
             Err(error) => {
-                eprintln!("P1B_F1_DRAIN_BOUND=ENV_BLOCKED broker refused to launch ({error}); this is NOT a pass");
+                enforce_verdict(
+                    GitVerdict::EnvBlocked,
+                    &format!("P1B_F1_DRAIN_BOUND: broker refused to launch ({error})"),
+                );
                 return;
             }
         };
-        let _ = verdict;
         if !read.status.success() {
             let stderr = String::from_utf8_lossy(&read.stderr);
             if is_profile_refusal(&read.stderr) || is_host_unavailable(stderr.as_bytes()) {
-                eprintln!(
-                    "P1B_F1_DRAIN_BOUND=ENV_BLOCKED the host refused the profile ({stderr}); this \
-                     is NOT a pass"
+                enforce_verdict(
+                    GitVerdict::EnvBlocked,
+                    &format!("P1B_F1_DRAIN_BOUND: the host refused the profile ({stderr})"),
                 );
                 return;
             }
@@ -1890,6 +2028,53 @@ mod tests {
     /// defeated by a fast one. This pins the property directly: given a reader
     /// that provably never completes, the bounded join must return within its
     /// budget instead of waiting on it.
+    /// Both streams of the **no-caller-deadline** path get a full budget each.
+    ///
+    /// `finish` is reached by `run_git(.., None)`, whose readers must not be
+    /// starved. Sharing one 250ms tail between stdout and stderr there was tried
+    /// and reverted: the second stream then inherits whatever the first left —
+    /// usually nothing — so it comes back **empty while the call reports
+    /// success**. `brokered_git_usable` decides from `--version`'s stderr whether
+    /// the sandbox refused the profile, so an empty stderr makes a refused host
+    /// look like a working one and silently un-skips every environment-gated
+    /// test.
+    ///
+    /// The test pins the two streams' budgets as **independent**, which is the
+    /// property that was lost. It is structural rather than timing-based: a
+    /// reader that is slow to arrive is collected if and only if it was handed
+    /// the full budget, so asserting collection for a reader that arrives just
+    /// inside one budget distinguishes "own budget" from "leftover".
+    #[test]
+    fn the_unbounded_wait_path_gives_each_stream_its_own_budget() {
+        // Arrives inside ONE full budget but well past where a shared tail would
+        // have left the second stream. 60ms into the budget: a leftover-based
+        // scheme would have handed this stream ~0 after the first consumed its
+        // share, and the read would come back empty.
+        let reader = std::thread::spawn(|| {
+            std::thread::sleep(std::time::Duration::from_millis(60));
+            b"stderr evidence".to_vec()
+        });
+        let started = Instant::now();
+        let (collected, incomplete) =
+            join_reader_bounded(Some(reader), "stderr", DRAIN_TAIL_BUDGET);
+        let elapsed = started.elapsed();
+        assert_eq!(
+            collected,
+            b"stderr evidence".to_vec(),
+            "a stream must receive its own full budget, not what a sibling stage left behind — \
+             an empty capture is indistinguishable from a silent success"
+        );
+        assert!(
+            !incomplete,
+            "the read completed inside its budget, so it must not be reported incomplete"
+        );
+        assert!(
+            elapsed < DRAIN_TAIL_BUDGET,
+            "the read finished inside its own budget, took {elapsed:?}"
+        );
+    }
+
+    /// The drain join is bounded even when the reader never finishes.
     #[test]
     fn the_drain_join_is_bounded_even_when_the_reader_never_finishes() {
         let (sender, _receiver) = std::sync::mpsc::channel::<Vec<u8>>();
@@ -2162,9 +2347,9 @@ mod tests {
     #[test]
     fn the_resolved_git_is_capable_not_merely_present() {
         let Some(selection) = resolve_git_executable(None) else {
-            eprintln!(
-                "P1B_F2_GIT_PROFILE=HOST_UNAVAILABLE no capable git on this host; this is NOT \
-                 a pass and NOT a security regression"
+            enforce_verdict(
+                GitVerdict::HostUnavailable,
+                "P1B_F2_GIT_PROFILE: no capable git on this host",
             );
             return;
         };
@@ -2426,6 +2611,181 @@ mod tests {
         eprintln!("F1_TEST_B probe stdout read bounded: elapsed={elapsed:?} budget={budget:?}");
     }
 
+    /// A long caller deadline does **not** buy three drain tails.
+    ///
+    /// This is the counterexample the review raised against `accc4a87`. The old
+    /// helper was
+    ///
+    /// ```text
+    /// fn remaining_tail(deadline: Instant) -> Duration {
+    ///     deadline.saturating_duration_since(Instant::now()).min(DRAIN_TAIL_BUDGET)
+    /// }
+    /// ```
+    ///
+    /// which is capped, so it *looks* bounded — but it is recomputed per stage,
+    /// and when the caller's deadline is further out than the cap every stage
+    /// receives the full cap:
+    ///
+    /// ```text
+    /// caller deadline = now + 10s
+    ///   tree wait    -> min(10s, 250ms) = 250ms
+    ///   stdout drain -> min(10s, 250ms) = 250ms
+    ///   stderr drain -> min(10s, 250ms) = 250ms
+    ///   total        = 750ms   (three budgets, not one)
+    /// ```
+    ///
+    /// The repair takes that minimum **once**, in [`open_drain_tail`], and threads
+    /// the resulting `Instant`, so the three stages are three draws on one
+    /// allowance.
+    ///
+    /// # Why the negative control is inside this test
+    ///
+    /// Two earlier fixtures were tried and both were worthless:
+    ///
+    /// * Letting stage 1 block for its budget and then running the reader stages.
+    ///   Once the shared tail is spent, the old expression also finds its deadline
+    ///   passed and hands out ~0 — so the old code measured 260ms and **passed**.
+    /// * Reinstating the old expression and running this test against it. Also
+    ///   passed, for the same reason: the frozen instant means the per-stage re-cap
+    ///   has nothing left to re-cap.
+    ///
+    /// Both fixtures share a flaw: they let the wall clock decide, and once any
+    /// time has been spent the two implementations agree. A regression test that
+    /// cannot fail on the regression is worse than none, because it certifies the
+    /// defect is gone.
+    ///
+    /// So the old expression is reproduced here **as a value**, against a caller
+    /// deadline far in the future, and asserted to grant three full budgets. That
+    /// is the 750ms counterexample, computed rather than raced — and it fails if
+    /// anyone ever re-caps per stage again. The live measurement below then shows
+    /// the real path stays inside one budget.
+    #[test]
+    fn three_cleanup_stages_cannot_exceed_one_drain_tail_budget() {
+        let caller_deadline = Instant::now() + std::time::Duration::from_secs(10);
+
+        // ── Negative control: the accc4a87 expression, evaluated ─────────────
+        // Reproduced verbatim. Three stages, each drawing from the *caller's*
+        // deadline rather than from a shared tail.
+        let old_stage_budget = |_stage: usize| -> std::time::Duration {
+            caller_deadline
+                .saturating_duration_since(Instant::now())
+                .min(DRAIN_TAIL_BUDGET)
+        };
+        let old_tree = old_stage_budget(1);
+        std::thread::sleep(old_tree);
+        let old_stdout = old_stage_budget(2);
+        std::thread::sleep(old_stdout);
+        let old_stderr = old_stage_budget(3);
+        let old_total = old_tree + old_stdout + old_stderr;
+        assert!(
+            old_total >= DRAIN_TAIL_BUDGET * 2,
+            "negative control: the accc4a87 per-stage re-cap must grant more than one budget for \
+             this test to mean anything (granted {old_total:?} across three stages)"
+        );
+
+        // ── The repaired path ────────────────────────────────────────────────
+        // One instant, opened once. Every stage draws from it and blocks for the
+        // whole draw, exactly as the counterexample's stages do.
+        let tail_deadline = open_drain_tail(caller_deadline);
+        let never = || -> Option<std::thread::JoinHandle<Vec<u8>>> {
+            Some(std::thread::spawn(|| {
+                std::thread::sleep(std::time::Duration::from_secs(30));
+                Vec::new()
+            }))
+        };
+
+        let started = Instant::now();
+
+        // Stage 1 — the tree wait: a group whose leader exited but whose
+        // descendant lives can never report a full tree exit, so it blocks.
+        let tree_budget = remaining_tail(tail_deadline);
+        std::thread::sleep(tree_budget);
+
+        // Stage 2 — stdout: whatever is left of the same instant.
+        let stdout_budget = remaining_tail(tail_deadline);
+        let (_stdout, stdout_incomplete) = join_reader_bounded(never(), "stdout", stdout_budget);
+
+        // Stage 3 — stderr.
+        let stderr_budget = remaining_tail(tail_deadline);
+        let (_stderr, stderr_incomplete) = join_reader_bounded(never(), "stderr", stderr_budget);
+
+        let total = started.elapsed();
+        let spent = tree_budget + stdout_budget + stderr_budget;
+
+        assert!(
+            stdout_incomplete && stderr_incomplete,
+            "F1: a reader that can never finish must be reported incomplete"
+        );
+        // The sum of the three draws is at most one tail, because they are draws
+        // on one instant rather than three independent caps.
+        assert!(
+            spent <= DRAIN_TAIL_BUDGET + std::time::Duration::from_millis(1),
+            "F1: the three stage budgets must sum to one shared tail, but they sum to {spent:?} \
+             (tree={tree_budget:?} stdout={stdout_budget:?} stderr={stderr_budget:?}) — a \
+             per-stage re-cap would hand out three full budgets"
+        );
+        // And the wall clock agrees: one budget, plus scheduling slack — not three.
+        let allowance = DRAIN_TAIL_BUDGET * 2;
+        assert!(
+            total < allowance,
+            "F1: tree wait + stdout drain + stderr drain consumed {total:?}, which exceeds one \
+             shared drain tail (allowance {allowance:?} = 2 x {DRAIN_TAIL_BUDGET:?})"
+        );
+        // Strictly better than the behaviour under review, and measurably so.
+        assert!(
+            spent * 2 < old_total,
+            "F1: the shared tail ({spent:?}) must be strictly smaller than what the per-stage \
+             re-cap granted ({old_total:?})"
+        );
+        eprintln!(
+            "F1_TEST_ONE_TAIL repaired total={total:?} spent={spent:?} \
+             (tree={tree_budget:?} stdout={stdout_budget:?} stderr={stderr_budget:?}) | \
+             NC accc4a87 granted={old_total:?} (tree={old_tree:?} stdout={old_stdout:?} \
+             stderr={old_stderr:?})"
+        );
+    }
+
+    /// `open_drain_tail` is the only place a cap is applied, and it never
+    /// returns an instant later than the caller's own deadline.
+    ///
+    /// Two claims that the timing test above cannot make on its own: that the
+    /// tail is capped at all when the caller is generous, and that it never
+    /// *extends* a caller who is not.
+    #[test]
+    fn the_drain_tail_is_capped_but_never_later_than_the_caller() {
+        // A generous caller: capped to one budget, never the full ten seconds.
+        let generous = Instant::now() + std::time::Duration::from_secs(10);
+        let tail = open_drain_tail(generous);
+        assert!(
+            tail <= generous,
+            "the drain tail must never be later than the caller's deadline"
+        );
+        assert!(
+            remaining_tail(tail) <= DRAIN_TAIL_BUDGET,
+            "a caller who allowed 10s must not get an uncapped cleanup window"
+        );
+        assert!(
+            tail < generous,
+            "a caller far past the cap must actually be capped, or the tail is unbounded"
+        );
+
+        // An imminent caller: the caller's deadline wins, because the tail is a
+        // minimum, not a grant.
+        let imminent = Instant::now() + std::time::Duration::from_millis(5);
+        assert!(
+            open_drain_tail(imminent) <= imminent,
+            "the drain tail must never extend a deadline the caller set"
+        );
+
+        // An expired caller: no new budget is invented for cleanup at all.
+        let expired = Instant::now() - std::time::Duration::from_secs(1);
+        assert_eq!(
+            remaining_tail(open_drain_tail(expired)),
+            std::time::Duration::ZERO,
+            "an expired deadline must give cleanup nothing to wait for"
+        );
+    }
+
     /// Tree wait, stdout drain and stderr drain share one tail budget.
     ///
     /// The accumulation was structural: the tree wait took the constant
@@ -2440,6 +2800,7 @@ mod tests {
     #[test]
     fn an_expired_deadline_gives_the_remaining_stages_nothing_to_wait_for() {
         let expired = Instant::now() - std::time::Duration::from_secs(1);
+        let _tail_deadline = open_drain_tail(expired);
 
         // Every stage asked after the deadline must be given zero, so
         // `recv_timeout(0)` returns immediately instead of waiting out a budget.
@@ -2483,23 +2844,183 @@ mod tests {
     /// The tail budget shrinks as it is spent, rather than being re-measured.
     ///
     /// The direct statement of "one absolute tail deadline": two calls to
-    /// [`remaining_tail`] around a real delay must report different budgets, and
-    /// the second must be smaller. If the second could be as large as the first,
-    /// the stages would not be sharing anything.
+    /// [`remaining_tail`] against the **same** opened tail must report different
+    /// budgets, and the second must be smaller. If the second could be as large as
+    /// the first, the stages would not be sharing anything.
+    ///
+    /// Note what is *not* being asserted: that a fresh cap is unavailable. The
+    /// cap is applied once, in `open_drain_tail`; this test is about the draw-down
+    /// from that one instant afterwards.
     #[test]
     fn the_tail_budget_shrinks_as_it_is_spent() {
-        let deadline = Instant::now() + std::time::Duration::from_millis(300);
-        let first = remaining_tail(deadline);
+        let caller_deadline = Instant::now() + std::time::Duration::from_millis(300);
+        let tail_deadline = open_drain_tail(caller_deadline);
+        let first = remaining_tail(tail_deadline);
         std::thread::sleep(std::time::Duration::from_millis(60));
-        let second = remaining_tail(deadline);
+        let second = remaining_tail(tail_deadline);
         assert!(
             second < first,
-            "F1: the tail must be re-measured per stage, first={first:?} second={second:?}"
+            "F1: the tail must be drawn down per stage, first={first:?} second={second:?}"
         );
         assert!(
             second <= std::time::Duration::from_millis(240),
             "F1: after 60ms of a 300ms budget about 240ms should remain, got {second:?}"
         );
+    }
+
+    /// No helper is ever handed a deadline later than its caller's.
+    ///
+    /// Item C's audit target was the rebase
+    /// `let budget = absolute - now; let deadline = Instant::now() + budget;`
+    /// which looks like a pass-through but is not: the second `now` is later than
+    /// the first, so the rebuilt instant is later than the one the caller chose,
+    /// and the time spent in between silently refills the budget.
+    ///
+    /// A timing assertion cannot catch that — the drift is nanoseconds wide. So
+    /// this test pins the property structurally, through the one seam every probe
+    /// helper inherits its bound from, and makes the defect observable with a
+    /// deliberate delay standing in for the work that happens between a request's
+    /// entry point and the helper that serves it.
+    #[test]
+    fn a_helper_is_never_handed_a_deadline_later_than_its_callers() {
+        // ── Negative control ────────────────────────────────────────────────
+        // The pre-repair arithmetic, reproduced here so the test cannot pass by
+        // accident: with time passing between the two `Instant::now()` calls, the
+        // rebuilt deadline IS later than the caller's. If this assertion ever
+        // failed, the property below would be vacuous.
+        let caller = Instant::now() + std::time::Duration::from_millis(300);
+        let rebased = {
+            let budget = caller.saturating_duration_since(Instant::now());
+            // Whatever the code between a request's entry point and a helper
+            // does, time passes. A millisecond is enough to make the two
+            // readings of the clock distinct.
+            std::thread::sleep(std::time::Duration::from_millis(1));
+            Instant::now() + budget
+        };
+        assert!(
+            rebased > caller,
+            "negative control: the rebased deadline must exceed the caller's for this test to \
+             mean anything (caller=+300ms, rebuilt={rebased:?})"
+        );
+
+        // ── The propagated property ─────────────────────────────────────────
+        // With the same kind of delay before the helper looks, the seam returns
+        // the caller's own instant (or a cap on it), so it can never be later.
+        let caller = Instant::now() + std::time::Duration::from_millis(300);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        let inherited = probe_deadline(Some(caller))
+            .expect("a caller deadline 300ms out must still be probeable");
+        assert!(
+            inherited <= caller,
+            "C: a helper must never receive a deadline later than its caller's \
+             (caller={caller:?}, inherited={inherited:?})"
+        );
+
+        // A generous caller is shortened, never extended: still the caller's
+        // clock, capped at GIT_PROBE_TIMEOUT.
+        let generous = Instant::now() + std::time::Duration::from_secs(60);
+        let inherited = probe_deadline(Some(generous)).expect("a generous caller probes");
+        assert!(
+            inherited <= generous,
+            "C: capping must not turn into an extension"
+        );
+        assert!(
+            inherited <= Instant::now() + GIT_PROBE_TIMEOUT,
+            "C: the cap bounds a generous caller"
+        );
+
+        // And an expired deadline is *spent*, not converted into a fresh grant.
+        let expired = Instant::now() - std::time::Duration::from_secs(1);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        assert!(
+            probe_deadline(Some(expired)).is_none(),
+            "C: an expired caller deadline must not become a fresh budget"
+        );
+    }
+
+    /// The behavioural half of item C: a helper under an expired caller deadline
+    /// must return without launching, and a helper under a live caller deadline
+    /// must finish near that deadline rather than at a fresh `GIT_PROBE_TIMEOUT`.
+    ///
+    /// The structural test above proves the seam never fabricates time; this one
+    /// proves the seam is the one the helpers actually consult.
+    #[test]
+    fn a_helper_actually_consults_the_propagated_deadline() {
+        // A caller deadline constructed BEFORE a deliberate delay, then passed
+        // down. The delay stands in for whatever real work happens between a
+        // request's entry point and the helper that serves it.
+        let caller = Instant::now() + std::time::Duration::from_millis(60);
+        std::thread::sleep(std::time::Duration::from_millis(120));
+
+        // The caller's deadline is already in the past. A rebase
+        // (`now + (caller - now)`) would produce `now`, i.e. a *fresh* zero — and
+        // a zero check that then computes `Instant::now() + 0` still admits the
+        // launch. What must not happen is any of these helpers treating the
+        // remaining time as a budget to be rebuilt.
+        let remaining = caller.saturating_duration_since(Instant::now());
+        assert_eq!(
+            remaining,
+            std::time::Duration::ZERO,
+            "the fixture must present an expired deadline, or it proves nothing"
+        );
+
+        // `developer_dir_via` with an expired caller deadline: must not launch.
+        let dir = tempfile::tempdir().unwrap();
+        let hanging = dir.path().join("xcode-select");
+        std::fs::write(&hanging, b"#!/bin/sh\nwhile :; do :; done\n").unwrap();
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&hanging).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&hanging, perms).unwrap();
+        }
+        let started = Instant::now();
+        let found = developer_dir_via(&hanging, Some(caller));
+        let elapsed = started.elapsed();
+        assert!(
+            found.is_none(),
+            "an expired caller deadline must not yield a developer directory"
+        );
+        assert!(
+            elapsed < std::time::Duration::from_millis(100),
+            "C: an expired deadline must not be rebuilt into a fresh budget and then waited out \
+             (took {elapsed:?} against a command that never exits)"
+        );
+
+        // `is_capable_git` with an expired caller deadline: must not probe.
+        let started = Instant::now();
+        let selection = is_capable_git(&hanging, Some(caller));
+        let elapsed = started.elapsed();
+        assert!(
+            selection.is_none(),
+            "an expired caller deadline must fail the probe rather than grant it a fresh one"
+        );
+        assert!(
+            elapsed < std::time::Duration::from_millis(100),
+            "C: the probe deadline must be the caller's instant, not a budget rebuilt from now \
+             (took {elapsed:?} against a command that never exits)"
+        );
+
+        // And the positive direction, so the assertions above are not satisfied
+        // by a helper that simply never answers: a caller deadline in the future
+        // is honoured as the *same* instant, so the helper may wait for it — but
+        // no longer than it.
+        let live = Instant::now() + std::time::Duration::from_millis(150);
+        let started = Instant::now();
+        let found = developer_dir_via(&hanging, Some(live));
+        let elapsed = started.elapsed();
+        assert!(found.is_none(), "a hanging command yields no directory");
+        assert!(
+            elapsed >= std::time::Duration::from_millis(100),
+            "C: a live caller deadline must still bound the wait, not be ignored \
+             (returned in {elapsed:?})"
+        );
+        assert!(
+            elapsed < std::time::Duration::from_millis(400),
+            "C: the wait must end near the caller's 150ms deadline, not a fresh \
+             GIT_PROBE_TIMEOUT (took {elapsed:?})"
+        );
+        eprintln!("C_TEST_DEADLINE expired-path elapsed={elapsed:?} (live caller was 150ms)");
     }
 
     /// An existing repository with no commit cannot satisfy the metadata probe.
@@ -2513,9 +3034,9 @@ mod tests {
     #[test]
     fn the_capability_probe_requires_a_real_commit_to_succeed() {
         let Some(selection) = resolve_git_executable(None) else {
-            eprintln!(
-                "P1B_F2_GIT_PROFILE=HOST_UNAVAILABLE no capable git on this host; this is NOT a \
-                 pass"
+            enforce_verdict(
+                GitVerdict::HostUnavailable,
+                "P1B_F2_GIT_PROFILE: no capable git on this host",
             );
             return;
         };
@@ -2567,9 +3088,9 @@ mod tests {
     #[test]
     fn real_git_metadata_reads_succeed_through_the_broker() {
         let Some(repo) = git_init_with_commit() else {
-            eprintln!(
-                "P1B_F2_GIT_METADATA=HOST_UNAVAILABLE no functional git on this host; this is \
-                 NOT a pass"
+            enforce_verdict(
+                GitVerdict::HostUnavailable,
+                "P1B_F2_GIT_METADATA: no functional git on this host",
             );
             return;
         };
@@ -2594,8 +3115,7 @@ mod tests {
                 Ok(read) => read,
                 Err(refusal) => {
                     eprintln!(
-                        "P1B_F2_GIT_METADATA=ENV_BLOCKED broker refused to launch git ({refusal}); \
-                         this is NOT a pass"
+                        "P1B_F2_GIT_METADATA=ENV_BLOCKED broker refused to launch git ({refusal})"
                     );
                     verdicts.push(GitVerdict::EnvBlocked);
                     continue;
@@ -2607,15 +3127,14 @@ mod tests {
                 if is_profile_refusal(&read.stderr) {
                     eprintln!(
                         "P1B_F2_GIT_METADATA=ENV_BLOCKED the kernel refused the profile for \
-                         `git {what}` ({stderr}); this is NOT a pass"
+                         `git {what}` ({stderr})"
                     );
                     verdicts.push(GitVerdict::EnvBlocked);
                     continue;
                 }
                 if is_host_unavailable(stderr.as_bytes()) {
                     eprintln!(
-                        "P1B_F2_GIT_METADATA=HOST_UNAVAILABLE git could not run for `git {what}` \
-                         ({stderr}); this is NOT a pass"
+                        "P1B_F2_GIT_METADATA=HOST_UNAVAILABLE git could not run for `git {what}` ({stderr})"
                     );
                     verdicts.push(GitVerdict::HostUnavailable);
                     continue;
@@ -2651,25 +3170,18 @@ mod tests {
             verdicts.push(GitVerdict::Pass);
         }
 
+        // One aggregate, one gate. Not a failure of the code and not a pass: when
+        // the environment refused the profile, the metadata path remains
+        // unmeasured here — and the harness must record that as a non-pass rather
+        // than a green run nobody can tell apart from a measured one. The
+        // previous shape printed the state and returned, so cargo graded a
+        // blocked host as evidence; that is exactly the false-green F3 was about.
         let aggregate = GitVerdict::aggregate(verdicts);
-        match aggregate {
-            GitVerdict::Pass => {
-                eprintln!(
-                    "P1B_F2_GIT_METADATA=PASS rev-parse, log and status all returned real metadata \
-                     through the broker"
-                );
-            }
-            // Not a failure of the code and not a pass: the environment refused
-            // the profile, so the metadata path remains unmeasured here. It is
-            // reported so a reader never mistakes this run for evidence, and the
-            // run returns green because there is no defect to fail on.
-            blocked => {
-                eprintln!(
-                    "P1B_F2_GIT_METADATA={blocked:?} the metadata path could not be measured on \
-                     this host; this is NOT a pass and NOT a regression"
-                );
-            }
-        }
+        enforce_verdict(aggregate, "P1B_F2_GIT_METADATA");
+        eprintln!(
+            "P1B_F2_GIT_METADATA=PASS rev-parse, log and status all returned real metadata \
+             through the broker"
+        );
     }
 
     /// `only_a_pass_is_a_pass`
@@ -2713,5 +3225,58 @@ mod tests {
             GitVerdict::Pass,
             "an aggregate of nothing but passes is a pass"
         );
+    }
+
+    /// The gate itself is not false-green.
+    ///
+    /// `enforce_verdict` is what turns a blocked host into a non-pass suite. If
+    /// it ever came to *report* a blocked state and still return — the exact
+    /// shape F3 found in the tests it now guards — every evidence test on an
+    /// unmeasurable host would go green again, silently. So the gate's own
+    /// behaviour is pinned here: only `Pass` proceeds; every other state must
+    /// panic, which is the only channel cargo treats as a failure.
+    #[test]
+    fn the_verdict_gate_records_blocked_states_as_non_passes() {
+        // Pass proceeds: the closure runs and is seen to have run.
+        let result = std::panic::catch_unwind(|| {
+            enforce_verdict(GitVerdict::Pass, "P1B_F3_GATE");
+        });
+        assert!(
+            result.is_ok(),
+            "F3: a passing verdict must not be gated out"
+        );
+
+        // Every other state must be loud. The panic message carries the state
+        // and the label, so the failure output says what could not be measured
+        // rather than just failing.
+        for (blocked, state) in [
+            (GitVerdict::EnvBlocked, "ENV_BLOCKED"),
+            (GitVerdict::HostUnavailable, "HOST_UNAVAILABLE"),
+            (GitVerdict::Fail, "Fail"),
+        ] {
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                enforce_verdict(blocked, "P1B_F3_GATE");
+            }));
+            let payload = match result {
+                Ok(()) => panic!(
+                    "F3: {state} must reach the harness as a non-pass, not be printed and dropped"
+                ),
+                Err(payload) => payload,
+            };
+            let message = payload
+                .downcast_ref::<String>()
+                .cloned()
+                .or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()))
+                .unwrap_or_default();
+            assert!(
+                message.contains(state),
+                "F3: the gate's panic must name the state ({state}) so a red suite is legible; \
+                 got: {message:?}"
+            );
+            assert!(
+                message.contains("P1B_F3_GATE"),
+                "F3: the gate's panic must carry the label so the failure is attributable"
+            );
+        }
     }
 }
