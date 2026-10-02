@@ -171,6 +171,58 @@ impl std::fmt::Debug for BrokeredGit {
     }
 }
 
+/// Build the exact `SpawnSpec` a brokered git child would be launched with,
+/// without starting anything.
+///
+/// Split out from [`BrokeredGit::spawn`] so that the *authority* of a brokered
+/// git — its program, plan, cwd, and above all its environment — can be
+/// asserted directly by tests, including on a host whose kernel refuses the
+/// profile outright. On such a host the launch itself is `ENV_BLOCKED` and
+/// establishes nothing, but the spec is still fully determined beforehand, so
+/// "does not inherit the caller's environment" remains provable without it.
+fn brokered_git_spec(
+    root: &Path,
+    args: &[&str],
+    input: Option<&[u8]>,
+    streams: GitStreams,
+) -> Result<SpawnSpec, GitRefusal> {
+    let plan = workspace_git_plan(root)?;
+
+    // `git` must be resolvable from a fixed, trusted prefix: a bare `"git"`
+    // would be resolved through the sandboxed child's PATH, which the plan
+    // does not grant. Resolving it here, in the trusted parent, keeps the
+    // executable choice outside model influence.
+    let git = resolve_git_executable().ok_or_else(|| GitRefusal {
+        code: "git_executable_unavailable",
+        detail: "git could not be resolved from a trusted system prefix".to_string(),
+    })?;
+
+    let (stdout_policy, stderr_policy) = match streams {
+        GitStreams::BothPiped => (StreamPolicy::Piped, StreamPolicy::Piped),
+        GitStreams::StdoutOnlyBounded(_) => (StreamPolicy::Piped, StreamPolicy::Null),
+    };
+
+    Ok(SpawnSpec::new(git, root.to_path_buf(), plan)
+        .args(args.iter().map(std::ffi::OsString::from))
+        // An explicit input payload is piped; its absence is an explicit EOF
+        // source. Never inherit the caller's stdin, which may be a
+        // parent-liveness pipe.
+        .stdin(if input.is_some() {
+            StreamPolicy::Piped
+        } else {
+            StreamPolicy::Null
+        })
+        .stdout(stdout_policy)
+        .stderr(stderr_policy)
+        // A minimal environment: `PATH` for git's own subprogram lookups, and
+        // a `HOME` inside the workspace so git cannot read the user's global
+        // config, credentials, or hooks from `$HOME`.
+        .env(EnvPolicy::Minimal)
+        .env_var("HOME", root.as_os_str())
+        .env_var("GIT_CONFIG_NOSYSTEM", "1")
+        .env_var("GIT_TERMINAL_PROMPT", "0"))
+}
+
 impl BrokeredGit {
     /// Spawn `git <args>` in `root` under the workspace-derived plan.
     fn spawn(
@@ -179,43 +231,7 @@ impl BrokeredGit {
         input: Option<&[u8]>,
         streams: GitStreams,
     ) -> Result<Self, GitRefusal> {
-        let plan = workspace_git_plan(root)?;
-
-        // `git` must be resolvable from a fixed, trusted prefix: a bare `"git"`
-        // would be resolved through the sandboxed child's PATH, which the plan
-        // does not grant. Resolving it here, in the trusted parent, keeps the
-        // executable choice outside model influence.
-        let git = resolve_git_executable().ok_or_else(|| GitRefusal {
-            code: "git_executable_unavailable",
-            detail: "git could not be resolved from a trusted system prefix".to_string(),
-        })?;
-
-        let (stdout_policy, stderr_policy, bounded) = match streams {
-            GitStreams::BothPiped => (StreamPolicy::Piped, StreamPolicy::Piped, None),
-            GitStreams::StdoutOnlyBounded(budget) => {
-                (StreamPolicy::Piped, StreamPolicy::Null, Some(budget))
-            }
-        };
-
-        let spec = SpawnSpec::new(git, root.to_path_buf(), plan)
-            .args(args.iter().map(std::ffi::OsString::from))
-            // An explicit input payload is piped; its absence is an explicit EOF
-            // source. Never inherit the caller's stdin, which may be a
-            // parent-liveness pipe.
-            .stdin(if input.is_some() {
-                StreamPolicy::Piped
-            } else {
-                StreamPolicy::Null
-            })
-            .stdout(stdout_policy)
-            .stderr(stderr_policy)
-            // A minimal environment: `PATH` for git's own subprogram lookups, and
-            // a `HOME` inside the workspace so git cannot read the user's global
-            // config, credentials, or hooks from `$HOME`.
-            .env(EnvPolicy::Minimal)
-            .env_var("HOME", root.as_os_str())
-            .env_var("GIT_CONFIG_NOSYSTEM", "1")
-            .env_var("GIT_TERMINAL_PROMPT", "0");
+        let spec = brokered_git_spec(root, args, input, streams)?;
 
         let mut child = ExecutionBroker::new()
             .spawn_with_toolchain(&spec, &trusted_toolchain_for(&spec.program))
@@ -241,7 +257,10 @@ impl BrokeredGit {
         let truncated = Arc::new(AtomicBool::new(false));
         let stdout = spawn_reader(
             child.child_mut().stdout.take(),
-            bounded,
+            match streams {
+                GitStreams::BothPiped => None,
+                GitStreams::StdoutOnlyBounded(budget) => Some(budget),
+            },
             Arc::clone(&truncated),
         );
         let stderr = spawn_reader(
@@ -487,6 +506,72 @@ mod tests {
         std::fs::write(&file, b"x").unwrap();
         let err = workspace_git_plan(&file).unwrap_err();
         assert_eq!(err.code, "git_workspace_root_invalid");
+    }
+
+    #[test]
+    fn brokered_git_never_inherits_the_callers_environment() {
+        // The property under test is that a brokered git does not inherit
+        // arbitrary host variables. It is asserted on the spec rather than on a
+        // live child so that it holds on a host where the kernel refuses the
+        // profile: `EnvPolicy::Minimal` clears the environment and rebuilds it
+        // from `PATH` + `HOME` alone, so nothing else can survive regardless of
+        // what the parent process happened to hold.
+        let dir = tempfile::tempdir().unwrap();
+
+        // An arbitrary host variable, of the shape a real credential takes. It
+        // is set in *this* process so that if the spec inherited anything, this
+        // is the value that would show up.
+        std::env::set_var("GH_TOKEN", "should_not_reach_git");
+        std::env::set_var("WEBCODEX_P1B_PROBE_SECRET", "should_not_reach_git");
+
+        let spec = brokered_git_spec(
+            dir.path(),
+            &["ls-files", "-z"],
+            None,
+            GitStreams::StdoutOnlyBounded(1024),
+        )
+        .expect("the spec is fully determined before any process exists");
+
+        // `Minimal` is the whole point: it is what makes the environment a
+        // positive selection rather than a denylist.
+        assert_eq!(spec.env, EnvPolicy::Minimal);
+
+        let named: Vec<&str> = spec.env_vars.iter().map(|(key, _)| key.as_str()).collect();
+        for key in &named {
+            assert!(
+                !key.contains("GH_TOKEN"),
+                "a credential-shaped host variable must never be named: {key}"
+            );
+            assert!(
+                !key.contains("WEBCODEX_P1B_PROBE_SECRET"),
+                "an arbitrary host variable must never be named: {key}"
+            );
+        }
+
+        // The positively-selected keys are exactly the hardened git contract.
+        // `env_vars` is an ordered map, so compare as a set.
+        let mut expected = vec!["HOME", "GIT_CONFIG_NOSYSTEM", "GIT_TERMINAL_PROMPT"];
+        expected.sort_unstable();
+        let mut got = named.clone();
+        got.sort_unstable();
+        assert_eq!(
+            got, expected,
+            "only the hardened git environment may be named, got {named:?}"
+        );
+        let home = spec
+            .env_vars
+            .iter()
+            .find(|(key, _)| key.as_str() == "HOME")
+            .map(|(_, value)| value.clone())
+            .expect("HOME must be pinned inside the workspace");
+        assert_eq!(
+            home.as_os_str(),
+            dir.path().as_os_str(),
+            "HOME must point at the workspace, never the caller's home directory"
+        );
+
+        let _ = std::env::remove_var("GH_TOKEN");
+        let _ = std::env::remove_var("WEBCODEX_P1B_PROBE_SECRET");
     }
 
     #[test]

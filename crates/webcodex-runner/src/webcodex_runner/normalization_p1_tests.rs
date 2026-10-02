@@ -986,6 +986,41 @@ const P1_ROUTED_FUNCTIONS: &[(&str, &str)] = &[
     ("local_execution.rs", "spawn_local_action"),
 ];
 
+/// P1B: the complete, exhaustive allowlist of production callers of
+/// `CommandBlueprint::into_command()` — the one escape hatch out of the broker.
+///
+/// This is an *enumeration with a count*, not a pattern. The rule the guard
+/// above enforces is "a model-reachable path must not reach `into_command()`".
+/// That rule is only meaningful if the set of legitimate callers is written
+/// down and pinned, because otherwise the answer to "who bypasses the broker
+/// here?" is discovered by reading the whole tree instead of by reading a
+/// test.
+///
+/// Every entry is a **fixed Runner-owned control-plane probe** whose payload is
+/// authored by the Runner, never by a model:
+///
+/// 1. `shell.rs::configured_script_runtime_plan` — a `node --version`
+///    capability probe. argv is a constant.
+/// 2. `main.rs::validation_module_available` — a `python -I -c <PROBE> <module>`
+///    import probe. The probe body is a hardcoded constant; the module name comes
+///    from a configured validation job's own args, not from a model tool call.
+///
+/// Both are `CONTROL_PLANE_FIXED_PROBE`. Neither is model-reachable, and the
+/// count is asserted below so a third production caller cannot appear without
+/// this list — and this list — being updated on purpose.
+const P1B_ALLOWED_INTO_COMMAND_CALLERS: &[(&str, &str, &str)] = &[
+    (
+        "webcodex_runner/shell.rs",
+        "configured_script_runtime_plan",
+        "CONTROL_PLANE_FIXED_PROBE: node --version, constant argv",
+    ),
+    (
+        "main.rs",
+        "validation_module_available",
+        "CONTROL_PLANE_FIXED_PROBE: python -I -c <constant PROBE>, module from config",
+    ),
+];
+
 /// What a P1-routed function is forbidden to contain.
 struct BypassPattern {
     needle: &'static str,
@@ -1000,6 +1035,15 @@ const BYPASS_PATTERNS: &[BypassPattern] = &[
     BypassPattern {
         needle: "Command::new(",
         why: "a routed path must not assemble a Command, because a Command can only be spawned directly",
+    },
+    BypassPattern {
+        needle: ".into_command()",
+        why: "into_command() is the documented escape hatch out of the broker; a model-reachable \
+              routed path must never reach it, or the plan is decorative",
+    },
+    BypassPattern {
+        needle: ".spawn()",
+        why: "a routed path must not spawn directly; the broker owns process creation",
     },
 ];
 
@@ -1142,6 +1186,186 @@ fn runner_source_path(relative: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src/webcodex_runner")
         .join(relative)
+}
+
+/// Every `.rs` file in the runner crate, excluding test-only files.
+///
+/// `read_runner_source` deliberately resolves only under `src/webcodex_runner`,
+/// so `src/main.rs` is invisible to it. This helper walks the crate root instead,
+/// which is what makes the `into_command` enumeration below complete: a caller
+/// in `main.rs` is exactly the case a narrower walk would miss.
+fn runner_crate_source_files() -> Vec<(String, String)> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut files = Vec::new();
+    let mut stack = vec![root.clone()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            let Ok(relative) = path.strip_prefix(&root) else {
+                continue;
+            };
+            let name = relative.to_string_lossy().replace('\\', "/");
+            // Test-only files cannot be production callers, and including them
+            // would make the count below meaningless.
+            if is_test_only_runner_file(&name) {
+                continue;
+            }
+            if let Ok(source) = std::fs::read_to_string(&path) {
+                files.push((name, source));
+            }
+        }
+    }
+    files.sort_by(|left, right| left.0.cmp(&right.0));
+    files
+}
+
+fn is_test_only_runner_file(name: &str) -> bool {
+    name.contains("/tests/")
+        || name.starts_with("tests/")
+        || name.contains("_tests.rs")
+        || name.contains("/test_support")
+        || name.contains("fake_")
+        || name.ends_with("/tests.rs")
+}
+
+/// The enclosing `fn` name for a byte offset, scanning backwards for a
+/// top-level function signature.
+fn enclosing_function(source: &str, offset: usize) -> Option<String> {
+    let before = &source[..offset];
+    let function_line = before.lines().rev().find(|line| {
+        let trimmed = line.trim_start();
+        (trimmed.starts_with("fn ")
+            || trimmed.starts_with("pub fn ")
+            || trimmed.starts_with("pub(crate) fn ")
+            || trimmed.starts_with("async fn ")
+            || trimmed.starts_with("pub async fn ")
+            || trimmed.starts_with("pub(crate) async fn "))
+            && !trimmed.starts_with("//")
+    })?;
+    let trimmed = function_line.trim_start();
+    let after_name = trimmed
+        .split_once('(')
+        .map(|(head, _)| head)
+        .unwrap_or(trimmed);
+    Some(
+        after_name
+            .trim_start_matches("pub(crate) ")
+            .trim_start_matches("pub ")
+            .trim_start_matches("async ")
+            .trim_start_matches("fn ")
+            .trim()
+            .to_string(),
+    )
+}
+
+/// P1B: audit every production caller of `into_command()`.
+///
+/// This is the structural half of closing the escape hatch. The guard above
+/// stops a *routed* function from reaching `into_command()`; this test stops
+/// the escape hatch from silently growing a new caller anywhere else in the
+/// crate. Both halves are needed: the first constrains the model-facing paths,
+/// the second makes the allowed set of bypasses explicit and countable.
+#[test]
+fn p1b_into_command_production_callers_are_enumerated() {
+    let mut found: Vec<(String, String)> = Vec::new();
+    for (file, source) in runner_crate_source_files() {
+        for (index, line) in source.lines().enumerate() {
+            let code = line.split("//").next().unwrap_or(line);
+            if !code.contains(".into_command()") {
+                continue;
+            }
+            let offset = source
+                .lines()
+                .take(index)
+                .map(|line| line.len() + 1)
+                .sum::<usize>();
+            let function = enclosing_function(&source, offset).unwrap_or_else(|| {
+                panic!(
+                    "{file}:{}: .into_command() is not inside a recognised fn",
+                    index + 1
+                )
+            });
+            found.push((file.clone(), function));
+        }
+    }
+
+    let mut expected: Vec<(String, String)> = P1B_ALLOWED_INTO_COMMAND_CALLERS
+        .iter()
+        .map(|(file, function, _)| ((*file).to_string(), (*function).to_string()))
+        .collect();
+    expected.sort();
+
+    let mut actual = found.clone();
+    actual.sort();
+    actual.dedup();
+
+    assert_eq!(
+        actual, expected,
+        "the production callers of into_command() changed. Every caller must be classified in \
+         P1B_ALLOWED_INTO_COMMAND_CALLERS with a stated reason; a new caller is either a new \
+         model-reachable bypass (unacceptable) or a new fixed control-plane probe (which must be \
+         written down here). Found: {found:?}"
+    );
+}
+
+#[test]
+fn p1b_allowed_into_command_callers_are_fixed_control_plane_probes() {
+    // Each allowed caller must justify itself in the allowlist. This is a
+    // documentation check with teeth: an entry cannot be added without saying
+    // *why* it is not model-reachable.
+    for (file, function, why) in P1B_ALLOWED_INTO_COMMAND_CALLERS {
+        assert!(
+            why.contains("CONTROL_PLANE_FIXED_PROBE"),
+            "{file}::{function} is allowed to use into_command() but does not declare itself a \
+             CONTROL_PLANE_FIXED_PROBE: {why}"
+        );
+        assert!(
+            !why.contains("MODEL_REACHABLE"),
+            "{file}::{function} cannot be allowlisted if it is model-reachable: {why}"
+        );
+    }
+}
+
+/// The escape hatch must still exist: it is a legitimate, documented primitive
+/// for fixed control-plane probes, and this slice does not remove it.
+#[test]
+fn p1b_into_command_remains_available_for_control_plane_probes() {
+    let source = read_runner_source("local_execution.rs");
+    assert!(
+        source.contains("pub(crate) fn into_command(self)"),
+        "into_command() is the documented control-plane escape hatch and must not be deleted \
+         while its fixed-probe users remain"
+    );
+}
+
+#[test]
+fn p1b_routed_paths_forbid_into_command_and_direct_spawn() {
+    // The routed functions must not reach any of the three escape primitives.
+    // This is the F2 closure: `into_command()` was previously unmonitored, so
+    // the invariant rested on convention rather than mechanism.
+    let mut offenders = Vec::new();
+    for (file, function) in P1_ROUTED_FUNCTIONS {
+        let Some(body) = function_body(&read_runner_source(file), function) else {
+            continue;
+        };
+        for needle in [".into_command()", ".spawn()"] {
+            if body.contains(needle) {
+                offenders.push(format!("{file}::{function}: contains `{needle}`"));
+            }
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "P1-routed execution reached a broker escape primitive:\n{}",
+        offenders.join("\n")
+    );
 }
 
 /// Single-quote a path for `/bin/sh`.

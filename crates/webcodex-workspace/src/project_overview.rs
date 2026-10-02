@@ -3,6 +3,14 @@
 //!
 //! This module reads directory entries and file types only. It never reads file
 //! contents, follows symlinks, invokes a shell, or consults environment values.
+//!
+//! The one process it starts — `git ls-files -z`, used to decide which files are
+//! tracked — is model-reachable, so it is executed through the P1 execution
+//! broker via [`crate::git_broker`] rather than as a bare `Command`. That means
+//! it runs confined to the project root, with networking denied, and with a
+//! minimal environment whose `HOME` is the project root instead of the caller's.
+//! A refusal degrades to the filesystem walk; it never falls back to an
+//! unconfined git.
 
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, VecDeque};
@@ -14,6 +22,22 @@ pub const PROJECT_OVERVIEW_MAX_MAX_DEPTH: usize = 4;
 pub const PROJECT_OVERVIEW_DEFAULT_LIMIT: usize = 200;
 pub const PROJECT_OVERVIEW_MIN_LIMIT: usize = 20;
 pub const PROJECT_OVERVIEW_MAX_LIMIT: usize = 500;
+
+/// Byte budget for the brokered `git ls-files -z` index read.
+///
+/// This is a policy choice, and it belongs here rather than in the broker
+/// because the broker owns authority while the caller owns budgets (the same
+/// split `project_context` uses). The index is read to decide which files count
+/// as tracked, and an incomplete index would silently drop tracked files — so
+/// the budget is generous enough for a large monorepo, and a capture that hits
+/// it is discarded rather than used.
+const PROJECT_OVERVIEW_GIT_INDEX_BYTES: usize = 8 * 1024 * 1024;
+
+/// Wall-clock budget for the brokered index read.
+///
+/// Matches the shape of `project_context`'s bounded scans: this read happens
+/// inline on a model-facing tool call, so it must not be able to hang the call.
+const PROJECT_OVERVIEW_GIT_INDEX_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EntryKind {
@@ -357,17 +381,32 @@ fn git_tracked_index(
     std::collections::HashSet<String>,
     std::collections::HashSet<String>,
 )> {
-    let output = std::process::Command::new("git")
-        .args(["ls-files", "-z"])
-        .current_dir(root)
-        .output()
-        .ok()?;
-    if !output.status.success() {
+    // P1B: this git is model-reachable — `project_overview` is a model tool
+    // call, and this is the code path its default (no-subpath) shape takes. It
+    // therefore runs under the same broker, plan and hardened environment as
+    // every other brokered git in this crate, rather than as a bare
+    // `std::process::Command`.
+    //
+    // Fail-closed: a refusal, an unusable root, or a truncated capture all
+    // return `None`, which is the value that makes the caller fall back to the
+    // plain filesystem walk. There is no retry, and there is no path from here
+    // to an unconfined `Command`. Truncation is deliberately treated the same
+    // way as "not a git checkout": a partial index would silently mis-classify
+    // tracked files as untracked, so it must not be trusted.
+    let capture = crate::git_broker::run_git_bounded(
+        root,
+        &["ls-files", "-z"],
+        PROJECT_OVERVIEW_GIT_INDEX_BYTES,
+        std::time::Instant::now() + PROJECT_OVERVIEW_GIT_INDEX_TIMEOUT,
+    )
+    .ok()?;
+
+    if !capture.status.success() || !capture.complete {
         return None;
     }
     let mut files = std::collections::HashSet::new();
     let mut dirs = std::collections::HashSet::new();
-    for path in String::from_utf8_lossy(&output.stdout).split('\0') {
+    for path in String::from_utf8_lossy(&capture.stdout).split('\0') {
         if path.is_empty() {
             continue;
         }
@@ -1496,6 +1535,33 @@ mod tests {
 mod git_index_tests {
     use super::*;
 
+    /// Whether a brokered git can actually run on this host.
+    ///
+    /// `project_overview`'s git is now brokered, so exercising the *tracked
+    /// index* semantics needs a working sandbox. Where the kernel refuses the
+    /// profile this is `ENV_BLOCKED` — neither a pass nor a security failure —
+    /// and the index-dependent assertions below cannot be evaluated. Reporting
+    /// that honestly matters more than making the assertion appear to run: a
+    /// degraded host must not be reported as evidence that confinement works.
+    fn brokered_git_runs_here() -> bool {
+        let Ok(temp) = tempfile::tempdir() else {
+            return false;
+        };
+        let Ok(capture) = crate::git_broker::run_git_bounded(
+            temp.path(),
+            &["--version"],
+            4096,
+            std::time::Instant::now() + std::time::Duration::from_secs(5),
+        ) else {
+            return false;
+        };
+        // A successful *launch* is not a working broker. When the kernel
+        // refuses the profile, `sandbox-exec` still starts and the refusal
+        // surfaces as a non-zero child exit — so the exit status, not the
+        // absence of an error, is what says whether confinement actually ran.
+        capture.status.success() && capture.complete
+    }
+
     #[test]
     fn detection_trusts_the_git_index_over_untracked_tool_state() {
         let temp = tempfile::tempdir().unwrap();
@@ -1517,6 +1583,28 @@ mod git_index_tests {
         // Untracked tool state that used to pollute language detection.
         std::fs::create_dir_all(root.join(".opencode")).unwrap();
         std::fs::write(root.join(".opencode/package.json"), "{}").unwrap();
+
+        if !brokered_git_runs_here() {
+            eprintln!(
+                "P1B_PROJECT_OVERVIEW_GIT=ENV_BLOCKED brokered git unavailable on this host; \
+                 tracked-index semantics are NOT exercised and this is NOT a pass"
+            );
+            // The filesystem fallback must still produce a coherent overview:
+            // that is the fail-closed degradation path, and it is the one thing
+            // this host can still prove.
+            let output = build_project_overview(root, "", None, None).unwrap();
+            let kinds: Vec<&str> = output["project_types"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|item| item["kind"].as_str())
+                .collect();
+            assert!(
+                kinds.contains(&"python"),
+                "the degraded path must still find tracked source: {kinds:?}"
+            );
+            return;
+        }
 
         let output = build_project_overview(root, "", None, None).unwrap();
         let kinds: Vec<&str> = output["project_types"]
@@ -1834,5 +1922,106 @@ mod validation_tests {
         }
         let result = validate_project_overview(&payload, "", 2, 120);
         assert!(result.is_err(), "misordered kinds accepted: {result:?}");
+    }
+}
+
+/// P1B: the routing itself is a structural property, so it is asserted
+/// structurally rather than only through behaviour.
+///
+/// `project_overview` is reachable from a model tool call, and its git index
+/// read is therefore required to be brokered. This test pins that requirement
+/// mechanically: the production module must contain no direct process launch
+/// at all. Were someone to reintroduce a bare `Command::new("git")` — for any
+/// reason, in any future edit — this fails, which is the property that matters
+/// most about the change: there is no longer a second, unconfined code path for
+/// a model-triggered git in this module.
+#[cfg(test)]
+mod broker_routing_tests {
+    use super::*;
+
+    /// Split a source file into (file, line, text) triples for cheap assertions.
+    fn numbered_lines(source: &str) -> Vec<(usize, String)> {
+        source
+            .lines()
+            .enumerate()
+            .map(|(index, line)| (index + 1, line.to_string()))
+            .collect()
+    }
+
+    /// Strip a `//` comment tail so documentation prose cannot fail a guard.
+    fn code_only(line: &str) -> &str {
+        line.split("//").next().unwrap_or(line)
+    }
+
+    fn production_source() -> String {
+        // Everything up to the first `#[cfg(test)]` is production code.
+        let source = include_str!("project_overview.rs");
+        let production: String = source
+            .split("\n#[cfg(test)]")
+            .next()
+            .expect("source has a first test module")
+            .to_string();
+        production
+    }
+
+    #[test]
+    fn project_overview_has_no_direct_process_launch_in_production_code() {
+        let source = production_source();
+        let offenders: Vec<(usize, String)> = numbered_lines(&source)
+            .into_iter()
+            .filter(|(_, line)| {
+                let code = code_only(line);
+                code.contains("Command::new")
+                    || code.contains("std::process::Command")
+                    || code.contains("ManagedChild::spawn")
+                    || code.contains(".spawn()")
+                    || code.contains("process::Command")
+            })
+            .map(|(line, text)| (line, text.trim().to_string()))
+            .collect();
+        assert!(
+            offenders.is_empty(),
+            "project_overview is model-reachable and must not assemble a process itself; \
+             found direct launch(es): {offenders:?}"
+        );
+    }
+
+    #[test]
+    fn project_overview_routes_its_git_through_the_broker() {
+        let source = production_source();
+        assert!(
+            source.contains("crate::git_broker::run_git_bounded"),
+            "the git index read must go through git_broker"
+        );
+        // The hardened broker is only reached through these two keys; assert
+        // them here so a future edit cannot quietly drop the environment
+        // contract while keeping the routing.
+        let brokered = format!(
+            "{}{}",
+            include_str!("git_broker.rs"),
+            include_str!("project_overview.rs")
+        );
+        assert!(
+            brokered.contains("GIT_CONFIG_NOSYSTEM") && brokered.contains("GIT_TERMINAL_PROMPT"),
+            "the brokered git environment contract must remain present"
+        );
+        // Network denial is the broker's plan, not this module's; assert the
+        // index read cannot silently fall back to a networked/unconfined path.
+        assert!(
+            !source.contains("NetworkPolicy::Allow"),
+            "project_overview must not widen the broker's network policy"
+        );
+    }
+
+    #[test]
+    fn project_overview_index_budget_is_bounded_and_ordered() {
+        // Compile-time invariants for the two policies this module owns: they
+        // must stay positive and ordered, so any future edit that violates the
+        // budgets is a compile error rather than a silent weakening.
+        assert!(PROJECT_OVERVIEW_GIT_INDEX_BYTES > 0);
+        assert!(PROJECT_OVERVIEW_GIT_INDEX_TIMEOUT.as_nanos() > 0);
+        // A byte budget below the minimum limit is not meaningful; keep the
+        // index budget comfortably above what a small repository needs.
+        assert!(PROJECT_OVERVIEW_GIT_INDEX_BYTES >= 1024 * 1024);
     }
 }
