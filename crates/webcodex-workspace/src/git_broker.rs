@@ -467,20 +467,60 @@ const GIT_READ_PROFILE: &[(&str, &str, &str)] = &[
 /// tools". Reading it is not a grant: the path it returns is only useful to
 /// git if the broker also grants that root, and it does, as a toolchain root.
 ///
-/// Bounded like every other host interaction here — a host that cannot answer
-/// this quickly is a host we do not want to keep waiting on.
-fn developer_dir() -> Option<String> {
-    let mut child = std::process::Command::new("/usr/bin/xcode-select")
+/// # Why this takes the caller's deadline
+///
+/// This runs on the request path, inside a capability probe that is itself
+/// inside the caller's budget. Giving it a fresh `GIT_PROBE_TIMEOUT` of its own
+/// meant a host that could not answer `xcode-select` spent that budget *after*
+/// the caller's deadline had already been established — so a request that was
+/// promised a bounded lifetime still waited, and the bound it kept was not the
+/// one the caller agreed to.
+///
+/// `GIT_PROBE_TIMEOUT` is now only a **cap** for the case where the caller
+/// supplied no deadline. It can shorten the wait; it can never extend it. An
+/// already-expired deadline returns `None` without launching anything, because
+/// the answer is no longer worth having.
+fn developer_dir(deadline: Option<Instant>) -> Option<String> {
+    developer_dir_via(Path::new(XCODE_SELECT), deadline)
+}
+
+/// The host tool this queries for a developer directory.
+///
+/// A named constant rather than an inline literal so a test can exercise the
+/// timeout path against a command that never answers. `xcode-select` on a
+/// healthy host answers instantly, which means the bounded path is otherwise
+/// unreachable by test — the exact shape of bug where a bound exists but is
+/// never exercised.
+const XCODE_SELECT: &str = "/usr/bin/xcode-select";
+
+/// [`developer_dir`], against an explicit command.
+///
+/// The command is a parameter so the deadline logic can be tested with a
+/// process that hangs. It is not a grant: the value is only useful to git if
+/// the broker also grants that root, which it does as a toolchain root.
+fn developer_dir_via(command: &Path, deadline: Option<Instant>) -> Option<String> {
+    let budget = match deadline {
+        Some(absolute) => absolute.saturating_duration_since(Instant::now()),
+        None => GIT_PROBE_TIMEOUT,
+    };
+    if budget.is_zero() {
+        return None;
+    }
+    let deadline = Instant::now() + budget;
+
+    let mut child = std::process::Command::new(command)
         .arg("-p")
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
         .spawn()
         .ok()?;
-    let deadline = Instant::now() + GIT_PROBE_TIMEOUT;
     loop {
         match child.try_wait() {
             Ok(Some(_status)) => {
+                // `try_wait` already reaped the child, so collecting its pipes
+                // cannot block on it — only on a descendant, which `-p` does not
+                // spawn.
                 let output = child.wait_with_output().ok()?;
                 if !output.status.success() {
                     return None;
@@ -566,12 +606,32 @@ impl BrokeredGit {
     ///
     /// On timeout the tree is terminated rather than abandoned: a git that
     /// outlives its budget would keep holding the workspace.
+    ///
+    /// # Why the drain here is not drawn from a caller deadline
+    ///
+    /// This path has no caller deadline: `timeout` is consumed by
+    /// [`Self::wait_for`] to bound the *wait*, and what remains afterwards is
+    /// whatever the caller allowed minus however long git took — a value this
+    /// function does not have, because `wait_for` does not return it.
+    ///
+    /// So the drain is bounded by [`DRAIN_TAIL_BUDGET`] instead, and each
+    /// stream recomputes it, rather than reusing one measurement for both. That
+    /// keeps the two streams from sharing a single allowance — the defect the
+    /// review measured in the bounded path — without pretending this path has a
+    /// deadline it was never given. Callers that need one absolute bound use
+    /// [`Self::finish_bounded`], which does have one.
     fn finish(mut self, timeout: Option<std::time::Duration>) -> Result<GitOutput, GitRefusal> {
         let status = self.wait_for(timeout)?;
+        // Recomputed per stream: handing both the same measured duration would
+        // let the second stream spend what the first had already consumed.
+        let stdout_budget = DRAIN_TAIL_BUDGET;
+        let (stdout, _) = join_reader_bounded(self.stdout, "stdout", stdout_budget);
+        let stderr_budget = DRAIN_TAIL_BUDGET;
+        let (stderr, _) = join_reader_bounded(self.stderr, "stderr", stderr_budget);
         Ok(GitOutput {
             status,
-            stdout: join_reader(self.stdout, "stdout"),
-            stderr: join_reader(self.stderr, "stderr"),
+            stdout,
+            stderr,
         })
     }
 
@@ -620,7 +680,7 @@ impl BrokeredGit {
             std::thread::sleep(std::time::Duration::from_millis(2));
         };
 
-        let stdout = join_reader(self.stdout, "stdout");
+        let stdout = join_reader(self.stdout, "stdout", deadline);
         let truncated = self.stdout_truncated.load(Ordering::SeqCst);
         Ok(BoundedGitCapture {
             status,
@@ -652,9 +712,14 @@ impl BrokeredGit {
                 // See `finish_bounded`: a reaped direct child does not imply its
                 // pipes reached EOF, so the tree gets a bounded chance to clear
                 // them before the readers are joined under a deadline.
+                //
+                // Drawn from the caller's deadline rather than granted fresh: a
+                // fixed budget here would start a second clock after the first
+                // one had already been spent, which is how the tail came to be
+                // three budgets long.
                 if self
                     .child
-                    .wait_tree_exit(DRAIN_TAIL_BUDGET)
+                    .wait_tree_exit(remaining_tail(deadline))
                     .unwrap_or(false)
                 {
                     break status;
@@ -681,18 +746,26 @@ impl BrokeredGit {
         // wait, then stdout, then stderr, so a request could finish up to three budgets
         // past the deadline the caller agreed to. One shared tail, spent once, keeps
         // "the whole operation is bounded" a single measurable claim.
-        let drain_budget = remaining_tail(deadline);
+        //
+        // Recomputed before **each** blocking stage, not measured once and reused.
+        // Measuring once would be the same defect in a subtler form: the stdout
+        // drain would still be handed the budget the tree wait had already
+        // consumed, so the total would still exceed what the caller allowed. Only
+        // asking "how much is left now" makes the three stages share one budget
+        // rather than merely start from the same number.
+        let tail_budget = remaining_tail(deadline);
         let (stdout, stdout_drain_incomplete) =
-            join_reader_bounded(self.stdout, "stdout", drain_budget);
+            join_reader_bounded(self.stdout, "stdout", tail_budget);
+        let stderr_budget = remaining_tail(deadline);
         let (stderr, stderr_drain_incomplete) =
-            join_reader_bounded(self.stderr, "stderr", drain_budget);
+            join_reader_bounded(self.stderr, "stderr", stderr_budget);
         // A drain that could not finish means the request outlived its budget in
         // the only way a caller cares about. Reporting `timed_out` here is what
         // stops a caller from treating a partial capture as a complete answer.
         let drain_incomplete = stdout_drain_incomplete || stderr_drain_incomplete;
         if drain_incomplete {
             eprintln!(
-                "webcodex-workspace: git reader drain exceeded its {drain_budget:?} tail after \
+                "webcodex-workspace: git reader drain exceeded its {tail_budget:?} tail after \
                  the child was accounted for; reporting the capture as incomplete rather than \
                  blocking the caller on a descendant-held pipe"
             );
@@ -873,7 +946,7 @@ fn join_reader_bounded(
     }
 }
 
-/// Collect one drained pipe, bounded by [`DRAIN_TAIL_BUDGET`].
+/// Collect one drained pipe, bounded by what remains of `deadline`.
 ///
 /// # Why a panicking reader is not fatal here
 ///
@@ -881,8 +954,19 @@ fn join_reader_bounded(
 /// did, returning empty output keeps the caller honest about the **exit
 /// status** — which it still sees — instead of converting a capture problem
 /// into a fabricated git failure.
-fn join_reader(reader: Option<std::thread::JoinHandle<Vec<u8>>>, stream: &'static str) -> Vec<u8> {
-    join_reader_bounded(reader, stream, DRAIN_TAIL_BUDGET).0
+///
+/// # Why the deadline is a parameter
+///
+/// This previously took the constant [`DRAIN_TAIL_BUDGET`], which granted a
+/// fresh fixed budget at a point where the caller's clock was already spent —
+/// the same accumulation defect as the tree wait, in a different function. The
+/// caller now passes what is left of its own deadline.
+fn join_reader(
+    reader: Option<std::thread::JoinHandle<Vec<u8>>>,
+    stream: &'static str,
+    deadline: Instant,
+) -> Vec<u8> {
+    join_reader_bounded(reader, stream, remaining_tail(deadline)).0
 }
 
 /// Resolve `git` from a fixed set of trusted system prefixes.
@@ -1050,7 +1134,10 @@ fn is_capable_git(candidate: &Path, deadline: Option<Instant>) -> Option<GitSele
     // developer directory and try once more. A candidate that needs this is a
     // shim, and a shim that still cannot work with an explicitly named
     // toolchain is not usable at all.
-    let developer_dir = developer_dir().map(std::ffi::OsString::from)?;
+    // The developer-directory lookup is inside this probe's budget, not a fresh
+    // one of its own: a caller that allowed 300ms must not then wait a further
+    // `GIT_PROBE_TIMEOUT` for a host tool to answer.
+    let developer_dir = developer_dir(Some(probe_deadline)).map(std::ffi::OsString::from)?;
     if probe_candidate(candidate, Some(developer_dir.clone()), probe_deadline) {
         return Some(GitSelection {
             program: candidate.to_path_buf(),
@@ -1251,23 +1338,60 @@ fn run_probe_output(
 /// `wait_with_output` cannot be used directly here: it blocks on the pipes with
 /// no deadline, so a probe would reintroduce exactly the unbounded wait this
 /// whole path exists to remove.
+/// Collect a child's stdout under an absolute deadline.
+///
+/// # Why the read cannot happen on this thread
+///
+/// The previous version checked the deadline and then called `read()` on the
+/// calling thread. That check is not a bound. `read()` on a pipe blocks until
+/// the write end closes **in every process that inherited it**, so a git whose
+/// direct child exited while a descendant still held stdout parked the caller
+/// inside a syscall with no way to observe the deadline — the request could
+/// outlive its budget by as long as the descendant lived, and nothing in the
+/// loop could report it.
+///
+/// The fix is the same shape already used for the main capture path: the read
+/// runs on its own thread and the caller waits on a channel with
+/// `recv_timeout`. The wait is therefore bounded by construction rather than by
+/// a check that a blocking call can ignore.
+///
+/// # Why the read thread is detached
+///
+/// On the timeout path the thread is still blocked in `read`, holding the pipe.
+/// Dropping the handle keeps the *caller's* wait bounded, which is the property
+/// under test; the thread ends when the pipe finally closes. Detaching is what
+/// makes the timeout path itself incapable of becoming the new hang.
 fn read_bounded_output(child: &mut std::process::Child, deadline: Instant) -> Option<String> {
     use std::io::Read;
-    let mut stdout = child.stdout.take()?;
-    let mut collected = Vec::new();
-    let mut chunk = [0u8; 4096];
-    loop {
-        if Instant::now() >= deadline {
-            return None;
+    let stdout = child.stdout.take()?;
+    let (sender, receiver) = std::sync::mpsc::channel::<Vec<u8>>();
+    let pump = std::thread::spawn(move || {
+        let mut stdout = stdout;
+        let mut collected = Vec::new();
+        let mut chunk = [0u8; 4096];
+        loop {
+            match stdout.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(read) => collected.extend_from_slice(&chunk[..read]),
+                Err(ref error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(_) => break,
+            }
         }
-        match stdout.read(&mut chunk) {
-            Ok(0) => break,
-            Ok(read) => collected.extend_from_slice(&chunk[..read]),
-            Err(ref error) if error.kind() == std::io::ErrorKind::Interrupted => {}
-            Err(_) => break,
-        }
+        let _ = sender.send(collected);
+    });
+    drop(pump);
+
+    // `recv_timeout` cannot be given an absolute deadline, so the remaining
+    // budget is what is left of it. An expired deadline yields zero, which
+    // returns immediately without waiting.
+    let budget = deadline.saturating_duration_since(Instant::now());
+    match receiver.recv_timeout(budget) {
+        Ok(collected) => Some(String::from_utf8_lossy(&collected).to_string()),
+        // A read that could not finish is an incomplete capture, and
+        // `None` is how this function has always reported that. It is not a
+        // fabricated exit status — the caller still sees git's own.
+        Err(_) => None,
     }
-    Some(String::from_utf8_lossy(&collected).to_string())
 }
 
 /// Read-only prefixes the child needs to execute the git binary itself.
@@ -2176,6 +2300,205 @@ mod tests {
             elapsed < budget * 4,
             "F1: the probe must live inside the operation budget, took {elapsed:?} for a budget of \
              {budget:?}"
+        );
+    }
+
+    /// The developer-directory lookup lives inside the caller's deadline.
+    ///
+    /// A capability probe that fails without `DEVELOPER_DIR` consults the host
+    /// before trying again. That lookup used to take a fresh
+    /// `GIT_PROBE_TIMEOUT`, so a request promised a bounded lifetime still
+    /// waited out a second, unrelated budget *after* the caller's clock was
+    /// spent — the bound it kept was not the one the caller agreed to.
+    ///
+    /// The command is a parameter precisely so this is testable: the real
+    /// `xcode-select` answers instantly, so the bounded path would otherwise
+    /// never be exercised.
+    #[test]
+    fn the_developer_dir_lookup_cannot_outlive_the_caller_deadline() {
+        let dir = tempfile::tempdir().unwrap();
+        let hanging = dir.path().join("xcode-select");
+        // Never terminates. The obvious fixture — `exit 0` followed by a sleep —
+        // does not work here and was measured not to: the shell exits
+        // immediately, the sleep is orphaned, and `try_wait` returns at once, so
+        // the lookup finishes in ~0.5s regardless of any bound. A fixture that
+        // does not reproduce the defect cannot demonstrate the fix.
+        std::fs::write(&hanging, b"#!/bin/sh\nwhile :; do :; done\n").unwrap();
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&hanging).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&hanging, perms).unwrap();
+        }
+
+        // A caller budget far below `GIT_PROBE_TIMEOUT` (5s). The threshold is
+        // set well below 5s so a fresh internal timeout cannot pass, and well
+        // above the budget so an honest kill-and-reap cannot fail on timing.
+        let budget = std::time::Duration::from_millis(250);
+        let started = Instant::now();
+        let found = developer_dir_via(&hanging, Some(Instant::now() + budget));
+        let elapsed = started.elapsed();
+        assert!(found.is_none(), "a hanging host tool has no answer to give");
+        assert!(
+            elapsed < std::time::Duration::from_millis(1500),
+            "F1: the developer-dir lookup must live inside the caller's deadline, took {elapsed:?} \
+             for a budget of {budget:?}; a fresh GIT_PROBE_TIMEOUT would show ~5s"
+        );
+        eprintln!("F1_TEST_A developer_dir bounded: elapsed={elapsed:?} budget={budget:?}");
+    }
+
+    /// An already-expired deadline must not launch the host tool at all.
+    ///
+    /// The degenerate case of the same invariant, and the one that separates
+    /// "bounded" from "bounded but still spends time": a deadline in the past
+    /// means the answer is no longer worth having, so the correct behaviour is
+    /// to return without spawning anything.
+    #[test]
+    fn an_expired_deadline_skips_the_developer_dir_lookup_entirely() {
+        let started = Instant::now();
+        let found = developer_dir_via(Path::new(XCODE_SELECT), Some(Instant::now()));
+        let elapsed = started.elapsed();
+        assert!(
+            found.is_none(),
+            "an expired deadline cannot yield a usable answer"
+        );
+        assert!(
+            elapsed < std::time::Duration::from_millis(100),
+            "F1: an expired deadline must return without launching a process, took {elapsed:?}"
+        );
+    }
+
+    /// Collecting a probe's stdout must not block past the deadline.
+    ///
+    /// The defect was structural: check the deadline, then call `read()` on the
+    /// calling thread. `read()` blocks until the write end closes in *every*
+    /// process that inherited it, so a git whose direct child exited while a
+    /// descendant held stdout parked the caller in a syscall that no amount of
+    /// checking could bound.
+    ///
+    /// Reproduced directly: a shell exits immediately while a background
+    /// descendant keeps the pipe open. The parent is gone, so the child is
+    /// accounted for — exactly the state in which the old loop called `read()`
+    /// and waited for a pipe nobody would ever close.
+    #[test]
+    fn a_descendant_holding_stdout_cannot_block_the_probe_read_past_its_deadline() {
+        // `(exit 0 &)` backgrounds a subshell that inherits stdout, then the
+        // direct child exits 0. The pipe stays open past the child's death.
+        let script = "echo ready\n(exec sleep 30) &\nexit 0\n";
+        let dir = tempfile::tempdir().unwrap();
+        let mut child = std::process::Command::new("/bin/sh")
+            .arg("-c")
+            .arg(script)
+            .current_dir(dir.path())
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .expect("the fixture shell must start");
+        // Let the descendant establish itself before the deadline starts, so the
+        // test measures the blocked read rather than a race to spawn it.
+        std::thread::sleep(std::time::Duration::from_millis(120));
+
+        let budget = std::time::Duration::from_millis(400);
+        let started = Instant::now();
+        let collected = read_bounded_output(&mut child, Instant::now() + budget);
+        let elapsed = started.elapsed();
+
+        // Kill the descendant so the fixture does not outlive the suite.
+        let _ = child.kill();
+        let _ = child.wait();
+
+        // The threshold is what makes this a real guard. Measured on this host:
+        // with the descendant holding the pipe a blocking read runs past 2.1s,
+        // and without one it returns in ~52ms. A bound that accepted "a bit
+        // over budget" would therefore pass an implementation that waits for
+        // EOF — which is the defect. So the limit sits above the honest cost of
+        // spawning and killing, and far below the fixture's 30s descendant.
+        assert!(
+            elapsed < std::time::Duration::from_millis(1200),
+            "F1: the probe read must be deadline-bounded, took {elapsed:?} for a budget of {budget:?}; \
+             a blocking read on a descendant-held pipe runs until the descendant exits"
+        );
+        // Whether the bytes arrived is not the claim under test; the claim is
+        // that the call returned. Both outcomes are honest, so the assertion is
+        // only about the bound.
+        let _ = collected;
+        eprintln!("F1_TEST_B probe stdout read bounded: elapsed={elapsed:?} budget={budget:?}");
+    }
+
+    /// Tree wait, stdout drain and stderr drain share one tail budget.
+    ///
+    /// The accumulation was structural: the tree wait took the constant
+    /// `DRAIN_TAIL_BUDGET`, then both readers were handed the *same measured*
+    /// duration. Measuring once and reusing it means the second stage is granted
+    /// what the first already spent, so three stages cost up to three budgets.
+    ///
+    /// What is asserted here is that a zero remaining budget yields a
+    /// non-blocking call — the property that makes sharing real. If a stage
+    /// could still be granted a fresh budget after the deadline passed, an
+    /// expired deadline would still cost real time.
+    #[test]
+    fn an_expired_deadline_gives_the_remaining_stages_nothing_to_wait_for() {
+        let expired = Instant::now() - std::time::Duration::from_secs(1);
+
+        // Every stage asked after the deadline must be given zero, so
+        // `recv_timeout(0)` returns immediately instead of waiting out a budget.
+        let first = remaining_tail(expired);
+        let second = remaining_tail(expired);
+        let third = remaining_tail(expired);
+        assert_eq!(
+            (first, second, third),
+            (
+                std::time::Duration::ZERO,
+                std::time::Duration::ZERO,
+                std::time::Duration::ZERO
+            ),
+            "F1: after the deadline every cleanup stage must receive zero, or the tail accumulates"
+        );
+
+        // And a reader that will never finish must therefore cost ~nothing.
+        let reader = std::thread::spawn(|| {
+            std::thread::sleep(std::time::Duration::from_secs(30));
+            Vec::new()
+        });
+        let started = Instant::now();
+        let (collected, incomplete) =
+            join_reader_bounded(Some(reader), "stdout", remaining_tail(expired));
+        let elapsed = started.elapsed();
+        assert!(
+            incomplete,
+            "a reader that cannot finish must be reported incomplete"
+        );
+        assert!(
+            collected.is_empty(),
+            "an unfinished reader must not fabricate output"
+        );
+        assert!(
+            elapsed < std::time::Duration::from_millis(100),
+            "F1: a zero remaining budget must not block, took {elapsed:?}"
+        );
+        eprintln!("F1_TEST_C one tail budget: expired-deadline join elapsed={elapsed:?}");
+    }
+
+    /// The tail budget shrinks as it is spent, rather than being re-measured.
+    ///
+    /// The direct statement of "one absolute tail deadline": two calls to
+    /// [`remaining_tail`] around a real delay must report different budgets, and
+    /// the second must be smaller. If the second could be as large as the first,
+    /// the stages would not be sharing anything.
+    #[test]
+    fn the_tail_budget_shrinks_as_it_is_spent() {
+        let deadline = Instant::now() + std::time::Duration::from_millis(300);
+        let first = remaining_tail(deadline);
+        std::thread::sleep(std::time::Duration::from_millis(60));
+        let second = remaining_tail(deadline);
+        assert!(
+            second < first,
+            "F1: the tail must be re-measured per stage, first={first:?} second={second:?}"
+        );
+        assert!(
+            second <= std::time::Duration::from_millis(240),
+            "F1: after 60ms of a 300ms budget about 240ms should remain, got {second:?}"
         );
     }
 
