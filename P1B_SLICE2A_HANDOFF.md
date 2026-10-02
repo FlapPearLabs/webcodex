@@ -3,9 +3,12 @@
 > 文档定位（接手 agent 必读）：本文件是真实交接物，不是聊天文本。
 > - **本机绝对路径**：`/tmp/wcb_handoff/P1B_SLICE2A_HANDOFF.md`
 >   （该路径属于一个隔离 git worktree，不是主工作区；主工作区见下文「⚠️ 工作区冲突」）
-> - **远端分支**（push 后可见）：`origin/handoff/p1b-slice2a-review`
+> - **远端分支**：`origin/handoff/p1b-slice2a-review`
 >   取回方式：`git fetch origin handoff/p1b-slice2a-review && git checkout FETCH_HEAD`
-> - 本文件 commit SHA 待 push 后由 `git ls-remote origin refs/heads/handoff/p1b-slice2a-review` 实证。
+> - **本文档 commit**：`f70382ed3b5bf7018e7f04d7bfd514309b25a49b`
+>   已由 `git ls-remote origin refs/heads/handoff/p1b-slice2a-review` 实证返回一致。
+> - 取回后请 `git checkout 0f56dd81aed0e63100d537a1dbc4e820e0356424` 读真实代码；
+>   本文档基于该 SHA 的**静态审阅**（未运行测试）。
 > - 原始对话产出曾**只存在于聊天窗口** → 下一个 agent 看不到，已被判为交付失败。本文件是为纠正该失误而写。
 
 ---
