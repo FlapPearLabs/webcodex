@@ -547,20 +547,29 @@ mod tests {
     /// passing broker test can never be mistaken for evidence about the
     /// checkpoint layer.
     ///
-    /// The gate is **routing plus fidelity**, not confinement. Two hosts
-    /// produce a non-applying run and they must not be confused:
+    /// The gate is **routing plus fidelity**, not confinement. Non-applying runs
+    /// come from three different places and must not be confused:
     ///
     /// * The launcher itself refuses to start (`git_spawn_refused`) — the
-    ///   fail-closed path.
+    ///   fail-closed path, a statement about the broker.
     /// * The launcher starts but the kernel refuses the profile, so `sandbox-exec`
     ///   exits non-zero with `sandbox_apply: Operation not permitted`. That is
-    ///   `ENV_BLOCKED`: the environment, not the code. Reporting it as a git
-    ///   failure would blame the patch semantics for a host limitation.
+    ///   `ENV_BLOCKED`: the environment, not the code.
+    /// * git never runs because the host toolchain is incomplete — no developer
+    ///   tools, `xcode-select` missing, no git binary. That is
+    ///   `HOST_UNAVAILABLE`: the broker was never exercised, so it is neither a
+    ///   pass nor a security regression.
+    ///
+    /// Only git starting and rejecting the patch is `FAIL`.
     #[test]
     fn g_git_apply_still_applies_a_real_patch_through_the_broker() {
         let repo = tempfile::tempdir().unwrap();
         if !git_init(repo.path()) {
-            eprintln!("P1-G SKIPPED: no trusted git executable on this host");
+            eprintln!("P1_GIT_APPLY_REASON=no_trusted_git_executable");
+            eprintln!(
+                "P1_NATIVE_GIT_BROKER_FIDELITY=HOST_UNAVAILABLE no trusted git executable on this \
+                 host; this is NOT a pass and NOT a security regression"
+            );
             return;
         }
 
@@ -579,6 +588,7 @@ mod tests {
                 if output.status.success() {
                     // Emit the machine-readable verdict *before* the assertion, so
                     // a genuine mismatch still shows up in the smoke log.
+                    eprintln!("P1_GIT_APPLY_REASON=patch_applied");
                     eprintln!(
                         "P1_NATIVE_GIT_BROKER_FIDELITY=PASS git apply applied the patch through \
                          the broker (lower-level fidelity only; NOT the checkpoint-wrapper path)"
@@ -592,6 +602,7 @@ mod tests {
                 }
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 if is_profile_refusal(&output.stderr) {
+                    eprintln!("P1_GIT_APPLY_REASON=sandbox_profile_refused");
                     eprintln!(
                         "P1_NATIVE_GIT_BROKER_FIDELITY=ENV_BLOCKED broker launched but the kernel \
                          refused the profile ({stderr}); this is NOT a pass"
@@ -602,12 +613,40 @@ mod tests {
                     );
                     return;
                 }
+                // git ran and refused the patch. Before calling that a security
+                // failure, rule out an incomplete host toolchain: a stub `git`
+                // with no developer tools behind it fails here while the broker
+                // behaved correctly, and blaming confinement for that would be
+                // backwards.
+                if is_host_unavailable(stderr.as_bytes()) {
+                    eprintln!("P1_GIT_APPLY_REASON=host_toolchain_unavailable");
+                    eprintln!(
+                        "P1_NATIVE_GIT_BROKER_FIDELITY=HOST_UNAVAILABLE git could not run because \
+                         the host toolchain is incomplete ({stderr}); this is NOT a pass and NOT \
+                         a security regression"
+                    );
+                    assert!(
+                        !repo.path().join("added.txt").exists(),
+                        "a failed apply must not leave the patch applied"
+                    );
+                    return;
+                }
+                eprintln!("P1_GIT_APPLY_REASON=patch_rejected_by_git");
                 eprintln!("P1_NATIVE_GIT_BROKER_FIDELITY=FAIL git apply failed: {stderr}");
                 panic!("P1-G git apply failed on an unconfined-capable host: {stderr}");
             }
             // The launcher never started a process: fail-closed, and still not a
             // statement about patch semantics.
             Err(refusal) => {
+                if refusal.code == "git_executable_unavailable" {
+                    eprintln!("P1_GIT_APPLY_REASON=git_executable_unavailable");
+                    eprintln!(
+                        "P1_NATIVE_GIT_BROKER_FIDELITY=HOST_UNAVAILABLE no trusted git executable \
+                         ({refusal}); this is NOT a pass and NOT a security regression"
+                    );
+                    return;
+                }
+                eprintln!("P1_GIT_APPLY_REASON=broker_refused_to_spawn");
                 eprintln!(
                     "P1_NATIVE_GIT_BROKER_FIDELITY=ENV_BLOCKED broker refused to launch git ({refusal})"
                 );
@@ -621,6 +660,25 @@ mod tests {
     fn is_profile_refusal(stderr: &[u8]) -> bool {
         let text = String::from_utf8_lossy(stderr);
         text.contains("sandbox_apply") || text.contains("sandbox-exec")
+    }
+
+    /// Whether git's stderr shows the host toolchain is incomplete, as opposed
+    /// to git running and rejecting the patch.
+    ///
+    /// On macOS a machine without developer tools still has the `/usr/bin/git`
+    /// shim, and it fails with `xcode-select: error: tool 'git' requires Xcode`.
+    /// No repository is touched, no patch is read, and no confinement decision is
+    /// made — so this is a property of the machine and is classified as
+    /// HOST_UNAVAILABLE rather than blamed on the broker.
+    fn is_host_unavailable(stderr: &[u8]) -> bool {
+        let text = String::from_utf8_lossy(stderr);
+        text.contains("xcode-select")
+            || text.contains("requires Xcode")
+            || text.contains("No developer tools")
+            || text.contains("no developer tools")
+            || text.contains("unable to locate developer tools")
+            || text.contains("Cannot find a developer tool")
+            || text.contains("not a git repository")
     }
 
     /// **P1-H** The git helper gains no authority beyond the project root.

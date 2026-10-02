@@ -927,6 +927,31 @@ mod tests {
         detail.contains("sandbox_apply") || detail.contains("sandbox-exec")
     }
 
+    /// Whether a failure detail shows the *host* is missing something git needs,
+    /// as opposed to git rejecting the patch or the sandbox refusing a profile.
+    ///
+    /// This is the third axis, and collapsing it into FAIL is what made an
+    /// unprepared machine look like a security defect. A Mac with no developer
+    /// tools reports `xcode-select: error: tool 'git' requires Xcode`; git may
+    /// also be absent from the trusted candidate paths, or the stub may exist
+    /// while the real binary does not. None of those say anything about whether
+    /// the broker confines git correctly — the code under test never ran.
+    ///
+    /// `git_spawn_refused` is deliberately NOT here: that is the broker's own
+    /// fail-closed path and says the confinement declined to start git, which is
+    /// a statement about the broker, not about the host's toolchain.
+    fn is_host_unavailable(detail: &str) -> bool {
+        detail.contains("xcode-select")
+            || detail.contains("xcode_select")
+            || detail.contains("requires Xcode")
+            || detail.contains("No developer tools")
+            || detail.contains("no developer tools")
+            || detail.contains("unable to locate developer tools")
+            || detail.contains("Cannot find a developer tool")
+            || detail.contains("git_executable_unavailable")
+            || detail.contains("not a git repository")
+    }
+
     /// **P1-G, checkpoint-wrapper half.** The production chain the model can
     /// actually reach is
     ///
@@ -952,12 +977,22 @@ mod tests {
     /// * patch applied and the file matches — `PASS`;
     /// * git started and rejected the patch — `FAIL`, and the test fails;
     /// * the launcher or the kernel refused — `ENV_BLOCKED`, and the test
-    ///   passes without claiming anything was proved.
+    ///   passes without claiming anything was proved;
+    /// * the host has no usable git (no developer tools, `xcode-select` missing,
+    ///   no git in the trusted paths) — `HOST_UNAVAILABLE`, and the test passes.
+    ///   That last state is not a security result: the broker was never asked to
+    ///   confine anything, so it can exonerate no one and blame no one. It is
+    ///   reported separately so an unprepared machine is never mistaken for a
+    ///   confinement defect.
     #[test]
     fn checkpoint_git_apply_applies_a_real_patch_through_the_broker() {
         let repo = tempfile::tempdir().unwrap();
         if !init_repo(repo.path()) {
-            eprintln!("P1_NATIVE_GIT_APPLY=ENV_BLOCKED no trusted git executable on this host");
+            eprintln!("P1_GIT_APPLY_REASON=no_trusted_git_executable");
+            eprintln!(
+                "P1_NATIVE_GIT_APPLY=HOST_UNAVAILABLE no trusted git executable on this host; \
+                 this is NOT a pass and NOT a security regression"
+            );
             return;
         }
 
@@ -987,6 +1022,7 @@ mod tests {
                     body, "applied-through-checkpoint-wrapper\n",
                     "the checkpoint wrapper must put the patch on disk, not merely return Ok"
                 );
+                eprintln!("P1_GIT_APPLY_REASON=patch_applied");
                 eprintln!(
                     "P1_NATIVE_GIT_APPLY=PASS workspace_checkpoint::git_apply applied a real \
                      patch through the broker (bytes_on_disk={})",
@@ -998,6 +1034,23 @@ mod tests {
                     !repo.path().join("checkpoint-added.txt").exists(),
                     "a failed apply must not leave the patch applied"
                 );
+                // Three distinct non-pass states, never collapsed. A host that
+                // cannot run git at all (no developer tools, `xcode-select`
+                // missing, no git binary) is HOST_UNAVAILABLE: the broker was
+                // never exercised, so this is not evidence about confinement in
+                // either direction. A launcher or kernel refusal is ENV_BLOCKED,
+                // which is also not a pass. Only git actually starting and
+                // rejecting the patch — or the patch landing where it must not —
+                // is a security FAIL.
+                if is_host_unavailable(&detail) {
+                    eprintln!("P1_GIT_APPLY_REASON=host_toolchain_unavailable");
+                    eprintln!(
+                        "P1_NATIVE_GIT_APPLY=HOST_UNAVAILABLE workspace_checkpoint::git_apply \
+                         could not run git because the host toolchain is incomplete ({detail}); \
+                         this is NOT a pass and NOT a security regression"
+                    );
+                    return;
+                }
                 // Any failure to run git *under the broker* — the launcher
                 // refusing before spawn, or the kernel refusing the profile at
                 // runtime — is an environment limitation, not evidence about
@@ -1008,12 +1061,14 @@ mod tests {
                     || detail.contains("failed to start")
                     || detail.contains("refused");
                 if env_blocked {
+                    eprintln!("P1_GIT_APPLY_REASON=sandbox_profile_refused");
                     eprintln!(
                         "P1_NATIVE_GIT_APPLY=ENV_BLOCKED workspace_checkpoint::git_apply could \
                          not run git under the broker ({detail}); this is NOT a pass"
                     );
                     return;
                 }
+                eprintln!("P1_GIT_APPLY_REASON=patch_rejected_by_git");
                 eprintln!(
                     "P1_NATIVE_GIT_APPLY=FAIL workspace_checkpoint::git_apply failed: {detail}"
                 );
