@@ -976,14 +976,21 @@ mod tests {
             Ok(()) => {
                 let landed = repo.path().join("checkpoint-added.txt");
                 let body = std::fs::read_to_string(&landed).unwrap_or_default();
+                // Assert FIRST, print PASS second. `git_apply` returning `Ok(())`
+                // only means git exited zero; the patch landing on disk is the
+                // claim that actually carries the evidence. A PASS marker emitted
+                // before this assertion would survive into the harness log even
+                // when the assertion fails, and the log is what the native gate
+                // greps for `P1_NATIVE_GIT_APPLY=PASS` — a marker printed ahead of
+                // the check it claims would be a false-pass surface.
+                assert_eq!(
+                    body, "applied-through-checkpoint-wrapper\n",
+                    "the checkpoint wrapper must put the patch on disk, not merely return Ok"
+                );
                 eprintln!(
                     "P1_NATIVE_GIT_APPLY=PASS workspace_checkpoint::git_apply applied a real \
                      patch through the broker (bytes_on_disk={})",
                     body.len()
-                );
-                assert_eq!(
-                    body, "applied-through-checkpoint-wrapper\n",
-                    "the checkpoint wrapper must put the patch on disk, not merely return Ok"
                 );
             }
             Err(detail) => {
