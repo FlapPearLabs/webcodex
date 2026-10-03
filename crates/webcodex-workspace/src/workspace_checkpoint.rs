@@ -982,13 +982,14 @@ mod tests {
     /// * patch applied and the file matches — `PASS`;
     /// * git started and rejected the patch — `FAIL`, and the test fails;
     /// * the launcher or the kernel refused — `ENV_BLOCKED`, and the test
-    ///   passes without claiming anything was proved;
+    ///   fails after reporting the classification, without claiming anything
+    ///   was proved;
     /// * the host has no usable git (no developer tools, `xcode-select` missing,
-    ///   no git in the trusted paths) — `HOST_UNAVAILABLE`, and the test passes.
+    ///   no git in the trusted paths) — `HOST_UNAVAILABLE`, and the test fails.
     ///   That last state is not a security result: the broker was never asked to
     ///   confine anything, so it can exonerate no one and blame no one. It is
-    ///   reported separately so an unprepared machine is never mistaken for a
-    ///   confinement defect.
+    ///   reported separately so an unprepared machine is never mistaken for
+    ///   either a pass or a confinement defect.
     #[test]
     fn checkpoint_git_apply_applies_a_real_patch_through_the_broker() {
         let repo = tempfile::tempdir().unwrap();
@@ -998,7 +999,7 @@ mod tests {
                 "P1_NATIVE_GIT_APPLY=HOST_UNAVAILABLE no trusted git executable on this host; \
                  this is NOT a pass and NOT a security regression"
             );
-            return;
+            panic!("P1-G checkpoint git apply could not run: host toolchain unavailable");
         }
 
         let patch = concat!(
@@ -1054,7 +1055,7 @@ mod tests {
                          could not run git because the host toolchain is incomplete ({detail}); \
                          this is NOT a pass and NOT a security regression"
                     );
-                    return;
+                    panic!("P1-G checkpoint git apply could not run: host toolchain unavailable");
                 }
                 // Any failure to run git *under the broker* — the launcher
                 // refusing before spawn, or the kernel refusing the profile at
@@ -1071,7 +1072,7 @@ mod tests {
                         "P1_NATIVE_GIT_APPLY=ENV_BLOCKED workspace_checkpoint::git_apply could \
                          not run git under the broker ({detail}); this is NOT a pass"
                     );
-                    return;
+                    panic!("P1-G checkpoint git apply could not run: broker environment blocked");
                 }
                 eprintln!("P1_GIT_APPLY_REASON=patch_rejected_by_git");
                 eprintln!(
