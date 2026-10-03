@@ -1,0 +1,4 @@
+[workspace-boundary][ok] all 20 workspace packages match the checked-in dependency policy
+[workspace-boundary][ok] production workspace dependencies respect layer direction; dev/test exceptions are explicit
+[workspace-boundary][ok] root-test-support is confined to declared dev/test ownership
+[workspace-boundary][ok] no cross-parent #[path] source sharing

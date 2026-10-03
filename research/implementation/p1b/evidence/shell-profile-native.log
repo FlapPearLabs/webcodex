@@ -1,0 +1,62 @@
+{
+  "baseline": {
+    "binary": "/private/tmp/webcodex-p1b-catalog-target-1.98.1/debug/webcodex-runner",
+    "sha256": "d88cbfc6da56e2c8eca0333e785b880797b15e8f93e8af9c8cb5bb6155713044",
+    "verdict": "RED",
+    "raw_launch_effects": "OBSERVED",
+    "registered_prepare": {
+      "workspace_marker_written": true,
+      "outside_write_denied": false,
+      "synthetic_host_value_absent": false,
+      "prepare_count_after_unregister_request": 2,
+      "prepare_stdin_eof": true,
+      "profile_path_used_by_real_run_shell": true,
+      "run_shell_stdin_eof": true,
+      "run_shell_stdout_bytes": 39,
+      "run_shell_stderr_bytes": 17,
+      "run_shell_stderr_preserved": true,
+      "first_result_state": "completed",
+      "first_result_exit_code": 0,
+      "second_result_state": "not_started",
+      "second_result_error": "failed to spawn shell profile 'registered': sandbox_authority_unavailable: no trusted project context covers /var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-shell-profile-69byq04x/project; refusing to derive a sandbox authority rather than guessing one",
+      "second_payload_not_started": true,
+      "descendant_gone_at_operation_return": true
+    },
+    "runner_return_code": 0,
+    "runner_output_redacted": "webcodex-runner project warning: git rev-parse in /private/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-shell-profile-69byq04x/project failed: \u81f4\u547d\u9519\u8bef\uff1a\u4e0d\u662f Git \u4ed3\u5e93\uff08\u6216\u8005\u4efb\u4f55\u7236\u76ee\u5f55\uff09\uff1a.git\nwebcodex-runner project warning: git log in /private/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-shell-profile-69byq04x/project failed: \u81f4\u547d\u9519\u8bef\uff1a\u4e0d\u662f Git \u4ed3\u5e93\uff08\u6216\u8005\u4efb\u4f55\u7236\u76ee\u5f55\uff09\uff1a.git\nwebcodex-runner project warning: git status in /private/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-shell-profile-69byq04x/project failed: \u81f4\u547d\u9519\u8bef\uff1a\u4e0d\u662f Git \u4ed3\u5e93\uff08\u6216\u8005\u4efb\u4f55\u7236\u76ee\u5f55\uff09\uff1a.git\nwebcodex-runner registered client_id=p1b-shell-profile-evidence server=http://127.0.0.1:53180 preferred_transport=polling actual_transport=polling projects=1\nwebcodex-runner shutdown signal received\nwebcodex-runner shutdown complete elapsed_ms=73 timed_out_phases=none failed_phases=none\n",
+    "http_result_ids": [
+      "profile-prepare-first",
+      "profile-prepare-after-unregister"
+    ]
+  },
+  "candidate": {
+    "binary": "/private/tmp/webcodex-p1b-final-1.98.1/dogfood/webcodex-runner",
+    "sha256": "d8350ab9c390843d82f902a1308b2f90e6372a17297bba09e2919be4a00710eb",
+    "verdict": "PASS",
+    "raw_launch_effects": "ABSENT",
+    "registered_prepare": {
+      "workspace_marker_written": true,
+      "outside_write_denied": true,
+      "synthetic_host_value_absent": true,
+      "prepare_count_after_unregister_request": 1,
+      "prepare_stdin_eof": true,
+      "profile_path_used_by_real_run_shell": true,
+      "run_shell_stdin_eof": true,
+      "run_shell_stdout_bytes": 39,
+      "run_shell_stderr_bytes": 17,
+      "run_shell_stderr_preserved": true,
+      "first_result_state": "completed",
+      "first_result_exit_code": 0,
+      "second_result_state": "not_started",
+      "second_result_error": "shell profile prepare refused without project authority: no trusted project context covers /var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-shell-profile-25srqx4y/project; refusing to derive a sandbox authority rather than guessing one",
+      "second_payload_not_started": true,
+      "descendant_gone_at_operation_return": true
+    },
+    "runner_return_code": 0,
+    "runner_output_redacted": "webcodex-runner project warning: git rev-parse in /private/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-shell-profile-25srqx4y/project failed: \u81f4\u547d\u9519\u8bef\uff1a\u4e0d\u662f Git \u4ed3\u5e93\uff08\u6216\u8005\u4efb\u4f55\u7236\u76ee\u5f55\uff09\uff1a.git\nwebcodex-runner project warning: git log in /private/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-shell-profile-25srqx4y/project failed: \u81f4\u547d\u9519\u8bef\uff1a\u4e0d\u662f Git \u4ed3\u5e93\uff08\u6216\u8005\u4efb\u4f55\u7236\u76ee\u5f55\uff09\uff1a.git\nwebcodex-runner project warning: git status in /private/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-shell-profile-25srqx4y/project failed: \u81f4\u547d\u9519\u8bef\uff1a\u4e0d\u662f Git \u4ed3\u5e93\uff08\u6216\u8005\u4efb\u4f55\u7236\u76ee\u5f55\uff09\uff1a.git\nwebcodex-runner registered client_id=p1b-shell-profile-evidence server=http://127.0.0.1:53230 preferred_transport=polling actual_transport=polling projects=1\nwebcodex-runner shutdown signal received\nwebcodex-runner shutdown complete elapsed_ms=20 timed_out_phases=none failed_phases=none\n",
+    "http_result_ids": [
+      "profile-prepare-first",
+      "profile-prepare-after-unregister"
+    ]
+  }
+}

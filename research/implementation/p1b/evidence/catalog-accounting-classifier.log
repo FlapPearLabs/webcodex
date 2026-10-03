@@ -1,0 +1,47 @@
+{
+  "probe": "actual catalog main classifier; not native proof",
+  "cases": [
+    {
+      "input": "PASS",
+      "status": "PASS",
+      "exit_code": 0,
+      "diagnostic_retained": false
+    },
+    {
+      "input": "HOST_UNAVAILABLE",
+      "status": "HOST_UNAVAILABLE",
+      "exit_code": 1,
+      "diagnostic_retained": true
+    },
+    {
+      "input": "ENV_BLOCKED",
+      "status": "ENV_BLOCKED",
+      "exit_code": 1,
+      "diagnostic_retained": true
+    },
+    {
+      "input": "FAIL",
+      "status": "FAIL",
+      "exit_code": 1,
+      "diagnostic_retained": true
+    },
+    {
+      "input": "ASSERTION",
+      "status": "FAIL",
+      "exit_code": 1,
+      "diagnostic_retained": true
+    },
+    {
+      "input": "TIMEOUT",
+      "status": "FAIL",
+      "exit_code": 1,
+      "diagnostic_retained": true
+    },
+    {
+      "input": "UNKNOWN_PERMISSION",
+      "status": "FAIL",
+      "exit_code": 1,
+      "diagnostic_retained": true
+    }
+  ]
+}

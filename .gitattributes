@@ -1,2 +1,16 @@
 *.sh text eol=lf
 *.toml text eol=lf
+*.rs text eol=lf
+*.tsx text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+.gitattributes text eol=lf
+Cargo.lock text eol=lf
+research/implementation/p1b/harness/*.py text eol=lf
+research/implementation/p1b/evidence/*.log text eol=lf whitespace=-blank-at-eof
+npm/webcodex/bin/** text=auto eol=lf

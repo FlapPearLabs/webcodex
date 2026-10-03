@@ -32,6 +32,11 @@ path = "src/bin/seatbelt_ae_probe.rs"
 
 [dev-dependencies]
 tempfile = "3"
+serde_json = "1"
+sha2 = "0.10"
+quote = "1"
+proc-macro2 = { version = "1", features = ["span-locations"] }
+syn = { version = "2", features = ["full", "visit"] }
 
 # The integration tests probe process liveness directly (OpenProcess +
 # GetExitCodeProcess) instead of shelling out to tasklist.

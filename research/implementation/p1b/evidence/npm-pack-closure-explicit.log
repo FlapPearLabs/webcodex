@@ -1,0 +1,17 @@
+    Finished `test` profile [unoptimized] target(s) in 0.28s
+     Running tests/p1b_guard.rs (/tmp/webcodex-p1b-guard-rust194/debug/deps/p1b_guard-46dab2047050aca6)
+
+running 1 test
+test p1b_npm_pack_and_asset_compare_reject_all_regular_bin_overlay_files ... NPM_PACK_OFFLINE_IGNORE_SCRIPTS	bin/p1b-overlay-launcher.mjs	status=0	published=true
+NPM_ASSET_COMPARE_RED	npm/webcodex/bin/p1b-overlay-launcher.mjs
+NPM_ASSET_RESTORE_PASS	npm/webcodex/bin/p1b-overlay-launcher.mjs
+NPM_PACK_OFFLINE_IGNORE_SCRIPTS	bin/p1b-overlay-launcher.cjs	status=0	published=true
+NPM_ASSET_COMPARE_RED	npm/webcodex/bin/p1b-overlay-launcher.cjs
+NPM_ASSET_RESTORE_PASS	npm/webcodex/bin/p1b-overlay-launcher.cjs
+NPM_PACK_OFFLINE_IGNORE_SCRIPTS	bin/p1b-overlay-launcher	status=0	published=true
+NPM_ASSET_COMPARE_RED	npm/webcodex/bin/p1b-overlay-launcher
+NPM_ASSET_RESTORE_PASS	npm/webcodex/bin/p1b-overlay-launcher
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.97s
+

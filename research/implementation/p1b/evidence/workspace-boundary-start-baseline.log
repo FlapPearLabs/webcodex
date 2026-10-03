@@ -1,0 +1,2 @@
+[workspace-boundary][FAIL] package webcodex-workspace has unlisted normal workspace dependency(ies): webcodex-process
+[workspace-boundary][FAIL] 1 violation(s)

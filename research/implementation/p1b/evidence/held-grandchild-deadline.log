@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized] target(s) in 0.27s
+     Running tests/p1b_guard.rs (/tmp/webcodex-p1b-guard-rust194/debug/deps/p1b_guard-46dab2047050aca6)
+
+running 1 test
+test p1b_metadata_deadline_returns_when_grandchild_holds_stdout_and_stderr ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.15s
+

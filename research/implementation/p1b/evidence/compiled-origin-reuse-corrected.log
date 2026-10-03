@@ -1,0 +1,14 @@
+   Compiling webcodex-process v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process)
+    Finished `test` profile [unoptimized] target(s) in 1.84s
+     Running tests/p1b_guard.rs (/tmp/webcodex-p1b-guard-rust194/debug/deps/p1b_guard-46dab2047050aca6)
+
+running 1 test
+BASELINE_FIXTURE_RAW_REFERENCE_COMPARE_PASS
+NEW_CALLER_RAW_REFERENCE_GATE_STILL_PASS
+EXPECTED_COMPILED_HELPER_REUSE_RED	Err("production source origin drift; missing=[]; added=[\"src/added_caller.rs\"]; changed=[(\"src/lib.rs\", ProductionOriginSource { sha256: \"d908d1d0d450f13cb3807fe65315f51dad2a6859c37fe20c7d58a1b2926911c8\", targets: {\"fixture:lib\"} }, ProductionOriginSource { sha256: \"7b2e400ebd0b415361e76a8fc359b21dc8bbceb1d50beeb95324fb3efb6f977a\", targets: {\"fixture:lib\"} })]")
+EXPECTED_SOURCE_CONTENT_CHANGE_RED	Err("production source origin drift; missing=[]; added=[]; changed=[(\"src/lib.rs\", ProductionOriginSource { sha256: \"d908d1d0d450f13cb3807fe65315f51dad2a6859c37fe20c7d58a1b2926911c8\", targets: {\"fixture:lib\"} }, ProductionOriginSource { sha256: \"a141ab06c561642a171106eb1995b48296ef631d5c953131606e39f289ec32b4\", targets: {\"fixture:lib\"} })]")
+RESTORED_JSON_ORIGIN_BASELINE_PASS
+test p1b_compiled_existing_helper_reuse_is_red_by_production_origin_json_gate ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 5.86s
+

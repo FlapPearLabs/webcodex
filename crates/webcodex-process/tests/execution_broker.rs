@@ -143,18 +143,32 @@ fn host_allows_restrictive_profiles() -> bool {
         .unwrap_or(false)
 }
 
+fn assert_enforcement_capable_host(label: &str, capable: bool) {
+    if capable {
+        return;
+    }
+    eprintln!(
+        "ENV_BLOCKED[{}]: this host refuses restrictive Seatbelt profiles at \
+         sandbox_apply, so enforcement is unmeasurable here. NOT a pass. \
+         Run research/spikes/native-seatbelt-ae.sh from an ordinary Terminal.",
+        label
+    );
+    panic!(
+        "ENV_BLOCKED[{}]: refusing to treat an unenforceable host as a passing test",
+        label
+    );
+}
+
 macro_rules! require_enforcement_capable_host {
     ($label:literal) => {
-        if !host_allows_restrictive_profiles() {
-            eprintln!(
-                "ENV_BLOCKED[{}]: this host refuses restrictive Seatbelt profiles at \
-                 sandbox_apply, so enforcement is unmeasurable here. NOT a pass. \
-                 Run research/spikes/native-seatbelt-ae.sh from an ordinary Terminal.",
-                $label
-            );
-            return;
-        }
+        assert_enforcement_capable_host($label, host_allows_restrictive_profiles());
     };
+}
+
+#[test]
+#[should_panic(expected = "ENV_BLOCKED")]
+fn enforcement_gate_rejects_an_unavailable_host() {
+    assert_enforcement_capable_host("ACCOUNTING_ONLY", false);
 }
 
 /// Plan A: the workspace is readable and writable, nothing else, no network.

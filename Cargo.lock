@@ -5577,6 +5577,11 @@ name = "webcodex-process"
 version = "0.4.3"
 dependencies = [
  "libc",
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "sha2",
+ "syn 2.0.117",
  "tempfile",
  "windows-sys 0.61.2",
 ]

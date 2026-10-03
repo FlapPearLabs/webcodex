@@ -1,0 +1,104 @@
+{
+  "runner_binary": "/tmp/webcodex-p1b-final-1.98.1/dogfood/webcodex-runner",
+  "runner_argv": [
+    "/tmp/webcodex-p1b-final-1.98.1/dogfood/webcodex-runner",
+    "--config",
+    "<temporary>/runner.toml",
+    "--once"
+  ],
+  "config_redacted": {
+    "server_url": "http://127.0.0.1:<ephemeral-port>",
+    "token": "<synthetic token; redacted>",
+    "client_id": "catalog-evidence",
+    "transport": "polling",
+    "poll_interval_ms": 10,
+    "project_registry_dir": "<temporary>/registry",
+    "policy.allowed_roots": [
+      "<temporary>/project"
+    ]
+  },
+  "expected_branch": "p1b-evidence",
+  "expected_head": "a167138",
+  "initial_status": "",
+  "results": [
+    {
+      "case": "clean",
+      "expected_status": "",
+      "observed": {
+        "branch": "p1b-evidence",
+        "head": "a167138",
+        "dirty": false,
+        "path": "/private/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-catalog-2r9g78kw/project",
+        "inventory_complete": true,
+        "page_total": 1,
+        "request_count": 3
+      },
+      "runner_output": "webcodex-runner registered client_id=catalog-evidence server=http://127.0.0.1:53056 preferred_transport=polling actual_transport=polling projects=1\nwebcodex-runner shutdown signal received\nwebcodex-runner shutdown complete elapsed_ms=23 timed_out_phases=none failed_phases=none\n"
+    },
+    {
+      "case": "dirty",
+      "expected_status": "M tracked.txt",
+      "observed": {
+        "branch": "p1b-evidence",
+        "head": "a167138",
+        "dirty": true,
+        "path": "/private/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-catalog-2r9g78kw/project",
+        "inventory_complete": true,
+        "page_total": 1,
+        "request_count": 3
+      },
+      "runner_output": "webcodex-runner registered client_id=catalog-evidence server=http://127.0.0.1:53056 preferred_transport=polling actual_transport=polling projects=1\nwebcodex-runner shutdown signal received\nwebcodex-runner shutdown complete elapsed_ms=30 timed_out_phases=none failed_phases=none\n"
+    },
+    {
+      "case": "status-timeout-incomplete",
+      "elapsed_seconds": 2.267,
+      "hook_marker": "/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-catalog-2r9g78kw/project/.git/fsmonitor-hook-ran",
+      "observed": {
+        "branch": "p1b-evidence",
+        "head": "a167138",
+        "dirty": null,
+        "inventory_complete": true
+      },
+      "runner_output": "webcodex-workspace: git reader drain exceeded its one shared drain tail (opened at cleanup entry, 250ms at most, stdout had 0ns left) after the child was accounted for; reporting the capture as incomplete rather than blocking the caller on a descendant-held pipe\nwebcodex-runner project warning: git status in /private/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/wcb-p1b-catalog-2r9g78kw/project failed: \nwebcodex-runner registered client_id=catalog-evidence server=http://127.0.0.1:53056 preferred_transport=polling actual_transport=polling projects=1\nwebcodex-runner shutdown signal received\nwebcodex-runner shutdown complete elapsed_ms=48 timed_out_phases=none failed_phases=none\n"
+    }
+  ],
+  "http_events_redacted": [
+    {
+      "path": "/api/shell/agent/register",
+      "project_count": 0
+    },
+    {
+      "path": "/api/shell/agent/poll",
+      "project_count": 1
+    },
+    {
+      "path": "/api/shell/agent/offline",
+      "project_count": 0
+    },
+    {
+      "path": "/api/shell/agent/register",
+      "project_count": 0
+    },
+    {
+      "path": "/api/shell/agent/poll",
+      "project_count": 1
+    },
+    {
+      "path": "/api/shell/agent/offline",
+      "project_count": 0
+    },
+    {
+      "path": "/api/shell/agent/register",
+      "project_count": 0
+    },
+    {
+      "path": "/api/shell/agent/poll",
+      "project_count": 1
+    },
+    {
+      "path": "/api/shell/agent/offline",
+      "project_count": 0
+    }
+  ],
+  "status": "PASS"
+}

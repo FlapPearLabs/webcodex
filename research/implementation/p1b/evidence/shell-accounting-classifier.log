@@ -1,0 +1,62 @@
+{
+  "harness": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1b/harness/profile_prepare_native_harness.py",
+  "actual_main": [
+    {
+      "candidate": "PASS",
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "json_retained": true
+    },
+    {
+      "candidate": "ENV_BLOCKED",
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "json_retained": true
+    },
+    {
+      "candidate": "HOST_UNAVAILABLE",
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "json_retained": true
+    },
+    {
+      "candidate": "FAIL",
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "json_retained": true
+    },
+    {
+      "candidate": "RED",
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "json_retained": true
+    }
+  ],
+  "actual_verdict_branch": [
+    {
+      "scenario": "valid_observations",
+      "actual": "PASS",
+      "expected": "PASS"
+    },
+    {
+      "scenario": "runner_nonzero_without_host_diagnostic",
+      "actual": "FAIL",
+      "expected": "FAIL"
+    },
+    {
+      "scenario": "first_operation_failed_without_host_diagnostic",
+      "actual": "FAIL",
+      "expected": "FAIL"
+    },
+    {
+      "scenario": "stdout_fidelity_mismatch",
+      "actual": "FAIL",
+      "expected": "FAIL"
+    },
+    {
+      "scenario": "stderr_fidelity_mismatch",
+      "actual": "FAIL",
+      "expected": "FAIL"
+    }
+  ]
+}

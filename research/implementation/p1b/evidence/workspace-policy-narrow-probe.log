@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "head": "5ae81148f3943982dfcd1814e1083f947b00a323",
+  "policy_source_sha256": "e8799de4b6c4012409a6be1ef43d59c5174f17434774311a639dd7be92a21694",
+  "checker_source_sha256": "e789fbfd6e08f7668069eeec950aac941e03ae60c8bfd6187166cdbafb1f5ec9",
+  "old_violations": [
+    "package webcodex-workspace has unlisted normal workspace dependency(ies): webcodex-process"
+  ],
+  "exact_normal_dep_patch_violations": [],
+  "higher_layer_negative_control": [
+    "reverse layer dependency: webcodex-browser (domain:1) normal-depends on webcodex-process (runtime:2)",
+    "reverse layer dependency: webcodex-lsp (domain:1) normal-depends on webcodex-process (runtime:2)",
+    "reverse layer dependency: webcodex-persistent-shell (domain:1) normal-depends on webcodex-process (runtime:2)",
+    "reverse layer dependency: webcodex-workspace (domain:1) normal-depends on webcodex-process (runtime:2)"
+  ],
+  "production_files_changed_by_probe": false
+}

@@ -1,0 +1,13 @@
+   Compiling webcodex-process v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process)
+    Finished `test` profile [unoptimized] target(s) in 1.22s
+     Running tests/execution_broker.rs (/tmp/webcodex-p1b-guard-rust194/debug/deps/execution_broker-0addb9d8f93cf16f)
+
+running 5 tests
+test test_a_workspace_read_write ... ok
+test test_b_external_read_is_denied ... ok
+test test_d_same_action_differs_between_profiles ... ok
+test test_c_descendant_inherits_the_profile_two_levels_deep ... ok
+test test_e_network_denied ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 2.05s
+

@@ -239,7 +239,7 @@ test_support = []
 [packages.webcodex-workspace]
 layer = "domain"
 role = "Registered project/workspace path and metadata contracts."
-normal = ["webcodex-core"]
+normal = ["webcodex-core", "webcodex-process"]
 dev = []
 build = []
 test_support = []

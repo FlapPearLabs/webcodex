@@ -1,0 +1,12 @@
+   Compiling webcodex-process v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process)
+    Finished `test` profile [unoptimized] target(s) in 1.75s
+     Running tests/p1b_guard.rs (/tmp/webcodex-p1b-guard-rust194/debug/deps/p1b_guard-46dab2047050aca6)
+
+running 1 test
+EXPECTED_NEW_BOUNDARY_CALLER_RED	Err("boundary reference drift; missing=[]; added=[\"crates/webcodex-runner/src/webcodex_runner/shell.rs::newly_added_caller -> native_command\"]; changed=[]")
+EXPECTED_RENAMED_BOUNDARY_CALLER_RED	Err("boundary reference drift; missing=[\"crates/webcodex-runner/src/webcodex_runner/shell.rs::existing_caller -> prepare\"]; added=[\"crates/webcodex-runner/src/webcodex_runner/shell.rs::renamed_caller -> prepare\"]; changed=[]")
+RESTORED_BOUNDARY_REFERENCE_BASELINE_PASS
+test p1b_boundary_reference_compare_rejects_new_and_renamed_callers ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.00s
+

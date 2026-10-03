@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! P1 functional coverage: cases A-J, plus the structural anti-bypass guard.
+//! P1 functional coverage: cases A-J, plus the legacy P1-only structural checks.
 //!
 //! # What this file is
 //!
@@ -10,9 +10,9 @@
 //!   host that can apply a restrictive Seatbelt profile, so each one is written
 //!   to *observe* the host's answer rather than assume it. On a host that
 //!   cannot apply the profile they report `ENV_BLOCKED`, never `PASS`.
-//! * **The structural guard** asks "can a P1 surface bypass the broker at all?"
-//!   That is a property of the source text, so it is checked by reading the
-//!   source rather than by running it, and it holds on every host.
+//! * **The legacy structural checks** pin selected P1 call sites and the
+//!   project-git exception. They are not the complete production-process
+//!   inventory; the independent `webcodex-process` P1B guard owns that boundary.
 //!
 //! # Why the guard is narrow on purpose
 //!
@@ -24,7 +24,8 @@
 //! and the detached durable payload). Widening the guard to those would either
 //! be wrong or would require re-opening the P1 scope decision, which this round
 //! does not do. Those exclusions are themselves asserted present, so the
-//! remaining-surface list cannot quietly become wrong.
+//! remaining-surface list cannot quietly become wrong. Complete anti-bypass
+//! coverage across production targets is enforced by the independent P1B guard.
 
 use std::collections::HashMap;
 use std::net::TcpListener;
@@ -251,7 +252,24 @@ fn verdict_from(outcome: NativeOutcome, passed: bool, detail: &str) -> (NativeVe
 fn report(case: &str, outcome: NativeOutcome, passed: bool, detail: &str) {
     let (verdict, detail) = verdict_from(outcome, passed, detail);
     emit_verdict(case, verdict, &detail);
-    assert_ne!(verdict, NativeVerdict::Fail, "{case} failed: {detail}");
+    assert_eq!(
+        verdict,
+        NativeVerdict::Pass,
+        "{case} did not pass on this host: {detail}"
+    );
+}
+
+#[test]
+fn native_verdict_gate_rejects_env_blocked() {
+    let rejected = std::panic::catch_unwind(|| {
+        report(
+            "P1_NATIVE_ACCOUNTING_ONLY",
+            NativeOutcome::EnvBlocked,
+            true,
+            "host cannot apply the restrictive profile",
+        )
+    });
+    assert!(rejected.is_err(), "ENV_BLOCKED must fail native accounting");
 }
 
 /// Drop every `#[cfg(test)]` module from a source file.
@@ -954,7 +972,7 @@ fn j_missing_trusted_context_fails_before_process_creation() {
 // Structural anti-bypass guard
 // ---------------------------------------------------------------------------
 
-/// The specific functions P1 routed through the broker.
+/// The specific functions P1 routed through the broker (legacy subset only).
 ///
 /// # Why functions and not files
 ///
@@ -1047,7 +1065,7 @@ const BYPASS_PATTERNS: &[BypassPattern] = &[
     },
 ];
 
-/// Structural guard: P1-routed functions must not reach an unbrokered spawn.
+/// Legacy P1 subset check: listed routed functions must not reach an unbrokered spawn.
 ///
 /// This is the narrow guard the P1 scope actually implies. It is deliberately
 /// **not** a repository-wide ban: the Runner legitimately spawns
@@ -1088,7 +1106,7 @@ fn p1_routed_functions_cannot_spawn_outside_the_broker() {
     );
 }
 
-/// The known-unrouted surfaces, asserted to still exist in the source.
+/// The known-unrouted P1 surfaces, asserted to still exist in the source.
 ///
 /// A surface silently disappearing is as much a lie as one silently appearing:
 /// the remaining-surface list in `NORMALIZATION_P1_REPORT.md` is only true if
@@ -1382,7 +1400,7 @@ fn shell_quote(value: &str) -> String {
 // unconfined project git is *named* rather than spread across the crate.
 // ---------------------------------------------------------------------------
 
-/// The unconfined project `git` launcher, and nobody else.
+/// The unconfined project `git` launcher within `projects/` (legacy subset).
 ///
 /// Slice 2A routed the model-reachable catalog read (`rev-parse` / `log` /
 /// `status`, reached by `ToolCall::ListProjects` and every inventory push)

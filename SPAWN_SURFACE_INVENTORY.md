@@ -1,5 +1,7 @@
 # SPAWN_SURFACE_INVENTORY.md
 
+> **当前权威入口（P1B最终结构分类）：** 此文保留原baseline的历史计划、库存及验收记录。当前逐项分类、原语与逻辑计数、触发来源及fingerprint以 [launch-inventory.json](research/implementation/p1b/launch-inventory.json) 为唯一真源；可读说明见 [launch-inventory.md](research/implementation/p1b/launch-inventory.md)。新清单明确区分模型业务权限与模型触发固定探测；本页旧口径不作为当前完整库存。分类接受与最终guard / native / exact-SHA验收状态分别记载。
+
 **ROLE** = `WEBCODEX_EXECUTION_NORMALIZATION_ARCHITECT`
 **TASK** = `P1B PREPARATION ONLY`
 **MODE** = `INVENTORY / NO IMPLEMENTATION`
