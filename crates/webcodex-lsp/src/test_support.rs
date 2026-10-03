@@ -1,5 +1,6 @@
 use std::env;
 use std::ffi::OsString;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
@@ -92,6 +93,15 @@ pub(super) fn fake_server_path() -> &'static Path {
             unreachable!()
         })
         .path
+}
+
+/// Copy the compiled fake server into the project being brokered. This keeps
+/// real LSP integration tests within the same workspace-only authority as the
+/// process they exercise, without granting the Cargo target directory.
+pub(super) fn fake_server_in(project_root: &Path) -> PathBuf {
+    let path = project_root.join(format!("webcodex-lsp-fake{}", env::consts::EXE_SUFFIX));
+    fs::copy(fake_server_path(), &path).expect("copy fake LSP server into project workspace");
+    path
 }
 
 pub(super) fn wait_until(timeout: Duration, mut condition: impl FnMut() -> bool) -> bool {

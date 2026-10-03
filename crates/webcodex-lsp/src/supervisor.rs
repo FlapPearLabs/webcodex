@@ -9,12 +9,15 @@ use std::fmt;
 use std::fs;
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::process::{ChildStdin, Command, Stdio};
+use std::process::ChildStdin;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Condvar, Mutex, MutexGuard};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 use url::Url;
+use webcodex_process::execution_broker::{
+    EnvPolicy, ExecutionBroker, SpawnSpec, StreamPolicy, TrustedToolchainRoot, WorkspaceAuthority,
+};
 #[cfg(windows)]
 use webcodex_process::resolve_program_in_path;
 use webcodex_process::{find_executable_in_path, is_executable_file};
@@ -28,6 +31,36 @@ const DEFAULT_MAX_SERVERS_PER_AGENT: usize = 4;
 const MAX_STDERR_BYTES: usize = 64 * 1024;
 pub(crate) const MAX_DIAGNOSTIC_DOCUMENTS: usize = 256;
 pub(crate) const MAX_DIAGNOSTICS_PER_DOCUMENT: usize = 500;
+
+fn apply_selected_lsp_host_env(
+    mut spec: SpawnSpec,
+    host_env: impl IntoIterator<Item = (OsString, OsString)>,
+) -> SpawnSpec {
+    for (key, value) in host_env {
+        let Some(key) = key.to_str() else {
+            continue;
+        };
+        if matches!(
+            key,
+            "PATH"
+                | "LANG"
+                | "TZ"
+                | "NO_COLOR"
+                | "LC_ALL"
+                | "LC_CTYPE"
+                | "LC_MESSAGES"
+                | "LC_NUMERIC"
+                | "LC_TIME"
+                | "LC_COLLATE"
+                | "LC_MONETARY"
+                | "LC_IDENTIFICATION"
+                | "LC_NAME"
+        ) {
+            spec = spec.env_var(key, value);
+        }
+    }
+    spec
+}
 
 /// Discriminant for one language-server process kind. Language-specific
 /// facts (executable, extensions, initialization options, …) live on the
@@ -200,19 +233,49 @@ impl LspCommand {
         project_root: &Path,
         kind: LspServerKind,
     ) -> Result<webcodex_process::ManagedChild, LspError> {
-        let mut command = Command::new(&self.program);
-        command
-            .args(&self.args)
-            .envs(self.env.iter().cloned())
-            // Profile-owned process environment is part of the semantic-navigation
-            // trust boundary and wins over any explicitly configured test env.
-            .envs(profile_for_kind(kind).process_env.iter().copied())
-            .current_dir(project_root)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        webcodex_process::ManagedChild::spawn(&mut command)
-            .map_err(|error| LspError::SpawnFailed(error.to_string()))
+        let (spec, toolchain_roots) = self.spawn_spec(project_root, kind)?;
+        let broker = ExecutionBroker::new();
+        #[cfg(target_os = "macos")]
+        let child = broker.spawn_with_toolchain(&spec, &toolchain_roots);
+        #[cfg(not(target_os = "macos"))]
+        let child = {
+            let _ = toolchain_roots;
+            broker.spawn(&spec)
+        };
+        child.map_err(|error| LspError::SpawnFailed(error.to_string()))
+    }
+
+    fn spawn_spec(
+        &self,
+        project_root: &Path,
+        kind: LspServerKind,
+    ) -> Result<(SpawnSpec, Vec<TrustedToolchainRoot>), LspError> {
+        let authority = WorkspaceAuthority::for_trusted_root(project_root)
+            .map_err(|error| LspError::InvalidProjectRoot(error.to_string()))?;
+        let project_root = authority.root().to_path_buf();
+        let program = resolve_lsp_program(&self.program, &project_root)?;
+        let toolchain_roots = authority.toolchain_roots_for(&program);
+        let mut spec = SpawnSpec::new(program, &project_root, authority.plan())
+            .args(self.args.iter().cloned())
+            .env(EnvPolicy::Minimal)
+            .stdin(StreamPolicy::Piped)
+            .stdout(StreamPolicy::Piped)
+            .stderr(StreamPolicy::Piped);
+
+        // A language server may need PATH and the approved locale variables.
+        // Keep the same finite allowlist used by Runner local execution.
+        spec = apply_selected_lsp_host_env(spec, env::vars_os());
+
+        // Test-only command overrides remain isolated to cfg(test). The fixed
+        // profile values below are applied last and cannot be overridden.
+        for (key, value) in &self.env {
+            spec = spec.env_var(key.to_string_lossy().into_owned(), value.clone());
+        }
+        for (key, value) in profile_for_kind(kind).process_env {
+            spec = spec.env_var(*key, *value);
+        }
+
+        Ok((spec, toolchain_roots))
     }
 
     fn is_available(&self, kind: LspServerKind) -> bool {
@@ -1242,7 +1305,7 @@ impl LspSupervisor {
             })
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "real-process-tests"))]
     fn server_for_test(
         &self,
         root: &Path,
@@ -1258,7 +1321,7 @@ impl LspSupervisor {
         )
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "real-process-tests"))]
     fn server_count_for_test(&self) -> usize {
         lock_unpoison(&self.inner.servers).len()
     }
@@ -1351,6 +1414,66 @@ fn command_with_default_args(
 fn find_executable_on_path(name: &str) -> Option<PathBuf> {
     let path = env::var_os("PATH")?;
     find_executable_in_path(name, &path)
+}
+
+fn resolve_lsp_program(program: &OsStr, project_root: &Path) -> Result<PathBuf, LspError> {
+    let host_path = env::var_os("PATH").unwrap_or_default();
+    resolve_lsp_program_with_path(program, project_root, &host_path)
+}
+
+fn resolve_lsp_program_with_path(
+    program: &OsStr,
+    project_root: &Path,
+    host_path: &OsStr,
+) -> Result<PathBuf, LspError> {
+    let path = Path::new(program);
+    let candidate = if path.is_absolute() {
+        path.to_path_buf()
+    } else if path.components().count() > 1 {
+        project_root.join(path)
+    } else {
+        let name = program.to_str().ok_or_else(|| {
+            LspError::SpawnFailed("language-server executable name is not UTF-8".to_string())
+        })?;
+        env::split_paths(host_path)
+            .find_map(|directory| {
+                let directory = if directory.is_absolute() {
+                    directory
+                } else {
+                    project_root.join(directory)
+                };
+                find_executable_in_path(name, directory.as_os_str())
+            })
+            .ok_or_else(|| {
+                LspError::SpawnFailed(format!(
+                    "language-server executable {name:?} was not found on PATH"
+                ))
+            })?
+    };
+    let absolute = if candidate.is_absolute() {
+        candidate
+    } else {
+        env::current_dir()
+            .map_err(|error| {
+                LspError::SpawnFailed(format!(
+                    "language-server executable base directory could not be resolved: {error}"
+                ))
+            })?
+            .join(candidate)
+    };
+    absolute.canonicalize().map_err(|error| {
+        LspError::SpawnFailed(format!(
+            "language-server executable {} could not be resolved: {error}",
+            absolute.display()
+        ))
+    })?;
+    if !is_executable_file(&absolute) {
+        return Err(LspError::SpawnFailed(format!(
+            "language-server executable {} is not executable",
+            absolute.display()
+        )));
+    }
+    Ok(absolute)
 }
 
 /// True when `path` is a rustup proxy for `rust-analyzer` whose active
@@ -2453,17 +2576,17 @@ impl ServerInstance {
         child_reaped && child.wait_tree_exit(Duration::ZERO).unwrap_or(false)
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "real-process-tests"))]
     fn status(&self) -> LspServerStatus {
         self.connection.status()
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "real-process-tests"))]
     fn stderr_len(&self) -> usize {
         lock_unpoison(&self.stderr).bytes.len()
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "real-process-tests"))]
     fn process_id(&self) -> u32 {
         lock_unpoison(&self.child).id()
     }

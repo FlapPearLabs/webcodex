@@ -1,20 +1,227 @@
-use super::super::test_support::{fake_server_path, wait_until};
+use super::super::test_support::{fake_server_in, fake_server_path, wait_until};
 use super::*;
-use serde_json::{json, Value};
+use serde_json::json;
+#[cfg(feature = "real-process-tests")]
+use serde_json::Value;
 use std::fs;
 #[cfg(target_os = "linux")]
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{mpsc, Arc, Barrier};
+#[cfg(feature = "real-process-tests")]
+use std::sync::Barrier;
+use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
+
+#[test]
+fn lsp_command_spawn_routes_through_execution_broker() {
+    let source = include_str!("supervisor.rs");
+    let spawn = source
+        .split_once("    fn spawn(\n")
+        .expect("LspCommand::spawn exists")
+        .1
+        .split_once("    fn is_available(")
+        .expect("LspCommand::spawn ends before is_available")
+        .0;
+
+    assert!(spawn.contains("ExecutionBroker::new()"), "{spawn}");
+    assert!(spawn.contains("spawn_with_toolchain"), "{spawn}");
+    assert!(!spawn.contains("ManagedChild::spawn"), "{spawn}");
+    assert!(!spawn.contains("Command::new"), "{spawn}");
+}
+
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn lsp_spawn_fails_closed_without_a_supported_broker_backend() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("project");
+    fs::create_dir(&root).unwrap();
+    let marker = root.join("must-not-exist");
+    let command = LspCommand::new(fake_server_in(&root)).arg(marker.as_os_str());
+
+    let error = match command.spawn(&root, LspServerKind::RustAnalyzer) {
+        Ok(_) => panic!("unsupported broker backend launched the fake LSP"),
+        Err(error) => error,
+    };
+    assert!(matches!(
+        error,
+        LspError::SpawnFailed(message) if message.contains("no sandbox backend")
+    ));
+    assert!(!marker.exists());
+}
+
+#[test]
+fn lsp_spawn_spec_is_workspace_only_minimal_and_preserves_command_fidelity() {
+    use webcodex_process::execution_broker::{EnvPolicy, NetworkPolicy, SandboxPlan, StreamPolicy};
+
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("project");
+    fs::create_dir(&root).unwrap();
+    let program = fake_server_in(&root);
+    let command = LspCommand::new(program.as_os_str().to_owned())
+        .arg("normal")
+        .arg("first argument with spaces")
+        .env("GOPROXY", "https://test.invalid")
+        .env("WEBCODEX_LSP_FAKE", "1");
+
+    let (spec, toolchain_roots) = command.spawn_spec(&root, LspServerKind::Gopls).unwrap();
+
+    let canonical_root = root.canonicalize().unwrap();
+    assert_eq!(spec.cwd, canonical_root);
+    assert_eq!(spec.program, program);
+    assert_eq!(spec.args, ["normal", "first argument with spaces"]);
+    assert_eq!(spec.env, EnvPolicy::Minimal);
+    assert_eq!(spec.stdin, StreamPolicy::Piped);
+    assert_eq!(spec.stdout, StreamPolicy::Piped);
+    assert_eq!(spec.stderr, StreamPolicy::Piped);
+    assert!(!spec.env_vars.contains_key("HOME"));
+    assert!(!spec.env_vars.contains_key("AWS_SECRET_ACCESS_KEY"));
+    assert_eq!(spec.env_vars.get("WEBCODEX_LSP_FAKE").unwrap(), "1");
+    assert_eq!(spec.env_vars.get("GOPROXY").unwrap(), "off");
+    assert_eq!(spec.env_vars.get("GOSUMDB").unwrap(), "off");
+    assert_eq!(spec.env_vars.get("GOTOOLCHAIN").unwrap(), "local");
+    assert_eq!(spec.env_vars.get("GOVCS").unwrap(), "*:off");
+    assert!(spec.env_vars.keys().all(|key| {
+        matches!(
+            key.as_str(),
+            "PATH" | "LANG" | "TZ" | "NO_COLOR" | "WEBCODEX_LSP_FAKE"
+        ) || matches!(
+            key.as_str(),
+            "LC_ALL"
+                | "LC_CTYPE"
+                | "LC_MESSAGES"
+                | "LC_NUMERIC"
+                | "LC_TIME"
+                | "LC_COLLATE"
+                | "LC_MONETARY"
+                | "LC_IDENTIFICATION"
+                | "LC_NAME"
+        ) || super::profile_for_kind(LspServerKind::Gopls)
+            .process_env
+            .iter()
+            .any(|(profile_key, _)| key == profile_key)
+    }));
+    assert_eq!(
+        spec.plan,
+        SandboxPlan::Confined {
+            writable_roots: vec![canonical_root],
+            readable_roots: Vec::new(),
+            network: NetworkPolicy::Deny,
+        }
+    );
+    assert!(toolchain_roots.is_empty());
+}
+
+#[test]
+fn lsp_host_env_policy_routes_only_approved_locale_keys_into_spawn_spec() {
+    use webcodex_process::execution_broker::{EnvPolicy, SpawnSpec};
+
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("project");
+    fs::create_dir(&root).unwrap();
+    let authority = WorkspaceAuthority::for_trusted_root(&root).unwrap();
+    let base =
+        SpawnSpec::new(fake_server_in(&root), &root, authority.plan()).env(EnvPolicy::Minimal);
+    let host_env = [
+        ("PATH", "/approved/bin"),
+        ("LANG", "en_US.UTF-8"),
+        ("LC_CTYPE", "en_US.UTF-8"),
+        ("LC_P1B_UNKNOWN_SECRET", "must-not-cross"),
+        ("HOME", "/private/home"),
+        ("XDG_CONFIG_HOME", "/private/config"),
+    ]
+    .into_iter()
+    .map(|(key, value)| (OsString::from(key), OsString::from(value)));
+
+    let spec = super::apply_selected_lsp_host_env(base, host_env);
+
+    assert_eq!(spec.env_vars.get("PATH").unwrap(), "/approved/bin");
+    assert_eq!(spec.env_vars.get("LANG").unwrap(), "en_US.UTF-8");
+    assert_eq!(spec.env_vars.get("LC_CTYPE").unwrap(), "en_US.UTF-8");
+    assert!(!spec.env_vars.contains_key("LC_P1B_UNKNOWN_SECRET"));
+    assert!(!spec.env_vars.contains_key("HOME"));
+    assert!(!spec.env_vars.contains_key("XDG_CONFIG_HOME"));
+}
+
+#[test]
+fn lsp_spawn_spec_canonicalizes_alias_and_refuses_invalid_authority_roots() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("project");
+    fs::create_dir(&root).unwrap();
+    let command = LspCommand::new(fake_server_in(&root));
+
+    #[cfg(unix)]
+    {
+        let alias = temp.path().join("project-alias");
+        std::os::unix::fs::symlink(&root, &alias).unwrap();
+        let (spec, _) = command
+            .spawn_spec(&alias, LspServerKind::RustAnalyzer)
+            .unwrap();
+        assert_eq!(spec.cwd, root.canonicalize().unwrap());
+    }
+
+    assert!(matches!(
+        command.spawn_spec(Path::new("relative/project"), LspServerKind::RustAnalyzer),
+        Err(LspError::InvalidProjectRoot(_))
+    ));
+    assert!(matches!(
+        command.spawn_spec(&temp.path().join("missing"), LspServerKind::RustAnalyzer),
+        Err(LspError::InvalidProjectRoot(_))
+    ));
+    let file = temp.path().join("not-a-directory");
+    fs::write(&file, "file").unwrap();
+    assert!(matches!(
+        command.spawn_spec(&file, LspServerKind::RustAnalyzer),
+        Err(LspError::InvalidProjectRoot(_))
+    ));
+}
+
+#[cfg(unix)]
+#[test]
+fn lsp_spawn_spec_preserves_executable_symlink_argv0_path() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("project");
+    fs::create_dir(&root).unwrap();
+    let target = fake_server_in(&root);
+    let alias = root.join("language-server-alias");
+    std::os::unix::fs::symlink(&target, &alias).unwrap();
+
+    let (spec, toolchain_roots) = LspCommand::new(alias.as_os_str().to_owned())
+        .spawn_spec(&root, LspServerKind::RustAnalyzer)
+        .unwrap();
+
+    assert_eq!(spec.program, alias);
+    assert_ne!(spec.program, target.canonicalize().unwrap());
+    assert!(toolchain_roots.is_empty());
+}
+
+#[test]
+fn lsp_bare_program_resolves_relative_path_entries_from_project_cwd() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("project");
+    let bin = root.join("bin");
+    fs::create_dir_all(&bin).unwrap();
+    let executable = bin.join(format!("lsp-fixture{}", env::consts::EXE_SUFFIX));
+    fs::copy(fake_server_path(), &executable).unwrap();
+    let program = if cfg!(windows) {
+        OsString::from("lsp-fixture")
+    } else {
+        OsString::from(executable.file_name().unwrap())
+    };
+
+    let resolved = super::resolve_lsp_program_with_path(&program, &root, OsStr::new("bin"))
+        .expect("relative PATH entry is interpreted from the brokered project cwd");
+
+    assert_eq!(resolved, executable);
+}
 
 struct Fixture {
     // Drop the supervisor before the temporary directory so the fake server
     // can persist its graceful-exit marker during supervisor Drop.
     supervisor: LspSupervisor,
     _temp: TempDir,
+    #[cfg(feature = "real-process-tests")]
     root: PathBuf,
     marker: PathBuf,
     #[cfg(feature = "real-process-tests")]
@@ -38,6 +245,7 @@ impl Fixture {
 
     /// Fixture for tests that pin explicit `cleanup_idle` return values; the
     /// background reaper would race those assertions.
+    #[cfg(feature = "real-process-tests")]
     fn with_manual_cleanup(scenario: &str, maximum: usize, idle_ttl: Duration) -> Self {
         Self::with_config(
             scenario,
@@ -58,12 +266,14 @@ impl Fixture {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("project");
         fs::create_dir(&root).unwrap();
-        let marker = temp.path().join("starts.marker");
-        let exit_marker = temp.path().join("exit.marker");
-        let command = LspCommand::new(fake_server_path().as_os_str().to_owned())
+        let marker = root.join("starts.marker");
+        #[cfg(feature = "real-process-tests")]
+        let exit_marker = root.join("exit.marker");
+        fake_server_in(&root);
+        let command = LspCommand::new("./webcodex-lsp-fake")
             .arg(scenario)
-            .arg(marker.as_os_str())
-            .arg(exit_marker.as_os_str())
+            .arg("starts.marker")
+            .arg("exit.marker")
             .env("WEBCODEX_LSP_FAKE", "1");
         let supervisor = LspSupervisor::new(LspSupervisorConfig {
             commands: HashMap::from([(LspServerKind::RustAnalyzer, command)]),
@@ -78,6 +288,7 @@ impl Fixture {
         Self {
             supervisor,
             _temp: temp,
+            #[cfg(feature = "real-process-tests")]
             root,
             marker,
             #[cfg(feature = "real-process-tests")]
@@ -85,6 +296,7 @@ impl Fixture {
         }
     }
 
+    #[cfg(feature = "real-process-tests")]
     fn starts(&self) -> usize {
         fs::read_to_string(&self.marker)
             .unwrap_or_default()
@@ -93,6 +305,7 @@ impl Fixture {
             .count()
     }
 
+    #[cfg(feature = "real-process-tests")]
     fn start_pids(&self) -> Vec<u32> {
         fs::read_to_string(&self.marker)
             .unwrap_or_default()
@@ -114,8 +327,12 @@ impl Fixture {
     }
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_supervisor_is_lazy_and_reuses_one_process_for_concurrent_project_calls() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_supervisor_is_lazy_and_reuses_one_process_for_concurrent_project_calls()
+{
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("normal");
     assert!(!fixture.marker.exists());
@@ -155,8 +372,11 @@ fn lsp_supervisor_is_lazy_and_reuses_one_process_for_concurrent_project_calls() 
     assert_eq!(first.process_id(), second.process_id());
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn concurrent_document_refresh_uses_one_monotonic_version() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_concurrent_document_refresh_uses_one_monotonic_version() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("normal");
     let document_path = fixture.root.join("main.rs");
@@ -419,8 +639,11 @@ fn diagnostics_cache_wait_has_version_generation_and_timeout_semantics() {
     assert!(!new_generation.1);
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn diagnostics_cache_is_cleared_with_server_instance_restart() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_diagnostics_cache_is_cleared_with_server_instance_restart() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::with_manual_cleanup("diagnostics_one", 4, Duration::ZERO);
     let document_path = fixture.root.join("main.rs");
@@ -457,12 +680,16 @@ fn diagnostics_cache_is_cleared_with_server_instance_restart() {
         .is_empty());
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_supervisor_uses_distinct_processes_for_distinct_projects() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_supervisor_uses_distinct_processes_for_distinct_projects() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("normal");
     let second_root = fixture._temp.path().join("second-project");
     fs::create_dir(&second_root).unwrap();
+    fake_server_in(&second_root);
     let first = fixture
         .supervisor
         .server_for_test(&fixture.root, LspServerKind::RustAnalyzer)
@@ -472,11 +699,22 @@ fn lsp_supervisor_uses_distinct_processes_for_distinct_projects() {
         .server_for_test(&second_root, LspServerKind::RustAnalyzer)
         .unwrap();
     assert_ne!(first.process_id(), second.process_id());
-    assert_eq!(fixture.starts(), 2);
+    assert_eq!(fixture.starts(), 1);
+    assert_eq!(
+        fs::read_to_string(second_root.join("starts.marker"))
+            .unwrap()
+            .lines()
+            .filter(|line| line.starts_with("start:"))
+            .count(),
+        1
+    );
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_supervisor_enforces_runner_capacity() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_supervisor_enforces_runner_capacity() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::with_limits("normal", 1, Duration::from_secs(60));
     let second_root = fixture._temp.path().join("second-project");
@@ -493,8 +731,11 @@ fn lsp_supervisor_enforces_runner_capacity() {
     ));
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_jsonrpc_handles_interleaved_notifications_and_multiple_request_ids() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_jsonrpc_handles_interleaved_notifications_and_multiple_request_ids() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("interleaved");
     for method in ["fake/one", "fake/two", "fake/three"] {
@@ -512,8 +753,11 @@ fn lsp_jsonrpc_handles_interleaved_notifications_and_multiple_request_ids() {
     assert_eq!(fixture.starts(), 1);
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_jsonrpc_surfaces_errors_and_ignores_unknown_response_ids() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_jsonrpc_surfaces_errors_and_ignores_unknown_response_ids() {
     let _serial = super::super::serialize_fake_lsp_test();
     let errors = Fixture::new("json_error");
     let error = errors
@@ -547,8 +791,11 @@ fn lsp_jsonrpc_surfaces_errors_and_ignores_unknown_response_ids() {
     assert_eq!(result["method"], "fake/known");
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_jsonrpc_replies_method_not_found_to_server_requests() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_jsonrpc_replies_method_not_found_to_server_requests() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("server_request");
     let result = fixture
@@ -568,8 +815,11 @@ fn lsp_jsonrpc_replies_method_not_found_to_server_requests() {
     assert_eq!(server.status(), LspServerStatus::Running);
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_request_timeout_sends_cancel_request() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_request_timeout_sends_cancel_request() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("timeout_cancel");
     let server = fixture
@@ -614,8 +864,11 @@ fn lsp_request_timeout_sends_cancel_request() {
     assert_eq!(server.pending_count(), 0);
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_pending_request_receives_server_exit_error() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_pending_request_receives_server_exit_error() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("crash_request");
     let server = fixture
@@ -630,8 +883,11 @@ fn lsp_pending_request_receives_server_exit_error() {
     assert_eq!(server.status(), LspServerStatus::Crashed);
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_supervisor_restarts_once_then_succeeds() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_supervisor_restarts_once_then_succeeds() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("restart_then_success");
     let result = fixture
@@ -647,8 +903,11 @@ fn lsp_supervisor_restarts_once_then_succeeds() {
     assert_eq!(fixture.starts(), 2);
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_supervisor_never_restarts_more_than_once_per_call() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_supervisor_never_restarts_more_than_once_per_call() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("restart_exhausted");
     let error = fixture
@@ -667,8 +926,11 @@ fn lsp_supervisor_never_restarts_more_than_once_per_call() {
     assert_eq!(fixture.starts(), 2);
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_supervisor_restarts_malformed_alive_process_once_then_succeeds() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_supervisor_restarts_malformed_alive_process_once_then_succeeds() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("malformed_alive_then_success");
     let result = fixture
@@ -692,8 +954,11 @@ fn lsp_supervisor_restarts_malformed_alive_process_once_then_succeeds() {
     assert!(process_exists(pids[1]));
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_supervisor_malformed_alive_exhausts_restart_without_timeout() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_supervisor_malformed_alive_exhausts_restart_without_timeout() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("malformed_alive_always");
     let started = Instant::now();
@@ -722,8 +987,11 @@ fn lsp_supervisor_malformed_alive_exhausts_restart_without_timeout() {
     }
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_initialize_failure_consumes_the_single_restart_budget() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_initialize_failure_consumes_the_single_restart_budget() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("initialize_exit");
     let error = fixture
@@ -742,8 +1010,11 @@ fn lsp_initialize_failure_consumes_the_single_restart_budget() {
     assert_eq!(fixture.starts(), 2);
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_initialize_pre_exit_with_stderr_surfaces_component_missing_diagnostic() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_initialize_pre_exit_with_stderr_surfaces_component_missing_diagnostic() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("missing_component_stderr");
     let error = fixture
@@ -778,8 +1049,8 @@ fn lsp_initialize_pre_exit_with_stderr_surfaces_component_missing_diagnostic() {
 #[cfg(unix)]
 #[test]
 fn lsp_rustup_proxy_without_component_is_not_available() {
-    let _env_lock = crate::test_support::test_env_lock();
     let _serial = super::super::serialize_fake_lsp_test();
+    let _env_lock = crate::test_support::test_env_lock();
     let temp = tempfile::tempdir().unwrap();
     let bin = temp.path().join("bin");
     let rustup_home = temp.path().join("rustup");
@@ -839,8 +1110,8 @@ fn lsp_rustup_proxy_without_component_is_not_available() {
 #[cfg(windows)]
 #[test]
 fn rustup_home_falls_back_to_userprofile_on_windows() {
-    let _env_lock = crate::test_support::test_env_lock();
     let _serial = super::super::serialize_fake_lsp_test();
+    let _env_lock = crate::test_support::test_env_lock();
     let temp = tempfile::tempdir().unwrap();
     let _env = crate::test_support::EnvGuard::new()
         .remove("RUSTUP_HOME")
@@ -867,8 +1138,11 @@ fn generic_startup_stderr_summary_compacts_bounds_or_none() {
     assert!(bounded.ends_with('…'));
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_exit_immediately_after_initialize_is_detected_and_bounded() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_exit_immediately_after_initialize_is_detected_and_bounded() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("exit_after_initialize");
     let error = fixture
@@ -887,8 +1161,11 @@ fn lsp_exit_immediately_after_initialize_is_detected_and_bounded() {
     assert_eq!(fixture.starts(), 2);
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_malformed_json_and_invalid_content_length_are_distinct() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_malformed_json_and_invalid_content_length_are_distinct() {
     let _serial = super::super::serialize_fake_lsp_test();
     let malformed = Fixture::new("malformed_json");
     let server = malformed
@@ -911,8 +1188,11 @@ fn lsp_malformed_json_and_invalid_content_length_are_distinct() {
     assert!(matches!(error, LspError::ProtocolError(_)));
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_position_encoding_uses_server_capability_or_utf16_default() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_position_encoding_uses_server_capability_or_utf16_default() {
     let _serial = super::super::serialize_fake_lsp_test();
     for (scenario, expected) in [
         ("utf8", PositionEncoding::Utf8),
@@ -929,8 +1209,11 @@ fn lsp_position_encoding_uses_server_capability_or_utf16_default() {
     }
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_initialize_uses_constrained_rust_analyzer_profile() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_initialize_uses_constrained_rust_analyzer_profile() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("normal");
     let _server = fixture
@@ -1017,13 +1300,14 @@ fn lsp_initialize_uses_constrained_rust_analyzer_profile() {
 /// Start the fake server under `kind` and return the `initializationOptions`
 /// it recorded from the `initialize` request. Lets per-language security
 /// profiles be asserted without the real language server installed.
+#[cfg(feature = "real-process-tests")]
 fn captured_initialize_options(kind: LspServerKind) -> Value {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join("project");
     fs::create_dir(&root).unwrap();
-    let marker = temp.path().join("starts.marker");
-    let exit_marker = temp.path().join("exit.marker");
-    let command = LspCommand::new(fake_server_path().as_os_str().to_owned())
+    let marker = root.join("starts.marker");
+    let exit_marker = root.join("exit.marker");
+    let command = LspCommand::new(fake_server_in(&root).into_os_string())
         .arg("normal")
         .arg(marker.as_os_str())
         .arg(exit_marker.as_os_str());
@@ -1046,8 +1330,11 @@ fn captured_initialize_options(kind: LspServerKind) -> Value {
         .expect("initializationOptions present")
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_initialize_uses_constrained_pyright_profile() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_initialize_uses_constrained_pyright_profile() {
     let _serial = super::super::serialize_fake_lsp_test();
     let options = captured_initialize_options(LspServerKind::Pyright);
     // openFilesOnly bounds analysis; pyright never executes project code, so
@@ -1074,8 +1361,11 @@ fn lsp_initialize_uses_constrained_pyright_profile() {
     );
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_initialize_uses_constrained_typescript_profile() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_initialize_uses_constrained_typescript_profile() {
     let _serial = super::super::serialize_fake_lsp_test();
     let options = captured_initialize_options(LspServerKind::TypeScriptLanguageServer);
     // disableAutomaticTypingAcquisition is the network boundary (no @types
@@ -1097,8 +1387,11 @@ fn lsp_initialize_uses_constrained_typescript_profile() {
     );
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_initialize_uses_constrained_gopls_profile() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_initialize_uses_constrained_gopls_profile() {
     let _serial = super::super::serialize_fake_lsp_test();
     let options = captured_initialize_options(LspServerKind::Gopls);
     assert_eq!(
@@ -1146,15 +1439,18 @@ fn lsp_initialize_uses_constrained_gopls_profile() {
     }
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn gopls_process_environment_overrides_ambient_network_settings() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_gopls_process_environment_overrides_ambient_network_settings() {
     let _serial = super::super::serialize_fake_lsp_test();
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join("project");
     fs::create_dir(&root).unwrap();
-    let marker = temp.path().join("starts.marker");
-    let exit_marker = temp.path().join("exit.marker");
-    let command = LspCommand::new(fake_server_path().as_os_str().to_owned())
+    let marker = root.join("starts.marker");
+    let exit_marker = root.join("exit.marker");
+    let command = LspCommand::new(fake_server_in(&root).into_os_string())
         .arg("capture_safety_env")
         .arg(marker.as_os_str())
         .arg(exit_marker.as_os_str())
@@ -1258,6 +1554,7 @@ fn lsp_default_args_apply_to_env_and_path_but_not_configured() {
     assert!(command.args.is_empty(), "{:?}", command.args);
 }
 
+#[cfg(target_os = "macos")]
 #[test]
 #[cfg(feature = "real-process-tests")]
 #[ignore = "runner real-process lane: crashed LSP child reap latency"]
@@ -1307,8 +1604,11 @@ fn runner_real_process_lsp_crashed_connection_reaps_immediately_without_full_shu
     assert_eq!(fixture.supervisor.server_count_for_test(), 0);
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_stderr_capture_is_bounded() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_stderr_capture_is_bounded() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("stderr_flood");
     let server = fixture
@@ -1319,6 +1619,7 @@ fn lsp_stderr_capture_is_bounded() {
     assert!(server.stderr_len() <= MAX_STDERR_BYTES);
 }
 
+#[cfg(target_os = "macos")]
 #[test]
 #[cfg(feature = "real-process-tests")]
 #[ignore = "runner real-process lane: LSP graceful leader exit reaps surviving descendant"]
@@ -1360,6 +1661,7 @@ fn runner_real_process_lsp_graceful_leader_exit_still_reaps_surviving_descendant
     )));
 }
 
+#[cfg(target_os = "macos")]
 #[test]
 #[cfg(feature = "real-process-tests")]
 #[ignore = "runner real-process lane: LSP shutdown and Drop reap child process"]
@@ -1397,6 +1699,7 @@ fn runner_real_process_lsp_shutdown_and_drop_reap_the_child_process() {
     drop(_temp);
 }
 
+#[cfg(target_os = "macos")]
 #[test]
 #[cfg(feature = "real-process-tests")]
 #[ignore = "runner real-process lane: hanging LSP shutdown honors one deadline"]
@@ -1449,6 +1752,7 @@ fn runner_real_process_lsp_shutdown_uses_single_deadline_against_hanging_server(
     );
 }
 
+#[cfg(target_os = "macos")]
 #[test]
 #[cfg(feature = "real-process-tests")]
 #[ignore = "runner real-process lane: multiple hanging LSP children share one shutdown deadline"]
@@ -1470,6 +1774,7 @@ fn runner_real_process_lsp_multiple_hanging_servers_share_one_supervisor_deadlin
     ];
     for root in roots.iter().skip(1) {
         fs::create_dir(root).unwrap();
+        fake_server_in(root);
     }
     let servers = roots
         .iter()
@@ -1573,6 +1878,7 @@ fn lsp_reaper_timeout_does_not_rearm_supervisor_drop_budget() {
     drop(_temp);
 }
 
+#[cfg(target_os = "macos")]
 #[test]
 #[cfg(feature = "real-process-tests")]
 #[ignore = "runner real-process lane: LSP initialize-timeout child cleanup budget"]
@@ -1582,9 +1888,9 @@ fn runner_real_process_lsp_initialize_timeout_cleanup_uses_configured_shutdown_b
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join("project");
     fs::create_dir(&root).unwrap();
-    let marker = temp.path().join("starts.marker");
-    let exit_marker = temp.path().join("exit.marker");
-    let command = LspCommand::new(fake_server_path().as_os_str().to_owned())
+    let marker = root.join("starts.marker");
+    let exit_marker = root.join("exit.marker");
+    let command = LspCommand::new(fake_server_in(&root).into_os_string())
         .arg("initialize_hang")
         .arg(marker.as_os_str())
         .arg(exit_marker.as_os_str());
@@ -1634,6 +1940,7 @@ fn runner_real_process_lsp_initialize_timeout_cleanup_uses_configured_shutdown_b
     drop(temp);
 }
 
+#[cfg(target_os = "macos")]
 #[test]
 #[cfg(feature = "real-process-tests")]
 #[ignore = "runner real-process lane: explicit idle LSP cleanup reaps child"]
@@ -1650,8 +1957,11 @@ fn runner_real_process_lsp_idle_cleanup_is_explicit_and_bounded() {
     assert!(wait_until(Duration::from_secs(1), || !process_exists(pid)));
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_idle_cleanup_skips_active_pending_requests() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_idle_cleanup_skips_active_pending_requests() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::with_manual_cleanup("timeout", 4, Duration::ZERO);
     let server = fixture
@@ -1677,6 +1987,7 @@ fn lsp_idle_cleanup_skips_active_pending_requests() {
     assert_eq!(fixture.supervisor.server_count_for_test(), 0);
 }
 
+#[cfg(target_os = "macos")]
 #[test]
 #[cfg(feature = "real-process-tests")]
 #[ignore = "runner real-process lane: idle cleanup reaps crashed-but-live LSP child"]
@@ -1702,6 +2013,7 @@ fn runner_real_process_lsp_idle_cleanup_reaps_crashed_alive_server_immediately()
     assert_eq!(fixture.supervisor.server_count_for_test(), 0);
 }
 
+#[cfg(target_os = "macos")]
 #[test]
 #[cfg(feature = "real-process-tests")]
 #[ignore = "runner real-process lane: background LSP reaper reclaims idle child capacity"]
@@ -1729,14 +2041,18 @@ fn runner_real_process_lsp_background_reaper_reclaims_idle_capacity_without_expl
     // project start only succeeds because the idle slot was reclaimed.
     let second_root = fixture._temp.path().join("project-second");
     fs::create_dir(&second_root).unwrap();
+    fake_server_in(&second_root);
     fixture
         .supervisor
         .server_for_test(&second_root, LspServerKind::RustAnalyzer)
         .expect("capacity must recover after background reaping");
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_project_root_is_canonical_and_external_uris_are_not_trusted() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_project_root_is_canonical_and_external_uris_are_not_trusted() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fixture = Fixture::new("normal");
     let canonical = fs::canonicalize(&fixture.root).unwrap();
@@ -1833,8 +2149,11 @@ fn lsp_rejects_missing_or_non_directory_project_roots_before_spawn() {
     assert!(!fixture.marker.exists());
 }
 
+#[cfg(target_os = "macos")]
+#[cfg(feature = "real-process-tests")]
 #[test]
-fn lsp_command_resolution_uses_explicit_env_then_path_without_shell() {
+#[ignore = "runner real-process lane: fake LSP child protocol/startup case"]
+fn runner_real_process_lsp_command_resolution_uses_explicit_env_then_path_without_shell() {
     let _serial = super::super::serialize_fake_lsp_test();
     let fake = fake_server_path();
     let explicit = LspSupervisor::new(LspSupervisorConfig {
@@ -1882,12 +2201,11 @@ fn lsp_command_resolution_uses_explicit_env_then_path_without_shell() {
         )
         .is_none());
 
-    let spaced = tempfile::tempdir().unwrap();
-    let program = spaced.path().join("fake server with spaces");
-    fs::hard_link(fake, &program).unwrap();
     let project = tempfile::tempdir().unwrap();
-    let marker = spaced.path().join("marker");
-    let exit_marker = spaced.path().join("exit");
+    let program = project.path().join("fake server with spaces");
+    fs::copy(fake, &program).unwrap();
+    let marker = project.path().join("marker");
+    let exit_marker = project.path().join("exit");
     let supervisor = LspSupervisor::new(LspSupervisorConfig {
         commands: HashMap::from([(
             LspServerKind::RustAnalyzer,
@@ -1911,12 +2229,12 @@ fn lsp_command_resolution_uses_explicit_env_then_path_without_shell() {
     assert_eq!(value["method"], "fake/direct-command");
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(feature = "real-process-tests", target_os = "linux"))]
 fn process_exists(pid: u32) -> bool {
     Path::new(&format!("/proc/{pid}")).exists()
 }
 
-#[cfg(windows)]
+#[cfg(all(feature = "real-process-tests", windows))]
 fn process_exists(pid: u32) -> bool {
     use windows_sys::Win32::Foundation::CloseHandle;
     use windows_sys::Win32::System::Threading::{
@@ -1932,7 +2250,7 @@ fn process_exists(pid: u32) -> bool {
     ok == 1 && exit_code == 259
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(feature = "real-process-tests", target_os = "macos"))]
 fn process_exists(pid: u32) -> bool {
     let mut info = std::mem::MaybeUninit::<libc::proc_bsdinfo>::zeroed();
     let size = std::mem::size_of::<libc::proc_bsdinfo>();
@@ -1952,7 +2270,10 @@ fn process_exists(pid: u32) -> bool {
     !(bytes == 0 && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH))
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+#[cfg(all(
+    feature = "real-process-tests",
+    not(any(target_os = "linux", target_os = "macos", windows))
+))]
 fn process_exists(_pid: u32) -> bool {
     false
 }
