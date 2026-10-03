@@ -45,8 +45,30 @@ const RAW_TAIL_CAPTURE_ALLOWANCE: usize = 4;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct PreparedShellProfileKey {
     generation: u64,
+    scope: ProfilePrepareScopeKind,
     project_key: String,
     profile_name: String,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ProfilePrepareScope<'a> {
+    RegisteredWorkspace { registry_dir: &'a Path },
+    TrustedProvider,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum ProfilePrepareScopeKind {
+    RegisteredWorkspace,
+    TrustedProvider,
+}
+
+impl ProfilePrepareScope<'_> {
+    fn kind(self) -> ProfilePrepareScopeKind {
+        match self {
+            Self::RegisteredWorkspace { .. } => ProfilePrepareScopeKind::RegisteredWorkspace,
+            Self::TrustedProvider => ProfilePrepareScopeKind::TrustedProvider,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1322,8 +1344,16 @@ fn run_prepare_command(
     }
     // ManagedChild owns the whole profile-prepare process tree: a private
     // process group on Unix, a kill-on-close Job Object on Windows.
-    let mut child = ManagedChild::spawn(cmd.stdout(Stdio::piped()).stderr(Stdio::piped()))
+    let child = ManagedChild::spawn(cmd.stdout(Stdio::piped()).stderr(Stdio::piped()))
         .map_err(|e| format!("failed to spawn profile prepare command: {}", e))?;
+    collect_profile_prepare_child(child, timeout, stop_requested)
+}
+
+fn collect_profile_prepare_child(
+    mut child: ManagedChild,
+    timeout: Duration,
+    stop_requested: Option<&AtomicBool>,
+) -> Result<(std::process::ExitStatus, Vec<u8>, Vec<u8>), String> {
     let stdout = match child.child_mut().stdout.take() {
         Some(stdout) => stdout,
         None => {
@@ -1396,7 +1426,10 @@ fn run_prepare_command(
                 let output = collect_profile_prepare_output(stdout_reader, stderr_reader).err();
                 let base = match output {
                     Some(error) => {
-                        format!("failed to wait profile prepare command: {}; failed to collect output: {}", e, error)
+                        format!(
+                            "failed to wait profile prepare command: {}; failed to collect output: {}",
+                            e, error
+                        )
                     }
                     None => format!("failed to wait profile prepare command: {}", e),
                 };
@@ -1420,6 +1453,51 @@ fn run_prepare_command(
             "failed to clean up profile prepare command process group: {cleanup}; failed to collect output: {error}"
         )),
     }
+}
+
+fn resolve_profile_prepare_program(
+    program: &str,
+    initial_env: &HashMap<String, String>,
+    prepare_cwd: &Path,
+) -> Result<PathBuf, String> {
+    let configured = Path::new(program);
+    let candidate = if configured.is_absolute() {
+        configured.to_path_buf()
+    } else if configured.components().count() > 1 {
+        prepare_cwd.join(configured)
+    } else {
+        let path = env_lookup(initial_env, "PATH")
+            .map(OsString::from)
+            .unwrap_or_default();
+        let absolute_path = std::env::split_paths(&path)
+            .map(|directory| {
+                if directory.is_absolute() {
+                    directory
+                } else {
+                    prepare_cwd.join(directory)
+                }
+            })
+            .collect::<Vec<_>>();
+        let path = std::env::join_paths(absolute_path)
+            .map_err(|error| format!("failed to resolve profile shell PATH: {error}"))?;
+        let resolved = super::util::resolve_program_in_path(program, &path).ok_or_else(|| {
+            format!("profile shell executable {program:?} was not found in its initial PATH")
+        })?;
+        #[cfg(windows)]
+        let candidate = resolved.path().to_path_buf();
+        #[cfg(not(windows))]
+        let candidate = match resolved {
+            super::util::ResolvedProgram::Native(path) => path,
+        };
+        candidate
+    };
+    if !candidate.is_absolute() || !super::util::is_executable_file(&candidate) {
+        return Err(format!(
+            "profile shell executable {} is not an absolute executable file",
+            candidate.display()
+        ));
+    }
+    Ok(candidate)
 }
 
 fn find_bytes(haystack: &[u8], needle: &[u8]) -> Option<usize> {
@@ -1519,6 +1597,7 @@ fn capture_profile_env_snapshot(
     dialect: ShellDialect,
     prepare_cwd: &Path,
     initial_env: HashMap<String, String>,
+    scope: ProfilePrepareScope<'_>,
     stop_requested: Option<&AtomicBool>,
 ) -> Result<HashMap<String, String>, String> {
     let Some(init_script) = profile.init_script.as_deref() else {
@@ -1529,23 +1608,49 @@ fn capture_profile_env_snapshot(
         ShellDialect::Posix => posix_profile_prepare_script(init_script, &marker),
         ShellDialect::PowerShell => powershell_profile_prepare_script(init_script, &marker),
     };
-    let mut cmd = Command::new(program);
-    for arg in args {
-        cmd.arg(arg);
-    }
-    cmd.arg(prepare_script).current_dir(prepare_cwd).env_clear();
-    // `run_prepare_command` owns this process tree through ManagedChild; do
-    // not add a process-group pre_exec here. ManagedChild creates the private
-    // process group (Unix) / Job Object (Windows) at spawn time.
-    for (key, value) in initial_env {
-        cmd.env(key, value);
-    }
-    let (status, stdout, stderr) = run_prepare_command(
-        cmd,
-        Duration::from_secs(SHELL_PROFILE_PREPARE_TIMEOUT_SECS),
-        stop_requested,
-    )
-    .map_err(|e| {
+    let run = match scope {
+        ProfilePrepareScope::TrustedProvider => {
+            let mut cmd = Command::new(program);
+            for arg in args {
+                cmd.arg(arg);
+            }
+            cmd.arg(prepare_script).current_dir(prepare_cwd).env_clear();
+            // The provider keeps its existing trusted local process contract.
+            for (key, value) in initial_env {
+                cmd.env(key, value);
+            }
+            run_prepare_command(
+                cmd,
+                Duration::from_secs(SHELL_PROFILE_PREPARE_TIMEOUT_SECS),
+                stop_requested,
+            )
+        }
+        ProfilePrepareScope::RegisteredWorkspace { registry_dir } => {
+            if stop_requested.is_some_and(|flag| flag.load(Ordering::SeqCst)) {
+                return Err("profile prepare stopped during runner shutdown".to_string());
+            }
+            let program = resolve_profile_prepare_program(program, &initial_env, prepare_cwd)?;
+            let mut blueprint =
+                CommandBlueprint::new(program.into_os_string(), snapshot_env(&initial_env));
+            for arg in args {
+                blueprint.arg(arg);
+            }
+            blueprint.arg(prepare_script);
+            let request = blueprint
+                .into_request(prepare_cwd.to_path_buf())
+                .stdin(StreamPolicy::Null)
+                .stdout(StreamPolicy::Piped)
+                .stderr(StreamPolicy::Piped);
+            let child = spawn_local_action(Some(registry_dir), request)
+                .map_err(|error| format!("failed to spawn profile prepare command: {error}"))?;
+            collect_profile_prepare_child(
+                child,
+                Duration::from_secs(SHELL_PROFILE_PREPARE_TIMEOUT_SECS),
+                stop_requested,
+            )
+        }
+    };
+    let (status, stdout, stderr) = run.map_err(|e| {
         format!(
             "failed to prepare shell profile '{}' at {}: {}",
             profile_name,
@@ -1596,11 +1701,19 @@ impl PreparedShellProfileCache {
         shell: &ShellConfig,
         profile_name: &str,
         project_key: String,
+        scope: ProfilePrepareScope<'_>,
         prepare_cwd: &Path,
         stop_requested: Option<&AtomicBool>,
     ) -> Result<Arc<PreparedShellProfile>, String> {
+        if let ProfilePrepareScope::RegisteredWorkspace { registry_dir } = scope {
+            super::sandbox_authority::resolve_workspace_authority(Some(registry_dir), prepare_cwd)
+                .map_err(|error| {
+                    format!("shell profile prepare refused without project authority: {error}")
+                })?;
+        }
         let key = PreparedShellProfileKey {
             generation,
+            scope: scope.kind(),
             project_key,
             profile_name: profile_name.to_string(),
         };
@@ -1616,18 +1729,24 @@ impl PreparedShellProfileCache {
                 prepare_cwd.display()
             )
         })?;
-        let program = resolved_shell_program(
-            &profile
-                .program
-                .clone()
-                .unwrap_or_else(|| shell.program.clone()),
-        );
+        let configured_program = profile
+            .program
+            .clone()
+            .unwrap_or_else(|| shell.program.clone());
         let args = profile.args.clone().unwrap_or_else(|| shell.args.clone());
+        let initial_env = base_shell_env(shell, profile)?;
+        let program = match scope {
+            ProfilePrepareScope::RegisteredWorkspace { .. } => {
+                resolve_profile_prepare_program(&configured_program, &initial_env, prepare_cwd)?
+                    .to_string_lossy()
+                    .into_owned()
+            }
+            ProfilePrepareScope::TrustedProvider => resolved_shell_program(&configured_program),
+        };
         // The profile inherits the parent shell dialect unless it (or the
         // parent) explicitly configures one; the prepare script and every
         // later command in this profile use the same resolved dialect.
         let dialect = resolve_dialect(&program, profile.dialect.or(shell.dialect));
-        let initial_env = base_shell_env(shell, profile)?;
         let env_snapshot = capture_profile_env_snapshot(
             profile_name,
             profile,
@@ -1636,6 +1755,7 @@ impl PreparedShellProfileCache {
             dialect,
             prepare_cwd,
             initial_env,
+            scope,
             stop_requested,
         )?;
         let prepared = Arc::new(PreparedShellProfile {
@@ -1681,6 +1801,7 @@ impl PreparedExecutionEnvironment {
                             .unwrap_or_else(|_| prepare_cwd.to_path_buf())
                             .to_string_lossy()
                     ),
+                    ProfilePrepareScope::TrustedProvider,
                     prepare_cwd,
                     stop_requested,
                 )?
@@ -1789,6 +1910,9 @@ pub(crate) fn resolve_prepared_shell_profile(
             shell,
             profile_name,
             project_key,
+            ProfilePrepareScope::RegisteredWorkspace {
+                registry_dir: project_registry_dir,
+            },
             &prepare_cwd,
             stop_requested,
         )

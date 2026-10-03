@@ -2,6 +2,9 @@ use super::*;
 use crate::runner_protocol::ShellCommandExecutionState;
 use std::sync::{Arc, OnceLock};
 
+#[path = "shell_tests/profile_prepare.rs"]
+mod profile_prepare;
+
 #[cfg(windows)]
 #[test]
 fn inherited_environment_drops_windows_drive_current_directory_entries() {
