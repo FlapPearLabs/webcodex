@@ -1,0 +1,2254 @@
+{
+  "axis": "STANDARDS",
+  "reviewer": "independent Sol Max Standards reviewer",
+  "created_utc": "2026-10-04T14:47:57.941422+00:00",
+  "repo_mode": "READ_ONLY",
+  "repo": "/Users/songshiyao/Desktop/Projects/webcodex",
+  "commit_sha": "2537bb4762e8ad5227824633ce411d6095f65789",
+  "direct_parent_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "branch": "impl/webcodex-p1c-durable-execution",
+  "worktree_clean_before_after": true,
+  "verdict": "PASS_EXACT_SHA_C2_SCOPED_MILESTONE_STANDARDS",
+  "full_p1c_verdict": "NO",
+  "blocking_findings_remaining": 0,
+  "WHY": "实际commit父节点等于接受基线，所有165项冻结路径和v2自清单精确入commit；14项source、11项受保护base文件、18项真实测试source绑定全部一致，三个*.patch历史/负控证据实际入Git而非仅工作目录。177条diff路径严格等于165freeze+self+11份已独立核对的final-milestone签署metadata，无额外源码/测试/正文/证据漂移。metadata明确C2限定接受、P1C NO、0/2/7 accounting、原始材料缺失/诊断等级及默认whitespace full2非PASS。独立 exact-commit diff检查重现原17告警/15data路径，准确literal补充check0；不借clean worktree的空diff冒充提交内容检查。",
+  "delivery_manifest": {
+    "path": "research/implementation/p1c/evidence/final-candidate-files-v2.json",
+    "sha256": "37499fe48e2686303c2c62d402c91e359f9412b1050a6dd76eeb77b4d7b1e08e",
+    "frozen_entries": 165,
+    "self_committed": true
+  },
+  "all_165_frozen_commit_blob_checks": [
+    {
+      "path": "crates/webcodex-process/tests/p1b_guard.rs",
+      "expected": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+      "actual": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-process/tests/p1c_c2_overlay.rs",
+      "expected": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+      "actual": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main.rs",
+      "expected": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+      "actual": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/dispatch_file.rs",
+      "expected": "cf560a9eba46533f72164b8cad01126fe78ced4e720a275fc88c42234601c06c",
+      "actual": "cf560a9eba46533f72164b8cad01126fe78ced4e720a275fc88c42234601c06c",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/dispatch_shell.rs",
+      "expected": "5f246b27503eeb1121a9d0be552865e762bd06f18b25f2ae6becb4b99519aa4a",
+      "actual": "5f246b27503eeb1121a9d0be552865e762bd06f18b25f2ae6becb4b99519aa4a",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/registration.rs",
+      "expected": "a658834640f03d3347302114fb7e83ad49caa29168802101695f35abdb2d8bb4",
+      "actual": "a658834640f03d3347302114fb7e83ad49caa29168802101695f35abdb2d8bb4",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/shell_profiles.rs",
+      "expected": "b4a4282e2c6d0b2282392d6cf25c0d93576554792bb6f00c9938ee8ee423d8e5",
+      "actual": "b4a4282e2c6d0b2282392d6cf25c0d93576554792bb6f00c9938ee8ee423d8e5",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/mod.rs",
+      "expected": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+      "actual": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs",
+      "expected": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+      "actual": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs",
+      "expected": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+      "actual": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs",
+      "expected": null,
+      "actual": null,
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/ssh.rs",
+      "expected": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+      "actual": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/transport.rs",
+      "expected": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+      "actual": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+      "matches": true
+    },
+    {
+      "path": "docs/agent/session-model.md",
+      "expected": "c4fd8a7d200c645d79ee8f97da622cfa431ac73e19fec54d1ba91b3e4149bde8",
+      "actual": "c4fd8a7d200c645d79ee8f97da622cfa431ac73e19fec54d1ba91b3e4149bde8",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/acceptance.md",
+      "expected": "edd52eca2ee93cadf56be7de5f6fce8a7f30df246a6c6d2498de901902f180d9",
+      "actual": "edd52eca2ee93cadf56be7de5f6fce8a7f30df246a6c6d2498de901902f180d9",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/architecture.md",
+      "expected": "e833b7cae44217876a7ac2377ee79ca0b586b00bdd0bb5e1f792a005815ae9ee",
+      "actual": "e833b7cae44217876a7ac2377ee79ca0b586b00bdd0bb5e1f792a005815ae9ee",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/c2-guard-overlay.json",
+      "expected": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f",
+      "actual": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/durable-surface-inventory.json",
+      "expected": "f6628851efd3eda2fbbce31ffd518a50e4de5ef03ac5d962e465aab86e4064ec",
+      "actual": "f6628851efd3eda2fbbce31ffd518a50e4de5ef03ac5d962e465aab86e4064ec",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/durable-surface-inventory.md",
+      "expected": "86583db407340079eacc089753c89eed9ddeb2ca82bba5a183249dface54c43c",
+      "actual": "86583db407340079eacc089753c89eed9ddeb2ca82bba5a183249dface54c43c",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/fd-closure-probe.sh.txt",
+      "expected": "735ab7cdb1db78de3da47e447d9f2cc916ddc18397fcb41f7fecd4f7f7d559cb",
+      "actual": "735ab7cdb1db78de3da47e447d9f2cc916ddc18397fcb41f7fecd4f7f7d559cb",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/fd-closure.json",
+      "expected": "9b78df3054f9660d5f3c3266bd995fd99424f9783ec176c979dcfc942bc64a8f",
+      "actual": "9b78df3054f9660d5f3c3266bd995fd99424f9783ec176c979dcfc942bc64a8f",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/fd-closure.stderr.log",
+      "expected": "e88181e52e89eb4b6eb728a195730b4e5765b36fba3a0d8624c17b8ab8d9a8de",
+      "actual": "e88181e52e89eb4b6eb728a195730b4e5765b36fba3a0d8624c17b8ab8d9a8de",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/fd-closure.stdout.log",
+      "expected": "d25f2d79d7a432641ea9370f68946db388292605cbfce51b0aca834505b009df",
+      "actual": "d25f2d79d7a432641ea9370f68946db388292605cbfce51b0aca834505b009df",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+      "expected": "d24721f6b69535da43f4e48949f700c61da44e146db0d291bafe836bd39c8dad",
+      "actual": "d24721f6b69535da43f4e48949f700c61da44e146db0d291bafe836bd39c8dad",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/setsid-Cargo.lock.txt",
+      "expected": "8a7a404aa56c4e7c72a7e0ed4e28b11b9a8afcef51e4dc1a8f8df5747bbdeab7",
+      "actual": "8a7a404aa56c4e7c72a7e0ed4e28b11b9a8afcef51e4dc1a8f8df5747bbdeab7",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/setsid-Cargo.toml.txt",
+      "expected": "8d6f583627b578dbd13d64b6d82df4c97c3500a9fc84b1df10ad63d54685df70",
+      "actual": "8d6f583627b578dbd13d64b6d82df4c97c3500a9fc84b1df10ad63d54685df70",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/setsid-main.rs.txt",
+      "expected": "cf13d0f69455e4c309783bb71aabff663a3a25131b02f6b2bebb0d621ea48799",
+      "actual": "cf13d0f69455e4c309783bb71aabff663a3a25131b02f6b2bebb0d621ea48799",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/setsid.json",
+      "expected": "3f5f860259d3aad04effdc49843c6ee9f910f3690c94031a2a28150a19f90bff",
+      "actual": "3f5f860259d3aad04effdc49843c6ee9f910f3690c94031a2a28150a19f90bff",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/setsid.stderr.log",
+      "expected": "c66962e806132932c18dab1bbe61e6bd8c51ed86739fede724d7a0c166dba863",
+      "actual": "c66962e806132932c18dab1bbe61e6bd8c51ed86739fede724d7a0c166dba863",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/setsid.stdout.log",
+      "expected": "7b9b029e96819f2488bcef0dde1365a992b1c220e1f59aac676ccc756da7481f",
+      "actual": "7b9b029e96819f2488bcef0dde1365a992b1c220e1f59aac676ccc756da7481f",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/baseline-sourcehashes.json",
+      "expected": "ecaf81cd5a4eb2fb81120ba03bb011aa463c2f29b6d1d6523ab5f5da2192c88f",
+      "actual": "ecaf81cd5a4eb2fb81120ba03bb011aa463c2f29b6d1d6523ab5f5da2192c88f",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/baseline-surface-matrix.md",
+      "expected": "97f8dbd04cb9af48486dcafbb7e8ef6f5e11e271fb31d4ed81cc436d865fa16d",
+      "actual": "97f8dbd04cb9af48486dcafbb7e8ef6f5e11e271fb31d4ed81cc436d865fa16d",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/candidate-source-freeze.json",
+      "expected": "5596d748764108112bb4428cc97c5c66d4f137d1418ab67a08fdaf9b7ef9c5d2",
+      "actual": "5596d748764108112bb4428cc97c5c66d4f137d1418ab67a08fdaf9b7ef9c5d2",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/copied-artifact-manifest-83-history.json",
+      "expected": "e2215218c313afcce2210565e089a6cbd30d5a5b0569daf0e28b453eb9aa78eb",
+      "actual": "e2215218c313afcce2210565e089a6cbd30d5a5b0569daf0e28b453eb9aa78eb",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/copied-artifact-manifest.json",
+      "expected": "a10834a12b0588dad34d103acfb231697f09aea891fd55a44046b825c5eaf41c",
+      "actual": "a10834a12b0588dad34d103acfb231697f09aea891fd55a44046b825c5eaf41c",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/normal-test-compile.json",
+      "expected": "9a6370c7bb605ebc2a0359675edf02f84bbf9949458372777df3655dcf80a665",
+      "actual": "9a6370c7bb605ebc2a0359675edf02f84bbf9949458372777df3655dcf80a665",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/normal-test-compile.stderr.log",
+      "expected": "a3ac5856e34b8d2d751702587185af0864a65f5784a2558dd640cad82cb586f1",
+      "actual": "a3ac5856e34b8d2d751702587185af0864a65f5784a2558dd640cad82cb586f1",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/omitted-marker-mutation.diff",
+      "expected": "c135b508a496de99165ea98cd38785cec1360d31bd613eb27fdcb771694f852b",
+      "actual": "c135b508a496de99165ea98cd38785cec1360d31bd613eb27fdcb771694f852b",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/omitted-marker-negative-control.json",
+      "expected": "2fa69f9bcbfeab6973031431041157a82ee7e7055ccdacf41809717a0c3df920",
+      "actual": "2fa69f9bcbfeab6973031431041157a82ee7e7055ccdacf41809717a0c3df920",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/omitted-marker.stderr.log",
+      "expected": "96b9bb664fd3966c8b3797ec9d5f6e5146f0f7a1f9cb7fc46e609bbbe578358f",
+      "actual": "96b9bb664fd3966c8b3797ec9d5f6e5146f0f7a1f9cb7fc46e609bbbe578358f",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log",
+      "expected": "c5c91a6fe2b08c18ca0bbddb423a92c8c28988235b621cdbbd03b1bcce1c2fc2",
+      "actual": "c5c91a6fe2b08c18ca0bbddb423a92c8c28988235b621cdbbd03b1bcce1c2fc2",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/producer-history.md",
+      "expected": "be2e5b611d4a1ffb38ee497a59821541e41c01564d95a41f8612f7baefe38d0f",
+      "actual": "be2e5b611d4a1ffb38ee497a59821541e41c01564d95a41f8612f7baefe38d0f",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/capability-catalog.exit",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/capability-provider.exit",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/commands.txt",
+      "expected": "fe50cae618f6c091a8163b275b5b5662a99acb032670302c80a3f56e9b527496",
+      "actual": "fe50cae618f6c091a8163b275b5b5662a99acb032670302c80a3f56e9b527496",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/after.sha256",
+      "expected": "9b37d02e6b0636ea53ffe7e9ca83b8b425b7b38ca7ec540f5e5298a10ab52ae7",
+      "actual": "9b37d02e6b0636ea53ffe7e9ca83b8b425b7b38ca7ec540f5e5298a10ab52ae7",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/before.sha256",
+      "expected": "769e195711a2e4887242a46d467152fbf1ffe2e69bc2066ced0d7ed6a1d6cce5",
+      "actual": "769e195711a2e4887242a46d467152fbf1ffe2e69bc2066ced0d7ed6a1d6cce5",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/exact-five-line.patch",
+      "expected": "7e394e643356c207a9f777d3bed301e4226921a3fadd6117844729920b948ad4",
+      "actual": "7e394e643356c207a9f777d3bed301e4226921a3fadd6117844729920b948ad4",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/p1b_guard.after.rs",
+      "expected": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+      "actual": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/p1b_guard.before.rs",
+      "expected": "bcf67312bdfef788e0ce9a28c6675df73ddc9fb1b1671caba9858cd967e50a96",
+      "actual": "bcf67312bdfef788e0ce9a28c6675df73ddc9fb1b1671caba9858cd967e50a96",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/local-persistent.exit",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/actual-applied-mutation.patch",
+      "expected": "53e5144594be40d11ececa785478179f5972d92883e0deea572dc06490ffb7bb",
+      "actual": "53e5144594be40d11ececa785478179f5972d92883e0deea572dc06490ffb7bb",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/persistent_shell.before.rs",
+      "expected": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+      "actual": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/source-before.sha256",
+      "expected": "a484b7d3911f26dde68a2ab57eec07ad32bdf651a6edd5aacf3f9f8808754ac5",
+      "actual": "a484b7d3911f26dde68a2ab57eec07ad32bdf651a6edd5aacf3f9f8808754ac5",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/source-mutant.sha256",
+      "expected": "01fea405f750287f27ce616c6652395e3856a0689775eb90d3c6ed62f0953e15",
+      "actual": "01fea405f750287f27ce616c6652395e3856a0689775eb90d3c6ed62f0953e15",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-spy.exit",
+      "expected": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "actual": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/overlay.exit",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/positive-spy.exit",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log",
+      "expected": "495e67555f7b7abd2e067d2cea21e4c2b26175c2181a6b25df32fbb9b172b64b",
+      "actual": "495e67555f7b7abd2e067d2cea21e4c2b26175c2181a6b25df32fbb9b172b64b",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log",
+      "expected": "d9481e3c6db0a2b0d39827f4930336aa275ff5485cb5908678363c6ec4be30bf",
+      "actual": "d9481e3c6db0a2b0d39827f4930336aa275ff5485cb5908678363c6ec4be30bf",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log",
+      "expected": "52c5a084e9d4ccb148edd5615d65c12bf2858203044abef1b134df1bd80deed7",
+      "actual": "52c5a084e9d4ccb148edd5615d65c12bf2858203044abef1b134df1bd80deed7",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/negative-spy.stdout.log",
+      "expected": "41653fa39c398f74d17ad3362035d1c4aad0d0602930b3e911c5bc320d47c6c2",
+      "actual": "41653fa39c398f74d17ad3362035d1c4aad0d0602930b3e911c5bc320d47c6c2",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log",
+      "expected": "10a063e0a50a363239e235144bcb7fa4beadc977c3a58613f421fc7d44db1299",
+      "actual": "10a063e0a50a363239e235144bcb7fa4beadc977c3a58613f421fc7d44db1299",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log",
+      "expected": "70ceb37234ee2239eb173840368290fe1310b02f099f9df1ee2e37a0edd9d84a",
+      "actual": "70ceb37234ee2239eb173840368290fe1310b02f099f9df1ee2e37a0edd9d84a",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log",
+      "expected": "5f7f70007fb1297bb2a4b1d1665fe7893a7120903e87554ea62412e26b796fda",
+      "actual": "5f7f70007fb1297bb2a4b1d1665fe7893a7120903e87554ea62412e26b796fda",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/remote-authority.exit",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-current.txt",
+      "expected": "bac33e4a8c734f86fe8cccb0a81e7941dc9ff032048c4f7f85b2612ec4dc7a72",
+      "actual": "bac33e4a8c734f86fe8cccb0a81e7941dc9ff032048c4f7f85b2612ec4dc7a72",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-mutant.txt",
+      "expected": "73f6132f5c7421e9f139c69abbd3a13ecd8c16f674359d0401bc7019cda16cf2",
+      "actual": "73f6132f5c7421e9f139c69abbd3a13ecd8c16f674359d0401bc7019cda16cf2",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-restored.txt",
+      "expected": "1b887762b54c40c0aa6d26e75170bdd3787dfb8b637ff83ba2bdd61247184bd4",
+      "actual": "1b887762b54c40c0aa6d26e75170bdd3787dfb8b637ff83ba2bdd61247184bd4",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/toolchain.txt",
+      "expected": "a3c72ea22c2f81b4fea9e08a3dcd11a09249a1104ce5e127e8cdc02748466a09",
+      "actual": "a3c72ea22c2f81b4fea9e08a3dcd11a09249a1104ce5e127e8cdc02748466a09",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/final-candidate-files.json",
+      "expected": "36e348ac5b5551626fc7fb22ffd21a7bf0476b789ea7e9f05497f10cf526f852",
+      "actual": "36e348ac5b5551626fc7fb22ffd21a7bf0476b789ea7e9f05497f10cf526f852",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/final-root-checks/checks.json",
+      "expected": "c63b6a14d1765b9a7d42abbd1a03ccbb1c83f08f68d58328cc2bf65a22c715b1",
+      "actual": "c63b6a14d1765b9a7d42abbd1a03ccbb1c83f08f68d58328cc2bf65a22c715b1",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/final-root-checks/diff.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/final-root-checks/diff.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/final-root-checks/fmt.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/final-root-checks/fmt.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/format-restore/final-cargo-fmt-all-check.log",
+      "expected": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+      "actual": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/format-restore/final-current-before.sha256",
+      "expected": "86eca1d4d3f14bd1fd4a422471fdd3f7a15fd355666ebbb4c7e07e45658016bd",
+      "actual": "86eca1d4d3f14bd1fd4a422471fdd3f7a15fd355666ebbb4c7e07e45658016bd",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/format-restore/final-git-diff-check.log",
+      "expected": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+      "actual": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/format-restore/final-owned-bytes-unchanged.txt",
+      "expected": "6aa4095de3ddf7cc08e6dd2b673b195abcb01b15de2fa2d2f14e0ca4c059a5b5",
+      "actual": "6aa4095de3ddf7cc08e6dd2b673b195abcb01b15de2fa2d2f14e0ca4c059a5b5",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/format-restore/final-recursive-rustfmt-leftover.diff",
+      "expected": "13a971251c9e0da74871b3f4291427aa7ca3c25c1b67fde5b1b433be2c4946ca",
+      "actual": "13a971251c9e0da74871b3f4291427aa7ca3c25c1b67fde5b1b433be2c4946ca",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/format-restore/final-restoration-note.txt",
+      "expected": "101487f05cde38dcab715e81fe726fabb3f211258489c0690c2d9eceea747c84",
+      "actual": "101487f05cde38dcab715e81fe726fabb3f211258489c0690c2d9eceea747c84",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/format-restore/final-restored-after.sha256",
+      "expected": "5017776bdd1f344c49441e7896d6a6e707fc65ad3a63be7450b5660ecc21ff10",
+      "actual": "5017776bdd1f344c49441e7896d6a6e707fc65ad3a63be7450b5660ecc21ff10",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/fst4-five-line.diff",
+      "expected": "7e394e643356c207a9f777d3bed301e4226921a3fadd6117844729920b948ad4",
+      "actual": "7e394e643356c207a9f777d3bed301e4226921a3fadd6117844729920b948ad4",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/independent-parser-final.json",
+      "expected": "acfedff63c6e4b4a8b69cb3e72cbe522a2208cd459d481b075bfb5934a401c9b",
+      "actual": "acfedff63c6e4b4a8b69cb3e72cbe522a2208cd459d481b075bfb5934a401c9b",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/independent-parser-final.stderr.log",
+      "expected": "69ecc94427c61c1208884cc788569245e33f61abe8bedea104c3b8197a54bcc7",
+      "actual": "69ecc94427c61c1208884cc788569245e33f61abe8bedea104c3b8197a54bcc7",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/independent-parser-final.stdout.log",
+      "expected": "dde9d9e94127858ae77284c2f50e08942ae173daab18de44acabcd73b86cc852",
+      "actual": "dde9d9e94127858ae77284c2f50e08942ae173daab18de44acabcd73b86cc852",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/independent-parser-result.json",
+      "expected": "d4ce9c7be2efea00f9c66c88cc13e0175c7cee494f26c52bbec5f87e9d632aa5",
+      "actual": "d4ce9c7be2efea00f9c66c88cc13e0175c7cee494f26c52bbec5f87e9d632aa5",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/independent-parser.stderr.log",
+      "expected": "266827c05d050b2f27fe2be30315f889359d7215337d1d5c96d0f5b7b9b6a6f6",
+      "actual": "266827c05d050b2f27fe2be30315f889359d7215337d1d5c96d0f5b7b9b6a6f6",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/independent-parser.stdout.log",
+      "expected": "b420c69838e184a9c1b89c8406da1c28854767148787f925bf3cbd6931139f58",
+      "actual": "b420c69838e184a9c1b89c8406da1c28854767148787f925bf3cbd6931139f58",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/launcher-mutation.diff",
+      "expected": "e4e824711093c748160ddcb23af95d01e47840136405603771c7370d236404ed",
+      "actual": "e4e824711093c748160ddcb23af95d01e47840136405603771c7370d236404ed",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-mutated-cargo-check.log",
+      "expected": "f89ce7ca33ff91d0a638e33170c62736d4747b083e6d3e4ed9fcea45a5f2b38a",
+      "actual": "f89ce7ca33ff91d0a638e33170c62736d4747b083e6d3e4ed9fcea45a5f2b38a",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-mutated-production-gate.log",
+      "expected": "82be341729b92707b1dd81bd99aa43ad4d1bdc34c76e15c0f2c80d775658ee83",
+      "actual": "82be341729b92707b1dd81bd99aa43ad4d1bdc34c76e15c0f2c80d775658ee83",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-platform-toolchain.txt",
+      "expected": "a8095649225bb267f7372c5b678b458a3158ead1e24c6c46644b2feb1d35ac0b",
+      "actual": "a8095649225bb267f7372c5b678b458a3158ead1e24c6c46644b2feb1d35ac0b",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-restored-production-gate.log",
+      "expected": "87b005addd3b3919c4c917d2a88251d9746da713b038dd3b99fda2dbeb25f3e2",
+      "actual": "87b005addd3b3919c4c917d2a88251d9746da713b038dd3b99fda2dbeb25f3e2",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-source-restoration.txt",
+      "expected": "893e9ed93d92d8a7827b65ff895a4d1e2c8c843f59d261a9b329a00ff0845798",
+      "actual": "893e9ed93d92d8a7827b65ff895a4d1e2c8c843f59d261a9b329a00ff0845798",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-source-sha256.json",
+      "expected": "716401f8f2de1149b99955768058b793ba9b740d48cfb8353a2e2d5745c458fb",
+      "actual": "716401f8f2de1149b99955768058b793ba9b740d48cfb8353a2e2d5745c458fb",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/binding-verification.json",
+      "expected": "e45119ee7303e375071319fe060538208f15e7812ba02b9d46a8d827ede7467b",
+      "actual": "e45119ee7303e375071319fe060538208f15e7812ba02b9d46a8d827ede7467b",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/complete-guard.json",
+      "expected": "1c54cd8778d9958948e6a4f069b7ccfa3a79a26f888583b070e32cbc9a6a5c6d",
+      "actual": "1c54cd8778d9958948e6a4f069b7ccfa3a79a26f888583b070e32cbc9a6a5c6d",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/default.json",
+      "expected": "6a0edab5c22a85b5d8ebd70a9f6233b7d0bf1a196214886050032bd1b81661aa",
+      "actual": "6a0edab5c22a85b5d8ebd70a9f6233b7d0bf1a196214886050032bd1b81661aa",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/default.stderr.log",
+      "expected": "5e00a6cb5fff032df3523ca470cf96a69d42422d558d613fa3bdec72ff3cdc67",
+      "actual": "5e00a6cb5fff032df3523ca470cf96a69d42422d558d613fa3bdec72ff3cdc67",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/default.stdout.log",
+      "expected": "4ed3170ebec6f222e53a6eb473c0fa153d577996049dadf45c88c0175b18f186",
+      "actual": "4ed3170ebec6f222e53a6eb473c0fa153d577996049dadf45c88c0175b18f186",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.json",
+      "expected": "9140de26af3d637f2bf82565edcf3e210ec9da833d198e30a393fde02ecf64b4",
+      "actual": "9140de26af3d637f2bf82565edcf3e210ec9da833d198e30a393fde02ecf64b4",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stderr.log",
+      "expected": "9a5bf9b0485b6cbb74fa37fa5cacfd55a308ac777d5b8332b9c349b77bcc8e7a",
+      "actual": "9a5bf9b0485b6cbb74fa37fa5cacfd55a308ac777d5b8332b9c349b77bcc8e7a",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log",
+      "expected": "f770fb6226fc9dbebf28b02e516c789c06eefa255b7f7455f5e4231996d0dc03",
+      "actual": "f770fb6226fc9dbebf28b02e516c789c06eefa255b7f7455f5e4231996d0dc03",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.json",
+      "expected": "c01cc775c5d56276cdd83d345f133614fba9d1f45a2c189f06ed276a922826e2",
+      "actual": "c01cc775c5d56276cdd83d345f133614fba9d1f45a2c189f06ed276a922826e2",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stderr.log",
+      "expected": "7c29f8260c114b7d6c8b47b9e2635caeca4c31c08b8b60216ab346368a2aa81a",
+      "actual": "7c29f8260c114b7d6c8b47b9e2635caeca4c31c08b8b60216ab346368a2aa81a",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log",
+      "expected": "bec4ad300dab6708fae837cb3478da200af600ae054f248c559d739c47e02193",
+      "actual": "bec4ad300dab6708fae837cb3478da200af600ae054f248c559d739c47e02193",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/read-depth-and-standards.json",
+      "expected": "30278eb2f49a60a3b771c32b3a659d6ee1e5cd282b1a5064f9ceccbbc286b6ff",
+      "actual": "30278eb2f49a60a3b771c32b3a659d6ee1e5cd282b1a5064f9ceccbbc286b6ff",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/source-approval.json",
+      "expected": "d15c0bcc5e8e52156421c0785ff7395c9ddcf0ba76fe33c493391d26707a9623",
+      "actual": "d15c0bcc5e8e52156421c0785ff7395c9ddcf0ba76fe33c493391d26707a9623",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/history-final.md",
+      "expected": "3d574364beea959f213dfa65ce8f97d025f312bcca48fef76afa6dfa83ffceed",
+      "actual": "3d574364beea959f213dfa65ce8f97d025f312bcca48fef76afa6dfa83ffceed",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/history.md",
+      "expected": "03e26af9ae2bda5575b7e8c9eb08abdf638c33f6d418be6ded4220861f4bb741",
+      "actual": "03e26af9ae2bda5575b7e8c9eb08abdf638c33f6d418be6ded4220861f4bb741",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/history/before-external-availability-correction.json",
+      "expected": "abceb868fb4fc2772c8fcda5167dd6afef965c7699897c61235e260ecfca7353",
+      "actual": "abceb868fb4fc2772c8fcda5167dd6afef965c7699897c61235e260ecfca7353",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/history/before-final-acceptance.md",
+      "expected": "b822ae36a7caeb60eeafc0ee2476cd994077480f9354635784e17451a630cf56",
+      "actual": "b822ae36a7caeb60eeafc0ee2476cd994077480f9354635784e17451a630cf56",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/history/before-final-durable-surface-inventory.json",
+      "expected": "e9d998ff0a6cbecb14bb76f845f771401254648fe00f433df602e46980b36928",
+      "actual": "e9d998ff0a6cbecb14bb76f845f771401254648fe00f433df602e46980b36928",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/history/native-contract-old-binding.json",
+      "expected": "33d0d33b8d3abc25e1210306c2ce5f253da91bb5ffec6700c821a8bdd19a6dff",
+      "actual": "33d0d33b8d3abc25e1210306c2ce5f253da91bb5ffec6700c821a8bdd19a6dff",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stderr.log",
+      "expected": "f8d0c58b5fe35830ac9eaca231be989ffd156b6d9ebfff364036695de78d183b",
+      "actual": "f8d0c58b5fe35830ac9eaca231be989ffd156b6d9ebfff364036695de78d183b",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log",
+      "expected": "6fa8c64c702755d0d3f21a918782356b9fa4a3b2597054fe3d5c907d77ef21a1",
+      "actual": "6fa8c64c702755d0d3f21a918782356b9fa4a3b2597054fe3d5c907d77ef21a1",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/history/rescued-guard-red/provenance.json",
+      "expected": "1f4f9f18ec57226c3185287fb6079a953cb4bf1679aaf6faf3a1f979ee30a417",
+      "actual": "1f4f9f18ec57226c3185287fb6079a953cb4bf1679aaf6faf3a1f979ee30a417",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/C2-NATIVE-FINAL-SOURCE-20261004.md",
+      "expected": "005ee591a15571388db5ceff857e3304eddf6d16d7bde9889428a1e94a45e697",
+      "actual": "005ee591a15571388db5ceff857e3304eddf6d16d7bde9889428a1e94a45e697",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.exit-code",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/c2_native_harness.py.txt",
+      "expected": "9a69946cbc02edd19b67d1c86c9b4c780a65ff3d47bbe57ea75d7336f85d16e8",
+      "actual": "9a69946cbc02edd19b67d1c86c9b4c780a65ff3d47bbe57ea75d7336f85d16e8",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/final-source-native.json",
+      "expected": "3d661ac2077dd731504279e8df2b84c04fbe99fc978fd20d5a2466153fcd1dac",
+      "actual": "3d661ac2077dd731504279e8df2b84c04fbe99fc978fd20d5a2466153fcd1dac",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.exit-code",
+      "expected": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "actual": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.stderr.log",
+      "expected": "ea3262d72ce92720d658873154c072a884c4906e90406cc84bdc240b19a66aba",
+      "actual": "ea3262d72ce92720d658873154c072a884c4906e90406cc84bdc240b19a66aba",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/old-route-native-result-final-source-20261004.json",
+      "expected": "9b2ac5f0bec8742248889e933d5c6dccf0c484755f3677f52fbe1a8ef376d78d",
+      "actual": "9b2ac5f0bec8742248889e933d5c6dccf0c484755f3677f52fbe1a8ef376d78d",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.exit-code",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/production-build-final-source-20261004.exit-code",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/production-build-final-source-20261004.stderr.log",
+      "expected": "401097959a33bed9710cbcfa3b7f3eafabf3e622f2f43409dd1e098e226eaa68",
+      "actual": "401097959a33bed9710cbcfa3b7f3eafabf3e622f2f43409dd1e098e226eaa68",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/production-build-final-source-20261004.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.exit-code",
+      "expected": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "actual": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.stdout.log",
+      "expected": "ba60075a12ec5f5452550f2737db40a44d25e2edc2eae326769a1a978e93ccf6",
+      "actual": "ba60075a12ec5f5452550f2737db40a44d25e2edc2eae326769a1a978e93ccf6",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/production-harness-final-source-20261004.exit-code",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/production-harness-final-source-20261004.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/production-harness-final-source-20261004.stdout.log",
+      "expected": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+      "actual": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/native/production-native-result-final-source-20261004.json",
+      "expected": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+      "actual": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/recovery-copies.json",
+      "expected": "2011795579ba5ea4d5cc1063e0099306b027ad8bdea55ec315df32e985f20d95",
+      "actual": "2011795579ba5ea4d5cc1063e0099306b027ad8bdea55ec315df32e985f20d95",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/recovery-current-source.json",
+      "expected": "713cdfa7421f04dcba2619d1bcaa2b09f697f8388d8dae99241934f58a25de29",
+      "actual": "713cdfa7421f04dcba2619d1bcaa2b09f697f8388d8dae99241934f58a25de29",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/regression/process-lib.json",
+      "expected": "8d544db87413a8189e8658efc784ad037305c42bc7ea921750d5bf2f6b492aef",
+      "actual": "8d544db87413a8189e8658efc784ad037305c42bc7ea921750d5bf2f6b492aef",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/regression/process-lib.stderr.log",
+      "expected": "02598a2b3459346d98bd92b8c9d4814eb151bd29a351db14520bf2a508338cd3",
+      "actual": "02598a2b3459346d98bd92b8c9d4814eb151bd29a351db14520bf2a508338cd3",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/regression/process-lib.stdout.log",
+      "expected": "343fdf9984dfc90f5482ee6af39597b4d5b358faa4dbcf1397f81248f9e3e0cf",
+      "actual": "343fdf9984dfc90f5482ee6af39597b4d5b358faa4dbcf1397f81248f9e3e0cf",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/architecture-decision.md",
+      "expected": "c5208acae00cee08816c0601d46771575edb1709ef35aecdd1898dc7bbe3468d",
+      "actual": "c5208acae00cee08816c0601d46771575edb1709ef35aecdd1898dc7bbe3468d",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/c2-implementation-contract.md",
+      "expected": "10f884b250471372ac21f8ae83f074879fd5c57b5d866aad051ee06d33dc3c87",
+      "actual": "10f884b250471372ac21f8ae83f074879fd5c57b5d866aad051ee06d33dc3c87",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/c2-native-evidence-contract-review.md",
+      "expected": "dbe89ad7947ffb95627285376d50d1148451867cf82578160c9a412fcb9a0ef4",
+      "actual": "dbe89ad7947ffb95627285376d50d1148451867cf82578160c9a412fcb9a0ef4",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/c2-native-evidence-contract.md",
+      "expected": "ab3236ae35d8629445d393f8c7a804e9c02028d866da3cef83a2d87ac713d6eb",
+      "actual": "ab3236ae35d8629445d393f8c7a804e9c02028d866da3cef83a2d87ac713d6eb",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/c2-overlay-contract-v2.md",
+      "expected": "91fd897d365c90a42912e1e1fa38fb6df826bdc847e307063cab4fe38e96d550",
+      "actual": "91fd897d365c90a42912e1e1fa38fb6df826bdc847e307063cab4fe38e96d550",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/c2-retirement-addendum.md",
+      "expected": "b2cab6c82166e1ad7574734cd0f2cbeae236c25efd6fcf78c38d82f8e2507d47",
+      "actual": "b2cab6c82166e1ad7574734cd0f2cbeae236c25efd6fcf78c38d82f8e2507d47",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/c2-windows-mixed-test-disposition.md",
+      "expected": "20cc8018a1a2f7c59f9f18244adf3e2077d2776abf4b65888848ede56aa4d23b",
+      "actual": "20cc8018a1a2f7c59f9f18244adf3e2077d2776abf4b65888848ede56aa4d23b",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/security-cleanroom.md",
+      "expected": "88226fc356680c862e49f598fb101b942a0c81be2f452405c1bfa8101131568c",
+      "actual": "88226fc356680c862e49f598fb101b942a0c81be2f452405c1bfa8101131568c",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-CURRENT-SOURCE-CHECK.json",
+      "expected": "5aeab8971d393b7180a5c4ca5aa539449b9643c3a4ded6579f7c0cc86832d212",
+      "actual": "5aeab8971d393b7180a5c4ca5aa539449b9643c3a4ded6579f7c0cc86832d212",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-GUARD-EVIDENCE-CHECK.json",
+      "expected": "e11ff8535f228f9195b6644ca19f94337fc40f0077cc8bdba348e56c95481e1f",
+      "actual": "e11ff8535f228f9195b6644ca19f94337fc40f0077cc8bdba348e56c95481e1f",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-GATE-ACCEPTANCE.json",
+      "expected": "4339513057b071cce0bd85af95ea0d14ec5497911e4cff5fa814bd7c9e21e2c5",
+      "actual": "4339513057b071cce0bd85af95ea0d14ec5497911e4cff5fa814bd7c9e21e2c5",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-RECOVERY.json",
+      "expected": "15a5e412ee40517023fe21b85b42c58af0178c6e2cd8d7599b7e1ebadd126d4e",
+      "actual": "15a5e412ee40517023fe21b85b42c58af0178c6e2cd8d7599b7e1ebadd126d4e",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-RECOVERY.md",
+      "expected": "df7b561ea5d04e3be08a71ded3107ecb0e5a5d4a2204469512f6220ca18e11a7",
+      "actual": "df7b561ea5d04e3be08a71ded3107ecb0e5a5d4a2204469512f6220ca18e11a7",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/security-recovery/recovery-diff.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/security-recovery/recovery-diff.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/security-recovery/recovery-fmt.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/security-recovery/recovery-fmt.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/reviews/standards-cleanroom.md",
+      "expected": "9b5565303c863f65fa052e2f57977cc68a76c9ca414321327a6b5ab82dec4ac5",
+      "actual": "9b5565303c863f65fa052e2f57977cc68a76c9ca414321327a6b5ab82dec4ac5",
+      "matches": true
+    }
+  ],
+  "changed_path_count": 177,
+  "all_changed_paths": [
+    {
+      "status": "M",
+      "path": "crates/webcodex-process/tests/p1b_guard.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/webcodex-process/tests/p1c_c2_overlay.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/webcodex-runner/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/webcodex-runner/src/main_tests/dispatch_file.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/webcodex-runner/src/main_tests/dispatch_shell.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/webcodex-runner/src/main_tests/registration.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/webcodex-runner/src/main_tests/shell_profiles.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/webcodex-runner/src/webcodex_runner/mod.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs"
+    },
+    {
+      "status": "D",
+      "path": "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/webcodex-runner/src/webcodex_runner/ssh.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/webcodex-runner/src/webcodex_runner/transport.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/agent/session-model.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/acceptance.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/architecture.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/c2-guard-overlay.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/durable-surface-inventory.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/durable-surface-inventory.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/architecture/fd-closure-probe.sh.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/architecture/fd-closure.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/architecture/fd-closure.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/architecture/fd-closure.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/architecture/setsid-Cargo.lock.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/architecture/setsid-Cargo.toml.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/architecture/setsid-main.rs.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/architecture/setsid.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/architecture/setsid.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/architecture/setsid.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/baseline-sourcehashes.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/baseline-surface-matrix.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/candidate-source-freeze.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/copied-artifact-manifest-83-history.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/copied-artifact-manifest.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/normal-test-compile.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/normal-test-compile.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/omitted-marker-mutation.diff"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/omitted-marker-negative-control.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/omitted-marker.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/producer-history.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/capability-catalog.exit"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/capability-provider.exit"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/commands.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/after.sha256"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/before.sha256"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/exact-five-line.patch"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/p1b_guard.after.rs"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/p1b_guard.before.rs"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/local-persistent.exit"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/actual-applied-mutation.patch"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/persistent_shell.before.rs"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/source-before.sha256"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/source-mutant.sha256"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-spy.exit"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/overlay.exit"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/positive-spy.exit"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/negative-spy.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/remote-authority.exit"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-current.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-mutant.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-restored.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/toolchain.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/final-candidate-files-v2.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/final-candidate-files.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/final-root-checks/checks.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/final-root-checks/diff.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/final-root-checks/diff.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/final-root-checks/fmt.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/final-root-checks/fmt.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/format-restore/final-cargo-fmt-all-check.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/format-restore/final-current-before.sha256"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/format-restore/final-git-diff-check.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/format-restore/final-owned-bytes-unchanged.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/format-restore/final-recursive-rustfmt-leftover.diff"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/format-restore/final-restoration-note.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/format-restore/final-restored-after.sha256"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/fst4-five-line.diff"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/independent-parser-final.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/independent-parser-final.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/independent-parser-final.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/independent-parser-result.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/independent-parser.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/independent-parser.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/launcher-mutation.diff"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-mutated-cargo-check.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-mutated-production-gate.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-platform-toolchain.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-restored-production-gate.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-source-restoration.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-source-sha256.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/binding-verification.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/complete-guard.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/default.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/default.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/default.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/read-depth-and-standards.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/guard/recovery/source-approval.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/history-final.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/history.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/history/before-external-availability-correction.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/history/before-final-acceptance.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/history/before-final-durable-surface-inventory.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/history/native-contract-old-binding.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/history/rescued-guard-red/provenance.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/C2-NATIVE-FINAL-SOURCE-20261004.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.exit-code"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/c2_native_harness.py.txt"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/final-source-native.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.exit-code"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/old-route-native-result-final-source-20261004.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.exit-code"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/production-build-final-source-20261004.exit-code"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/production-build-final-source-20261004.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/production-build-final-source-20261004.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.exit-code"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/production-harness-final-source-20261004.exit-code"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/production-harness-final-source-20261004.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/production-harness-final-source-20261004.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/native/production-native-result-final-source-20261004.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/recovery-copies.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/recovery-current-source.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/regression/process-lib.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/regression/process-lib.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/evidence/regression/process-lib.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/architecture-decision.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/c2-implementation-contract.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/c2-native-evidence-contract-review.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/c2-native-evidence-contract.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/c2-overlay-contract-v2.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/c2-retirement-addendum.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/c2-windows-mixed-test-disposition.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/final-milestone/security-whitespace.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/final-milestone/security-whitespace.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/final-milestone/security.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/final-milestone/security.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/final-milestone/staged-whitespace-disposition.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/final-milestone/standards-v2.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/final-milestone/standards-v2.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/final-milestone/standards-whitespace.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/final-milestone/standards-whitespace.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/final-milestone/standards.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/final-milestone/standards.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/security-cleanroom.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-CURRENT-SOURCE-CHECK.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-GUARD-EVIDENCE-CHECK.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-GATE-ACCEPTANCE.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-RECOVERY.json"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-RECOVERY.md"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/security-recovery/recovery-diff.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/security-recovery/recovery-diff.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/security-recovery/recovery-fmt.stderr.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/security-recovery/recovery-fmt.stdout.log"
+    },
+    {
+      "status": "A",
+      "path": "research/implementation/p1c/reviews/standards-cleanroom.md"
+    }
+  ],
+  "new_metadata_count": 11,
+  "new_metadata_content_review": [
+    {
+      "path": "research/implementation/p1c/reviews/final-milestone/security-whitespace.json",
+      "sha256": "2ebcb4c863a68b82c35df0ed9d03aa98f3fc6a8f4ef8a00baa452c06cff2aadc",
+      "bytes": 3241,
+      "read_review": "COMPLETE_PRIOR_OWN_BYTES_OR_FULL_SECURITY_REPORT_AND_DISPOSITION_CONTENT",
+      "scope": "ADDITIVE_FINAL_MILESTONE_METADATA"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/final-milestone/security-whitespace.md",
+      "sha256": "a86e0d98183751c8140ca6344f1dbbb016f83182190fde3697776f4627b09adb",
+      "bytes": 861,
+      "read_review": "COMPLETE_PRIOR_OWN_BYTES_OR_FULL_SECURITY_REPORT_AND_DISPOSITION_CONTENT",
+      "scope": "ADDITIVE_FINAL_MILESTONE_METADATA"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/final-milestone/security.json",
+      "sha256": "28b68f9757109d3bb57bbc799190470ac6140044aa7d7c914d2ab333e92ef3ac",
+      "bytes": 9405,
+      "read_review": "COMPLETE_PRIOR_OWN_BYTES_OR_FULL_SECURITY_REPORT_AND_DISPOSITION_CONTENT",
+      "scope": "ADDITIVE_FINAL_MILESTONE_METADATA"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/final-milestone/security.md",
+      "sha256": "4158ba20ddbd9b17aa241e6e4542673205272b3e4e11b4708a046a20c647bf67",
+      "bytes": 3873,
+      "read_review": "COMPLETE_PRIOR_OWN_BYTES_OR_FULL_SECURITY_REPORT_AND_DISPOSITION_CONTENT",
+      "scope": "ADDITIVE_FINAL_MILESTONE_METADATA"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/final-milestone/staged-whitespace-disposition.json",
+      "sha256": "dbfe399aa19c0776ca4cbaabcc1e97242d876ca2333fc2b5eff646d1ab61dbff",
+      "bytes": 11304,
+      "read_review": "COMPLETE_PRIOR_OWN_BYTES_OR_FULL_SECURITY_REPORT_AND_DISPOSITION_CONTENT",
+      "scope": "ADDITIVE_FINAL_MILESTONE_METADATA"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/final-milestone/standards-v2.json",
+      "sha256": "f4f2c52fb6c2c76b68303787b1c399307954db7e3225394f740a8722f77fb75b",
+      "bytes": 80507,
+      "read_review": "COMPLETE_PRIOR_OWN_BYTES_OR_FULL_SECURITY_REPORT_AND_DISPOSITION_CONTENT",
+      "scope": "ADDITIVE_FINAL_MILESTONE_METADATA"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/final-milestone/standards-v2.md",
+      "sha256": "22719c681a334ee98c0ecd4e44d2b4aeb9e866853ddf57fe978dc34907867f89",
+      "bytes": 1081,
+      "read_review": "COMPLETE_PRIOR_OWN_BYTES_OR_FULL_SECURITY_REPORT_AND_DISPOSITION_CONTENT",
+      "scope": "ADDITIVE_FINAL_MILESTONE_METADATA"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/final-milestone/standards-whitespace.json",
+      "sha256": "8bc9f3ab2f48f0cdfba52e4ec0ee772f9f672d8186d4d78810437ac83692ccbb",
+      "bytes": 86025,
+      "read_review": "COMPLETE_PRIOR_OWN_BYTES_OR_FULL_SECURITY_REPORT_AND_DISPOSITION_CONTENT",
+      "scope": "ADDITIVE_FINAL_MILESTONE_METADATA"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/final-milestone/standards-whitespace.md",
+      "sha256": "86a7aa4c19ce310c7c0981914a0102cac4fb02d73bcb80b25d36d9e9001fd0c1",
+      "bytes": 953,
+      "read_review": "COMPLETE_PRIOR_OWN_BYTES_OR_FULL_SECURITY_REPORT_AND_DISPOSITION_CONTENT",
+      "scope": "ADDITIVE_FINAL_MILESTONE_METADATA"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/final-milestone/standards.json",
+      "sha256": "5af37590850142d7a959a0ffbd7f3b3672249583dbaa8a0010cec59c8ed95e00",
+      "bytes": 14189,
+      "read_review": "COMPLETE_PRIOR_OWN_BYTES_OR_FULL_SECURITY_REPORT_AND_DISPOSITION_CONTENT",
+      "scope": "ADDITIVE_FINAL_MILESTONE_METADATA"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/final-milestone/standards.md",
+      "sha256": "250e952aead18f5fed5f302d70a8d916eca5ff0be91e4b5d6a2fac41bc5499a1",
+      "bytes": 4139,
+      "read_review": "COMPLETE_PRIOR_OWN_BYTES_OR_FULL_SECURITY_REPORT_AND_DISPOSITION_CONTENT",
+      "scope": "ADDITIVE_FINAL_MILESTONE_METADATA"
+    }
+  ],
+  "own_signed_reports_exact_copy": true,
+  "source_binding_sha256": "713cdfa7421f04dcba2619d1bcaa2b09f697f8388d8dae99241934f58a25de29",
+  "source_14_checks": [
+    {
+      "path": "crates/webcodex-process/tests/p1b_guard.rs",
+      "expected": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+      "actual": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-process/tests/p1c_c2_overlay.rs",
+      "expected": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+      "actual": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main.rs",
+      "expected": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+      "actual": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/dispatch_file.rs",
+      "expected": "cf560a9eba46533f72164b8cad01126fe78ced4e720a275fc88c42234601c06c",
+      "actual": "cf560a9eba46533f72164b8cad01126fe78ced4e720a275fc88c42234601c06c",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/dispatch_shell.rs",
+      "expected": "5f246b27503eeb1121a9d0be552865e762bd06f18b25f2ae6becb4b99519aa4a",
+      "actual": "5f246b27503eeb1121a9d0be552865e762bd06f18b25f2ae6becb4b99519aa4a",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/registration.rs",
+      "expected": "a658834640f03d3347302114fb7e83ad49caa29168802101695f35abdb2d8bb4",
+      "actual": "a658834640f03d3347302114fb7e83ad49caa29168802101695f35abdb2d8bb4",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/shell_profiles.rs",
+      "expected": "b4a4282e2c6d0b2282392d6cf25c0d93576554792bb6f00c9938ee8ee423d8e5",
+      "actual": "b4a4282e2c6d0b2282392d6cf25c0d93576554792bb6f00c9938ee8ee423d8e5",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/mod.rs",
+      "expected": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+      "actual": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs",
+      "expected": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+      "actual": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs",
+      "expected": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+      "actual": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs",
+      "expected": null,
+      "actual": null,
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/ssh.rs",
+      "expected": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+      "actual": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/transport.rs",
+      "expected": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+      "actual": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+      "matches": true
+    },
+    {
+      "path": "docs/agent/session-model.md",
+      "expected": "c4fd8a7d200c645d79ee8f97da622cfa431ac73e19fec54d1ba91b3e4149bde8",
+      "actual": "c4fd8a7d200c645d79ee8f97da622cfa431ac73e19fec54d1ba91b3e4149bde8",
+      "matches": true
+    }
+  ],
+  "protected_exact_base_11_checks": [
+    {
+      "path": "research/implementation/p1b/launch-inventory.json",
+      "expected": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+      "commit_actual": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+      "base_actual": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+      "matches": true
+    },
+    {
+      "path": "Cargo.lock",
+      "expected": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+      "commit_actual": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+      "base_actual": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+      "matches": true
+    },
+    {
+      "path": "Cargo.toml",
+      "expected": "84dd798c53195d54f0127d058da3022aeb71004bb195ed90464829754a315c94",
+      "commit_actual": "84dd798c53195d54f0127d058da3022aeb71004bb195ed90464829754a315c94",
+      "base_actual": "84dd798c53195d54f0127d058da3022aeb71004bb195ed90464829754a315c94",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-process/src/execution_broker/mod.rs",
+      "expected": "2894a0e771e6245ae27b03a507ca524eeb8d1ce079e8610ec1cfc81b4129978e",
+      "commit_actual": "2894a0e771e6245ae27b03a507ca524eeb8d1ce079e8610ec1cfc81b4129978e",
+      "base_actual": "2894a0e771e6245ae27b03a507ca524eeb8d1ce079e8610ec1cfc81b4129978e",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-process/src/execution_broker/compiler.rs",
+      "expected": "126290bc083a5a39214bd86a184b54544ef018380649a6780503dd63fdf5221f",
+      "commit_actual": "126290bc083a5a39214bd86a184b54544ef018380649a6780503dd63fdf5221f",
+      "base_actual": "126290bc083a5a39214bd86a184b54544ef018380649a6780503dd63fdf5221f",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-persistent-shell/src/lib.rs",
+      "expected": "11213b504698812e266ce6f9051cb212d7d751863bec41b27dd565071a62ea84",
+      "commit_actual": "11213b504698812e266ce6f9051cb212d7d751863bec41b27dd565071a62ea84",
+      "base_actual": "11213b504698812e266ce6f9051cb212d7d751863bec41b27dd565071a62ea84",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-persistent-shell/src/windows.rs",
+      "expected": "ed164ecc85bdb8d6472e41dc0bbb4b17fdd3de3398eb49f031544c1e4507db31",
+      "commit_actual": "ed164ecc85bdb8d6472e41dc0bbb4b17fdd3de3398eb49f031544c1e4507db31",
+      "base_actual": "ed164ecc85bdb8d6472e41dc0bbb4b17fdd3de3398eb49f031544c1e4507db31",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/detached_job.rs",
+      "expected": "c2a85f041ffafce868bf2ffc32c474d95a1a67038a07752ad59335dd72d5bb20",
+      "commit_actual": "c2a85f041ffafce868bf2ffc32c474d95a1a67038a07752ad59335dd72d5bb20",
+      "base_actual": "c2a85f041ffafce868bf2ffc32c474d95a1a67038a07752ad59335dd72d5bb20",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/process_command.rs",
+      "expected": "7d6543027199284666cf4f224d8adaae6a16a509b81cafe63df133a23b9a3a42",
+      "commit_actual": "7d6543027199284666cf4f224d8adaae6a16a509b81cafe63df133a23b9a3a42",
+      "base_actual": "7d6543027199284666cf4f224d8adaae6a16a509b81cafe63df133a23b9a3a42",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/coding_agent.rs",
+      "expected": "bd4f2096143a344dd0ce1b10fb033f04876759f9781440b026886de963c566fa",
+      "commit_actual": "bd4f2096143a344dd0ce1b10fb033f04876759f9781440b026886de963c566fa",
+      "base_actual": "bd4f2096143a344dd0ce1b10fb033f04876759f9781440b026886de963c566fa",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs",
+      "expected": "e498ec1adaecec21ef76432b7d48feb5a57174e8f10f181e403136d21c26ce73",
+      "commit_actual": "e498ec1adaecec21ef76432b7d48feb5a57174e8f10f181e403136d21c26ce73",
+      "base_actual": "e498ec1adaecec21ef76432b7d48feb5a57174e8f10f181e403136d21c26ce73",
+      "matches": true
+    }
+  ],
+  "three_previously_ignored_patch_blobs": [
+    {
+      "path": "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+      "expected": "d24721f6b69535da43f4e48949f700c61da44e146db0d291bafe836bd39c8dad",
+      "actual": "d24721f6b69535da43f4e48949f700c61da44e146db0d291bafe836bd39c8dad",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/exact-five-line.patch",
+      "expected": "7e394e643356c207a9f777d3bed301e4226921a3fadd6117844729920b948ad4",
+      "actual": "7e394e643356c207a9f777d3bed301e4226921a3fadd6117844729920b948ad4",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/actual-applied-mutation.patch",
+      "expected": "53e5144594be40d11ececa785478179f5972d92883e0deea572dc06490ffb7bb",
+      "actual": "53e5144594be40d11ececa785478179f5972d92883e0deea572dc06490ffb7bb",
+      "matches": true
+    }
+  ],
+  "actual_test_source_18_checks": [
+    {
+      "path": "Cargo.lock",
+      "expected": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+      "actual": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+      "matches": true
+    },
+    {
+      "path": "Cargo.toml",
+      "expected": "84dd798c53195d54f0127d058da3022aeb71004bb195ed90464829754a315c94",
+      "actual": "84dd798c53195d54f0127d058da3022aeb71004bb195ed90464829754a315c94",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-process/tests/p1b_guard.rs",
+      "expected": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+      "actual": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-process/tests/p1c_c2_overlay.rs",
+      "expected": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+      "actual": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main.rs",
+      "expected": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+      "actual": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/dispatch_file.rs",
+      "expected": "cf560a9eba46533f72164b8cad01126fe78ced4e720a275fc88c42234601c06c",
+      "actual": "cf560a9eba46533f72164b8cad01126fe78ced4e720a275fc88c42234601c06c",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/dispatch_shell.rs",
+      "expected": "5f246b27503eeb1121a9d0be552865e762bd06f18b25f2ae6becb4b99519aa4a",
+      "actual": "5f246b27503eeb1121a9d0be552865e762bd06f18b25f2ae6becb4b99519aa4a",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/registration.rs",
+      "expected": "a658834640f03d3347302114fb7e83ad49caa29168802101695f35abdb2d8bb4",
+      "actual": "a658834640f03d3347302114fb7e83ad49caa29168802101695f35abdb2d8bb4",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/main_tests/shell_profiles.rs",
+      "expected": "b4a4282e2c6d0b2282392d6cf25c0d93576554792bb6f00c9938ee8ee423d8e5",
+      "actual": "b4a4282e2c6d0b2282392d6cf25c0d93576554792bb6f00c9938ee8ee423d8e5",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/mod.rs",
+      "expected": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+      "actual": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs",
+      "expected": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+      "actual": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs",
+      "expected": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+      "actual": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs",
+      "expected": null,
+      "actual": null,
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/ssh.rs",
+      "expected": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+      "actual": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs",
+      "expected": "e498ec1adaecec21ef76432b7d48feb5a57174e8f10f181e403136d21c26ce73",
+      "actual": "e498ec1adaecec21ef76432b7d48feb5a57174e8f10f181e403136d21c26ce73",
+      "matches": true
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/transport.rs",
+      "expected": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+      "actual": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1b/launch-inventory.json",
+      "expected": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+      "actual": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+      "matches": true
+    },
+    {
+      "path": "research/implementation/p1c/c2-guard-overlay.json",
+      "expected": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f",
+      "actual": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f",
+      "matches": true
+    }
+  ],
+  "accounting": {
+    "class_c_total": 9,
+    "class_c_migrated": 0,
+    "class_c_deferred_fail_closed": 2,
+    "class_c_architecture_decision_pending": 7,
+    "class_c_unclassified": 0
+  },
+  "full_commit_diff_check": {
+    "command": [
+      "git",
+      "diff",
+      "--check",
+      "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+      "2537bb4762e8ad5227824633ce411d6095f65789"
+    ],
+    "exit_code": 2,
+    "result": "FAIL_RAW_ARTIFACT_WHITESPACE_ONLY_NON_PASS",
+    "stdout": "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch:9: trailing whitespace.\n+ \nresearch/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch:11: trailing whitespace.\n+ \nresearch/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch:30: trailing whitespace.\n+ \nresearch/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log:20: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log:150: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log:150: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log:150: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log:37: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log:150: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log:154: new blank line at EOF.\nresearch/implementation/p1c/evidence/guard/independent-parser-final.stdout.log:9: new blank line at EOF.\nresearch/implementation/p1c/evidence/guard/independent-parser.stdout.log:9: new blank line at EOF.\nresearch/implementation/p1c/evidence/guard/recovery/default.stdout.log:25: new blank line at EOF.\nresearch/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log:6: new blank line at EOF.\nresearch/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log:6: new blank line at EOF.\nresearch/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log:30: new blank line at EOF.\nresearch/implementation/p1c/evidence/regression/process-lib.stdout.log:43: new blank line at EOF.\n",
+    "stderr": ""
+  },
+  "supplemental_exact_15_data_exclusions_check": {
+    "command": [
+      "git",
+      "diff",
+      "--check",
+      "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+      "2537bb4762e8ad5227824633ce411d6095f65789",
+      "--",
+      ".",
+      ":(exclude,literal)research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/independent-parser-final.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/independent-parser.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/default.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/regression/process-lib.stdout.log"
+    ],
+    "exit_code": 0,
+    "result": "PASS_FOR_ALL_OTHER_COMMITTED_FILES",
+    "stdout": "",
+    "stderr": ""
+  },
+  "tests_rerun": false,
+  "testing_reuse": "exact18testedsource bytes unchanged; ordinarydefault18pass0fail2ignored + held-pipe/npm-pack explicit lanes each1pass0fail actual evidence retained",
+  "native_test_limit": "Preserved ordinary macOS source-bound raw accepted; deleted external binaries not freshly rehashed or rerun. DIAGNOSTIC bootstrap unit tests retain their grade. Windows/Linux realremote/restarts and fullP1C unproven.",
+  "metadata_history": "Precommit reports correctly retain their creation-time pending commit status; this separate SHA-specific attestation supplies actual commit verification without rewriting prior signatures.",
+  "future_doc_only_commit": "NOT_REVIEWED_YET; owner proposed additive exact-sha/Git-delivery metadata requires a separate bounded actual-commit review.",
+  "push_or_merge_or_deploy_authorized_by_this_attestation": false,
+  "commands": [
+    "python3 standards-recovery-20261004/attest-commit-v2.py 2537bb4762e8ad5227824633ce411d6095f65789",
+    "python3 standards-recovery-20261004/finalize-exact-2537.py",
+    [
+      "git",
+      "show",
+      "<commit>:<path>"
+    ],
+    [
+      "git",
+      "diff",
+      "--name-status",
+      "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+      "2537bb4762e8ad5227824633ce411d6095f65789"
+    ],
+    [
+      "git",
+      "diff",
+      "--check",
+      "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+      "2537bb4762e8ad5227824633ce411d6095f65789"
+    ],
+    [
+      "git",
+      "diff",
+      "--check",
+      "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+      "2537bb4762e8ad5227824633ce411d6095f65789",
+      "--",
+      ".",
+      ":(exclude,literal)research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/independent-parser-final.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/independent-parser.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/default.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/regression/process-lib.stdout.log"
+    ],
+    [
+      "git",
+      "status",
+      "--porcelain=v1"
+    ]
+  ],
+  "raw_artifacts": [
+    {
+      "path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/exact-2537-full-check.stdout.log",
+      "sha256": "c04b13ec783ded12be9d9fe1167562f2c2ac0543b124436cb87b27529f8f5815"
+    },
+    {
+      "path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/exact-2537-full-check.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/exact-2537-scoped-check.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/exact-2537-scoped-check.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/exact-2537-name-status.log",
+      "sha256": "d62043f378451eff5873c7e4d1e5c035b669037eb4949f3c803b80d311dfe22f"
+    }
+  ],
+  "precheck_artifact": {
+    "path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/C2-STANDARDS-EXACT-SHA-V2-PRECHECK-2537bb4762e8.json",
+    "sha256": "f8cc12acd9db4d3b80cca1530703b6839fb64db73f7ea3f2bd666c5607abe8c5"
+  },
+  "SpecStandardsLinks": [
+    "AGENTS.md surgical changes and goal verification",
+    "research/implementation/p1c/reviews/standards-cleanroom.md",
+    "research/implementation/p1c/acceptance.md",
+    "research/implementation/p1c/evidence/final-candidate-files-v2.json",
+    "research/implementation/p1c/reviews/final-milestone/staged-whitespace-disposition.json"
+  ],
+  "read_depth": "全部165精确Git blobs hash、14source/11protected/18testbinding、全部177路径；四份security JSON/Markdown及sourcebinding完整内容；自己的六份报告逐字节与独立原件比较、原disposition实核；三个patch核精确blob而不重复读历史source；未重复源码审查或同源tests。",
+  "skills": [
+    "code-review",
+    "codebase-design",
+    "codegraph-integration (earlier source review; no new graph query for immutable exact-SHA attestation)"
+  ],
+  "repo_mutations_by_reviewer": [],
+  "subagents_spawned_by_reviewer": [],
+  "artifact": {
+    "json": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/C2-STANDARDS-EXACT-SHA-2537bb4762e8-FINAL.json",
+    "markdown": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/C2-STANDARDS-EXACT-SHA-2537bb4762e8-FINAL.md"
+  }
+}

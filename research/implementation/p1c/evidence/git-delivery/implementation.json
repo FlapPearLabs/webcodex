@@ -1,0 +1,56 @@
+{
+  "schema": "p1c-c2-implementation-delivery-v1",
+  "recorded_at_utc": "2026-10-04T14:51:04.167340+00:00",
+  "base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "implementation_sha": "2537bb4762e8ad5227824633ce411d6095f65789",
+  "implementation_parent": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "branch": "impl/webcodex-p1c-durable-execution",
+  "implementation_remote_sha": "2537bb4762e8ad5227824633ce411d6095f65789",
+  "accepted_p1b_remote_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "implementation_local_remote_in_sync": true,
+  "implementation_worktree_clean_before_this_metadata_addition": true,
+  "scoped_milestone": "C2_ACCEPTED_EXACT_SHA",
+  "P1C_COMPLETE": "NO",
+  "full_p1c_verdict": "BLOCKED_ARCHITECTURE_DECISION",
+  "accounting": {
+    "class_c_total": 9,
+    "class_c_migrated": 0,
+    "class_c_deferred_fail_closed": 2,
+    "class_c_architecture_decision_pending": 7,
+    "class_c_unclassified": 0
+  },
+  "candidate_manifest_sha256": "37499fe48e2686303c2c62d402c91e359f9412b1050a6dd76eeb77b4d7b1e08e",
+  "exact_sha_review_copies": [
+    {
+      "path": "research/implementation/p1c/reviews/exact-sha/security.json",
+      "sha256": "0b415d3b83a4c62ce3865bd287e3c0b2ce88606bb57296e955c07e1546b598e4",
+      "original_review_file": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/security-recovery-20261004/C2-SECURITY-EXACT-SHA.json"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/exact-sha/security.md",
+      "sha256": "241755f600aa9e5ca2c0f639c7ccd6b3ebdbc871797da4e622bf3fa9a02a0fc9",
+      "original_review_file": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/security-recovery-20261004/C2-SECURITY-EXACT-SHA.md"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/exact-sha/standards.json",
+      "sha256": "3f828414519561ea09fc9abcb70fd181781b5dbf00220233d37a35146779d777",
+      "original_review_file": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/C2-STANDARDS-EXACT-SHA-2537bb4762e8-FINAL.json"
+    },
+    {
+      "path": "research/implementation/p1c/reviews/exact-sha/standards.md",
+      "sha256": "8b6065e5d0bf41d2bdbe8dc19606d42e5ed08876b94d2f050ee55b9e5f5520ad",
+      "original_review_file": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/C2-STANDARDS-EXACT-SHA-2537bb4762e8-FINAL.md"
+    }
+  ],
+  "verification_commands": [
+    "git rev-parse HEAD",
+    "git rev-parse HEAD^",
+    "git branch --show-current",
+    "git status --porcelain",
+    "git rev-parse @{u}",
+    "git ls-remote origin refs/heads/impl/webcodex-p1c-durable-execution refs/heads/impl/webcodex-p1b-normalization-slice1"
+  ],
+  "no_merge_no_next_phase": true,
+  "metadata_commit_scope": "Only these four exact-SHA review copies and two Git delivery files. Source, business docs, inventories, raw evidence and frozen acceptance stay byte-identical to the independently accepted implementation commit. Subsequent documentation commit has no runtime change and requires its own actual-SHA metadata confirmation.",
+  "final_sha_note": "This record binds the implementation commit and its observed remote state; it does not pre-sign the unknown SHA containing this record. Final documentation SHA is reported after actual independent confirmation to avoid circular self-signing."
+}

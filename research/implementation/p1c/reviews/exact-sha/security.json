@@ -1,0 +1,1003 @@
+{
+  "schema": "p1c-c2-independent-security-exact-sha-v1",
+  "created_utc": "2026-10-04T14:47:33.725051+00:00",
+  "axis": "SPEC_SECURITY",
+  "repo_mode": "READ_ONLY",
+  "commit_sha": "2537bb4762e8ad5227824633ce411d6095f65789",
+  "accepted_base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "checks": {
+    "exact_head": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_single_parent": {
+      "passed": true,
+      "detail": null
+    },
+    "one_commit_from_accepted_base": {
+      "passed": true,
+      "detail": null
+    },
+    "correct_branch": {
+      "passed": true,
+      "detail": null
+    },
+    "worktree_and_index_clean": {
+      "passed": true,
+      "detail": null
+    },
+    "committed_manifest_exact_reviewed_bytes": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-process/tests/p1b_guard.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-process/tests/p1c_c2_overlay.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-runner/src/main.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-runner/src/main_tests/dispatch_file.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-runner/src/main_tests/dispatch_shell.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-runner/src/main_tests/registration.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-runner/src/main_tests/shell_profiles.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-runner/src/webcodex_runner/mod.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-runner/src/webcodex_runner/remote_shell.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-runner/src/webcodex_runner/ssh.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:crates/webcodex-runner/src/webcodex_runner/transport.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:docs/agent/session-model.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/acceptance.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/architecture.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/c2-guard-overlay.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/durable-surface-inventory.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/durable-surface-inventory.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/architecture/fd-closure-probe.sh.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/architecture/fd-closure.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/architecture/fd-closure.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/architecture/fd-closure.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/architecture/setsid-Cargo.lock.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/architecture/setsid-Cargo.toml.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/architecture/setsid-main.rs.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/architecture/setsid.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/architecture/setsid.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/architecture/setsid.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/baseline-sourcehashes.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/baseline-surface-matrix.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/candidate-source-freeze.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/copied-artifact-manifest-83-history.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/copied-artifact-manifest.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/normal-test-compile.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/normal-test-compile.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/omitted-marker-mutation.diff": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/omitted-marker-negative-control.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/omitted-marker.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/producer-history.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/capability-catalog.exit": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/capability-provider.exit": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/commands.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/after.sha256": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/before.sha256": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/exact-five-line.patch": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/p1b_guard.after.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/p1b_guard.before.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/local-persistent.exit": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/actual-applied-mutation.patch": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/persistent_shell.before.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/source-before.sha256": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/source-mutant.sha256": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-spy.exit": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/overlay.exit": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/positive-spy.exit": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/negative-spy.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/remote-authority.exit": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-current.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-mutant.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-restored.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/diagnostic/recovered-epoch/toolchain.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/final-candidate-files.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/final-root-checks/checks.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/final-root-checks/diff.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/final-root-checks/diff.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/final-root-checks/fmt.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/final-root-checks/fmt.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/format-restore/final-cargo-fmt-all-check.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/format-restore/final-current-before.sha256": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/format-restore/final-git-diff-check.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/format-restore/final-owned-bytes-unchanged.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/format-restore/final-recursive-rustfmt-leftover.diff": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/format-restore/final-restoration-note.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/format-restore/final-restored-after.sha256": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/fst4-five-line.diff": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/independent-parser-final.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/independent-parser-final.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/independent-parser-final.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/independent-parser-result.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/independent-parser.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/independent-parser.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/launcher-mutation.diff": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-mutated-cargo-check.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-mutated-production-gate.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-platform-toolchain.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-restored-production-gate.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-source-restoration.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-source-sha256.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/binding-verification.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/complete-guard.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/default.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/default.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/default.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/read-depth-and-standards.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/guard/recovery/source-approval.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/history-final.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/history.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/history/before-external-availability-correction.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/history/before-final-acceptance.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/history/before-final-durable-surface-inventory.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/history/native-contract-old-binding.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/history/rescued-guard-red/provenance.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/C2-NATIVE-FINAL-SOURCE-20261004.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/c2_native_harness.py.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/final-source-native.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/old-route-native-result-final-source-20261004.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/production-build-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/production-build-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/production-build-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/production-harness-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/production-harness-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/production-harness-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/native/production-native-result-final-source-20261004.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/recovery-copies.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/recovery-current-source.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/regression/process-lib.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/regression/process-lib.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/evidence/regression/process-lib.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/architecture-decision.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/c2-implementation-contract.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/c2-native-evidence-contract-review.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/c2-native-evidence-contract.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/c2-overlay-contract-v2.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/c2-retirement-addendum.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/c2-windows-mixed-test-disposition.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/security-cleanroom.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/security-recovery/C2-SECURITY-CURRENT-SOURCE-CHECK.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/security-recovery/C2-SECURITY-GUARD-EVIDENCE-CHECK.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-GATE-ACCEPTANCE.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-RECOVERY.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-RECOVERY.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/security-recovery/recovery-diff.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/security-recovery/recovery-diff.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/security-recovery/recovery-fmt.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/security-recovery/recovery-fmt.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_frozen_git_blob:research/implementation/p1c/reviews/standards-cleanroom.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_additive_review_metadata_blob:security.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_additive_review_metadata_blob:security.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_additive_review_metadata_blob:security-whitespace.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_additive_review_metadata_blob:security-whitespace.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_additive_review_metadata_blob:staged-whitespace-disposition.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_additive_review_metadata_blob:standards.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_additive_review_metadata_blob:standards.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_additive_review_metadata_blob:standards-v2.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_additive_review_metadata_blob:standards-v2.md": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_additive_review_metadata_blob:standards-whitespace.json": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_additive_review_metadata_blob:standards-whitespace.md": {
+      "passed": true,
+      "detail": null
+    },
+    "177_exact_paths_no_unreviewed_addition": {
+      "passed": true,
+      "detail": {
+        "extra": [],
+        "missing": []
+      }
+    },
+    "all_present_frozen_and_metadata_are_regular_git_files": {
+      "passed": true,
+      "detail": null
+    },
+    "exact_signed_remote_origin_deleted": {
+      "passed": true,
+      "detail": null
+    },
+    "three_ignored_evidence_patches_really_committed": {
+      "passed": true,
+      "detail": [
+        "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+        "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/exact-five-line.patch",
+        "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/actual-applied-mutation.patch"
+      ]
+    },
+    "committed_source_binding_713_exact": {
+      "passed": true,
+      "detail": null
+    },
+    "committed_14_source_entries_exact": {
+      "passed": true,
+      "detail": null
+    },
+    "committed_11_protected_exact_base_files": {
+      "passed": true,
+      "detail": null
+    },
+    "both_axes_scoped_full_p1c_no": {
+      "passed": true,
+      "detail": null
+    },
+    "additive_review_metadata_preserves_actual_epoch_and_pending_future_sha": {
+      "passed": true,
+      "detail": null
+    },
+    "standards_v2_recorded_bytes_match_committed:freeze_checks": {
+      "passed": true,
+      "detail": null
+    },
+    "standards_v2_recorded_bytes_match_committed:copied_artifact_checks": {
+      "passed": true,
+      "detail": null
+    },
+    "standards_v2_recorded_bytes_match_committed:actual_test_source_checks": {
+      "passed": true,
+      "detail": null
+    },
+    "standards_whitespace_full165_committed_bindings_match": {
+      "passed": true,
+      "detail": null
+    },
+    "standard_whitespace_testsource18_matches_committed": {
+      "passed": true,
+      "detail": null
+    },
+    "whitespace_no_false_green_or_broad_exception": {
+      "passed": true,
+      "detail": null
+    },
+    "standards_whitespace_actual_lines_match_committed_data": {
+      "passed": true,
+      "detail": null
+    },
+    "head_and_clean_tree_still_same_after_inspection": {
+      "passed": true,
+      "detail": null
+    }
+  },
+  "blocking_findings_remaining": [],
+  "frozen_git_blob_sha256": {
+    "crates/webcodex-process/tests/p1b_guard.rs": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+    "crates/webcodex-process/tests/p1c_c2_overlay.rs": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+    "crates/webcodex-runner/src/main.rs": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+    "crates/webcodex-runner/src/main_tests/dispatch_file.rs": "cf560a9eba46533f72164b8cad01126fe78ced4e720a275fc88c42234601c06c",
+    "crates/webcodex-runner/src/main_tests/dispatch_shell.rs": "5f246b27503eeb1121a9d0be552865e762bd06f18b25f2ae6becb4b99519aa4a",
+    "crates/webcodex-runner/src/main_tests/registration.rs": "a658834640f03d3347302114fb7e83ad49caa29168802101695f35abdb2d8bb4",
+    "crates/webcodex-runner/src/main_tests/shell_profiles.rs": "b4a4282e2c6d0b2282392d6cf25c0d93576554792bb6f00c9938ee8ee423d8e5",
+    "crates/webcodex-runner/src/webcodex_runner/mod.rs": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+    "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+    "crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+    "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs": null,
+    "crates/webcodex-runner/src/webcodex_runner/ssh.rs": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+    "crates/webcodex-runner/src/webcodex_runner/transport.rs": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+    "docs/agent/session-model.md": "c4fd8a7d200c645d79ee8f97da622cfa431ac73e19fec54d1ba91b3e4149bde8",
+    "research/implementation/p1c/acceptance.md": "edd52eca2ee93cadf56be7de5f6fce8a7f30df246a6c6d2498de901902f180d9",
+    "research/implementation/p1c/architecture.md": "e833b7cae44217876a7ac2377ee79ca0b586b00bdd0bb5e1f792a005815ae9ee",
+    "research/implementation/p1c/c2-guard-overlay.json": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f",
+    "research/implementation/p1c/durable-surface-inventory.json": "f6628851efd3eda2fbbce31ffd518a50e4de5ef03ac5d962e465aab86e4064ec",
+    "research/implementation/p1c/durable-surface-inventory.md": "86583db407340079eacc089753c89eed9ddeb2ca82bba5a183249dface54c43c",
+    "research/implementation/p1c/evidence/architecture/fd-closure-probe.sh.txt": "735ab7cdb1db78de3da47e447d9f2cc916ddc18397fcb41f7fecd4f7f7d559cb",
+    "research/implementation/p1c/evidence/architecture/fd-closure.json": "9b78df3054f9660d5f3c3266bd995fd99424f9783ec176c979dcfc942bc64a8f",
+    "research/implementation/p1c/evidence/architecture/fd-closure.stderr.log": "e88181e52e89eb4b6eb728a195730b4e5765b36fba3a0d8624c17b8ab8d9a8de",
+    "research/implementation/p1c/evidence/architecture/fd-closure.stdout.log": "d25f2d79d7a432641ea9370f68946db388292605cbfce51b0aca834505b009df",
+    "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch": "d24721f6b69535da43f4e48949f700c61da44e146db0d291bafe836bd39c8dad",
+    "research/implementation/p1c/evidence/architecture/setsid-Cargo.lock.txt": "8a7a404aa56c4e7c72a7e0ed4e28b11b9a8afcef51e4dc1a8f8df5747bbdeab7",
+    "research/implementation/p1c/evidence/architecture/setsid-Cargo.toml.txt": "8d6f583627b578dbd13d64b6d82df4c97c3500a9fc84b1df10ad63d54685df70",
+    "research/implementation/p1c/evidence/architecture/setsid-main.rs.txt": "cf13d0f69455e4c309783bb71aabff663a3a25131b02f6b2bebb0d621ea48799",
+    "research/implementation/p1c/evidence/architecture/setsid.json": "3f5f860259d3aad04effdc49843c6ee9f910f3690c94031a2a28150a19f90bff",
+    "research/implementation/p1c/evidence/architecture/setsid.stderr.log": "c66962e806132932c18dab1bbe61e6bd8c51ed86739fede724d7a0c166dba863",
+    "research/implementation/p1c/evidence/architecture/setsid.stdout.log": "7b9b029e96819f2488bcef0dde1365a992b1c220e1f59aac676ccc756da7481f",
+    "research/implementation/p1c/evidence/baseline-sourcehashes.json": "ecaf81cd5a4eb2fb81120ba03bb011aa463c2f29b6d1d6523ab5f5da2192c88f",
+    "research/implementation/p1c/evidence/baseline-surface-matrix.md": "97f8dbd04cb9af48486dcafbb7e8ef6f5e11e271fb31d4ed81cc436d865fa16d",
+    "research/implementation/p1c/evidence/candidate-source-freeze.json": "5596d748764108112bb4428cc97c5c66d4f137d1418ab67a08fdaf9b7ef9c5d2",
+    "research/implementation/p1c/evidence/copied-artifact-manifest-83-history.json": "e2215218c313afcce2210565e089a6cbd30d5a5b0569daf0e28b453eb9aa78eb",
+    "research/implementation/p1c/evidence/copied-artifact-manifest.json": "a10834a12b0588dad34d103acfb231697f09aea891fd55a44046b825c5eaf41c",
+    "research/implementation/p1c/evidence/diagnostic/normal-test-compile.json": "9a6370c7bb605ebc2a0359675edf02f84bbf9949458372777df3655dcf80a665",
+    "research/implementation/p1c/evidence/diagnostic/normal-test-compile.stderr.log": "a3ac5856e34b8d2d751702587185af0864a65f5784a2558dd640cad82cb586f1",
+    "research/implementation/p1c/evidence/diagnostic/omitted-marker-mutation.diff": "c135b508a496de99165ea98cd38785cec1360d31bd613eb27fdcb771694f852b",
+    "research/implementation/p1c/evidence/diagnostic/omitted-marker-negative-control.json": "2fa69f9bcbfeab6973031431041157a82ee7e7055ccdacf41809717a0c3df920",
+    "research/implementation/p1c/evidence/diagnostic/omitted-marker.stderr.log": "96b9bb664fd3966c8b3797ec9d5f6e5146f0f7a1f9cb7fc46e609bbbe578358f",
+    "research/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log": "c5c91a6fe2b08c18ca0bbddb423a92c8c28988235b621cdbbd03b1bcce1c2fc2",
+    "research/implementation/p1c/evidence/diagnostic/producer-history.md": "be2e5b611d4a1ffb38ee497a59821541e41c01564d95a41f8612f7baefe38d0f",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/capability-catalog.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/capability-provider.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/commands.txt": "fe50cae618f6c091a8163b275b5b5662a99acb032670302c80a3f56e9b527496",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/after.sha256": "9b37d02e6b0636ea53ffe7e9ca83b8b425b7b38ca7ec540f5e5298a10ab52ae7",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/before.sha256": "769e195711a2e4887242a46d467152fbf1ffe2e69bc2066ced0d7ed6a1d6cce5",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/exact-five-line.patch": "7e394e643356c207a9f777d3bed301e4226921a3fadd6117844729920b948ad4",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/p1b_guard.after.rs": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/p1b_guard.before.rs": "bcf67312bdfef788e0ce9a28c6675df73ddc9fb1b1671caba9858cd967e50a96",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/local-persistent.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/actual-applied-mutation.patch": "53e5144594be40d11ececa785478179f5972d92883e0deea572dc06490ffb7bb",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/persistent_shell.before.rs": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/source-before.sha256": "a484b7d3911f26dde68a2ab57eec07ad32bdf651a6edd5aacf3f9f8808754ac5",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/source-mutant.sha256": "01fea405f750287f27ce616c6652395e3856a0689775eb90d3c6ed62f0953e15",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-spy.exit": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/overlay.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/positive-spy.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log": "495e67555f7b7abd2e067d2cea21e4c2b26175c2181a6b25df32fbb9b172b64b",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log": "d9481e3c6db0a2b0d39827f4930336aa275ff5485cb5908678363c6ec4be30bf",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log": "52c5a084e9d4ccb148edd5615d65c12bf2858203044abef1b134df1bd80deed7",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/negative-spy.stdout.log": "41653fa39c398f74d17ad3362035d1c4aad0d0602930b3e911c5bc320d47c6c2",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log": "10a063e0a50a363239e235144bcb7fa4beadc977c3a58613f421fc7d44db1299",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log": "70ceb37234ee2239eb173840368290fe1310b02f099f9df1ee2e37a0edd9d84a",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log": "5f7f70007fb1297bb2a4b1d1665fe7893a7120903e87554ea62412e26b796fda",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/remote-authority.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-current.txt": "bac33e4a8c734f86fe8cccb0a81e7941dc9ff032048c4f7f85b2612ec4dc7a72",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-mutant.txt": "73f6132f5c7421e9f139c69abbd3a13ecd8c16f674359d0401bc7019cda16cf2",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/sourcehashes-restored.txt": "1b887762b54c40c0aa6d26e75170bdd3787dfb8b637ff83ba2bdd61247184bd4",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/toolchain.txt": "a3c72ea22c2f81b4fea9e08a3dcd11a09249a1104ce5e127e8cdc02748466a09",
+    "research/implementation/p1c/evidence/final-candidate-files.json": "36e348ac5b5551626fc7fb22ffd21a7bf0476b789ea7e9f05497f10cf526f852",
+    "research/implementation/p1c/evidence/final-root-checks/checks.json": "c63b6a14d1765b9a7d42abbd1a03ccbb1c83f08f68d58328cc2bf65a22c715b1",
+    "research/implementation/p1c/evidence/final-root-checks/diff.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/final-root-checks/diff.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/final-root-checks/fmt.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/final-root-checks/fmt.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/format-restore/final-cargo-fmt-all-check.log": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+    "research/implementation/p1c/evidence/format-restore/final-current-before.sha256": "86eca1d4d3f14bd1fd4a422471fdd3f7a15fd355666ebbb4c7e07e45658016bd",
+    "research/implementation/p1c/evidence/format-restore/final-git-diff-check.log": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+    "research/implementation/p1c/evidence/format-restore/final-owned-bytes-unchanged.txt": "6aa4095de3ddf7cc08e6dd2b673b195abcb01b15de2fa2d2f14e0ca4c059a5b5",
+    "research/implementation/p1c/evidence/format-restore/final-recursive-rustfmt-leftover.diff": "13a971251c9e0da74871b3f4291427aa7ca3c25c1b67fde5b1b433be2c4946ca",
+    "research/implementation/p1c/evidence/format-restore/final-restoration-note.txt": "101487f05cde38dcab715e81fe726fabb3f211258489c0690c2d9eceea747c84",
+    "research/implementation/p1c/evidence/format-restore/final-restored-after.sha256": "5017776bdd1f344c49441e7896d6a6e707fc65ad3a63be7450b5660ecc21ff10",
+    "research/implementation/p1c/evidence/guard/fst4-five-line.diff": "7e394e643356c207a9f777d3bed301e4226921a3fadd6117844729920b948ad4",
+    "research/implementation/p1c/evidence/guard/independent-parser-final.json": "acfedff63c6e4b4a8b69cb3e72cbe522a2208cd459d481b075bfb5934a401c9b",
+    "research/implementation/p1c/evidence/guard/independent-parser-final.stderr.log": "69ecc94427c61c1208884cc788569245e33f61abe8bedea104c3b8197a54bcc7",
+    "research/implementation/p1c/evidence/guard/independent-parser-final.stdout.log": "dde9d9e94127858ae77284c2f50e08942ae173daab18de44acabcd73b86cc852",
+    "research/implementation/p1c/evidence/guard/independent-parser-result.json": "d4ce9c7be2efea00f9c66c88cc13e0175c7cee494f26c52bbec5f87e9d632aa5",
+    "research/implementation/p1c/evidence/guard/independent-parser.stderr.log": "266827c05d050b2f27fe2be30315f889359d7215337d1d5c96d0f5b7b9b6a6f6",
+    "research/implementation/p1c/evidence/guard/independent-parser.stdout.log": "b420c69838e184a9c1b89c8406da1c28854767148787f925bf3cbd6931139f58",
+    "research/implementation/p1c/evidence/guard/launcher-mutation.diff": "e4e824711093c748160ddcb23af95d01e47840136405603771c7370d236404ed",
+    "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-mutated-cargo-check.log": "f89ce7ca33ff91d0a638e33170c62736d4747b083e6d3e4ed9fcea45a5f2b38a",
+    "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-mutated-production-gate.log": "82be341729b92707b1dd81bd99aa43ad4d1bdc34c76e15c0f2c80d775658ee83",
+    "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-platform-toolchain.txt": "a8095649225bb267f7372c5b678b458a3158ead1e24c6c46644b2feb1d35ac0b",
+    "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-restored-production-gate.log": "87b005addd3b3919c4c917d2a88251d9746da713b038dd3b99fda2dbeb25f3e2",
+    "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-source-restoration.txt": "893e9ed93d92d8a7827b65ff895a4d1e2c8c843f59d261a9b329a00ff0845798",
+    "research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-source-sha256.json": "716401f8f2de1149b99955768058b793ba9b740d48cfb8353a2e2d5745c458fb",
+    "research/implementation/p1c/evidence/guard/recovery/binding-verification.json": "e45119ee7303e375071319fe060538208f15e7812ba02b9d46a8d827ede7467b",
+    "research/implementation/p1c/evidence/guard/recovery/complete-guard.json": "1c54cd8778d9958948e6a4f069b7ccfa3a79a26f888583b070e32cbc9a6a5c6d",
+    "research/implementation/p1c/evidence/guard/recovery/default.json": "6a0edab5c22a85b5d8ebd70a9f6233b7d0bf1a196214886050032bd1b81661aa",
+    "research/implementation/p1c/evidence/guard/recovery/default.stderr.log": "5e00a6cb5fff032df3523ca470cf96a69d42422d558d613fa3bdec72ff3cdc67",
+    "research/implementation/p1c/evidence/guard/recovery/default.stdout.log": "4ed3170ebec6f222e53a6eb473c0fa153d577996049dadf45c88c0175b18f186",
+    "research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.json": "9140de26af3d637f2bf82565edcf3e210ec9da833d198e30a393fde02ecf64b4",
+    "research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stderr.log": "9a5bf9b0485b6cbb74fa37fa5cacfd55a308ac777d5b8332b9c349b77bcc8e7a",
+    "research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log": "f770fb6226fc9dbebf28b02e516c789c06eefa255b7f7455f5e4231996d0dc03",
+    "research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.json": "c01cc775c5d56276cdd83d345f133614fba9d1f45a2c189f06ed276a922826e2",
+    "research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stderr.log": "7c29f8260c114b7d6c8b47b9e2635caeca4c31c08b8b60216ab346368a2aa81a",
+    "research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log": "bec4ad300dab6708fae837cb3478da200af600ae054f248c559d739c47e02193",
+    "research/implementation/p1c/evidence/guard/recovery/read-depth-and-standards.json": "30278eb2f49a60a3b771c32b3a659d6ee1e5cd282b1a5064f9ceccbbc286b6ff",
+    "research/implementation/p1c/evidence/guard/recovery/source-approval.json": "d15c0bcc5e8e52156421c0785ff7395c9ddcf0ba76fe33c493391d26707a9623",
+    "research/implementation/p1c/evidence/history-final.md": "3d574364beea959f213dfa65ce8f97d025f312bcca48fef76afa6dfa83ffceed",
+    "research/implementation/p1c/evidence/history.md": "03e26af9ae2bda5575b7e8c9eb08abdf638c33f6d418be6ded4220861f4bb741",
+    "research/implementation/p1c/evidence/history/before-external-availability-correction.json": "abceb868fb4fc2772c8fcda5167dd6afef965c7699897c61235e260ecfca7353",
+    "research/implementation/p1c/evidence/history/before-final-acceptance.md": "b822ae36a7caeb60eeafc0ee2476cd994077480f9354635784e17451a630cf56",
+    "research/implementation/p1c/evidence/history/before-final-durable-surface-inventory.json": "e9d998ff0a6cbecb14bb76f845f771401254648fe00f433df602e46980b36928",
+    "research/implementation/p1c/evidence/history/native-contract-old-binding.json": "33d0d33b8d3abc25e1210306c2ce5f253da91bb5ffec6700c821a8bdd19a6dff",
+    "research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stderr.log": "f8d0c58b5fe35830ac9eaca231be989ffd156b6d9ebfff364036695de78d183b",
+    "research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log": "6fa8c64c702755d0d3f21a918782356b9fa4a3b2597054fe3d5c907d77ef21a1",
+    "research/implementation/p1c/evidence/history/rescued-guard-red/provenance.json": "1f4f9f18ec57226c3185287fb6079a953cb4bf1679aaf6faf3a1f979ee30a417",
+    "research/implementation/p1c/evidence/native/C2-NATIVE-FINAL-SOURCE-20261004.md": "005ee591a15571388db5ceff857e3304eddf6d16d7bde9889428a1e94a45e697",
+    "research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.exit-code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/native/accepted-base-fmt-final-source-20261004.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/native/c2_native_harness.py.txt": "9a69946cbc02edd19b67d1c86c9b4c780a65ff3d47bbe57ea75d7336f85d16e8",
+    "research/implementation/p1c/evidence/native/final-source-native.json": "3d661ac2077dd731504279e8df2b84c04fbe99fc978fd20d5a2466153fcd1dac",
+    "research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.exit-code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.stderr.log": "ea3262d72ce92720d658873154c072a884c4906e90406cc84bdc240b19a66aba",
+    "research/implementation/p1c/evidence/native/old-route-harness-final-source-20261004.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/native/old-route-native-result-final-source-20261004.json": "9b2ac5f0bec8742248889e933d5c6dccf0c484755f3677f52fbe1a8ef376d78d",
+    "research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.exit-code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/native/owned-five-rustfmt-final-source-20261004.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/native/production-build-final-source-20261004.exit-code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "research/implementation/p1c/evidence/native/production-build-final-source-20261004.stderr.log": "401097959a33bed9710cbcfa3b7f3eafabf3e622f2f43409dd1e098e226eaa68",
+    "research/implementation/p1c/evidence/native/production-build-final-source-20261004.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.exit-code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/native/production-fmt-final-source-20261004.stdout.log": "ba60075a12ec5f5452550f2737db40a44d25e2edc2eae326769a1a978e93ccf6",
+    "research/implementation/p1c/evidence/native/production-harness-final-source-20261004.exit-code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "research/implementation/p1c/evidence/native/production-harness-final-source-20261004.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/evidence/native/production-harness-final-source-20261004.stdout.log": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+    "research/implementation/p1c/evidence/native/production-native-result-final-source-20261004.json": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+    "research/implementation/p1c/evidence/recovery-copies.json": "2011795579ba5ea4d5cc1063e0099306b027ad8bdea55ec315df32e985f20d95",
+    "research/implementation/p1c/evidence/recovery-current-source.json": "713cdfa7421f04dcba2619d1bcaa2b09f697f8388d8dae99241934f58a25de29",
+    "research/implementation/p1c/evidence/regression/process-lib.json": "8d544db87413a8189e8658efc784ad037305c42bc7ea921750d5bf2f6b492aef",
+    "research/implementation/p1c/evidence/regression/process-lib.stderr.log": "02598a2b3459346d98bd92b8c9d4814eb151bd29a351db14520bf2a508338cd3",
+    "research/implementation/p1c/evidence/regression/process-lib.stdout.log": "343fdf9984dfc90f5482ee6af39597b4d5b358faa4dbcf1397f81248f9e3e0cf",
+    "research/implementation/p1c/reviews/architecture-decision.md": "c5208acae00cee08816c0601d46771575edb1709ef35aecdd1898dc7bbe3468d",
+    "research/implementation/p1c/reviews/c2-implementation-contract.md": "10f884b250471372ac21f8ae83f074879fd5c57b5d866aad051ee06d33dc3c87",
+    "research/implementation/p1c/reviews/c2-native-evidence-contract-review.md": "dbe89ad7947ffb95627285376d50d1148451867cf82578160c9a412fcb9a0ef4",
+    "research/implementation/p1c/reviews/c2-native-evidence-contract.md": "ab3236ae35d8629445d393f8c7a804e9c02028d866da3cef83a2d87ac713d6eb",
+    "research/implementation/p1c/reviews/c2-overlay-contract-v2.md": "91fd897d365c90a42912e1e1fa38fb6df826bdc847e307063cab4fe38e96d550",
+    "research/implementation/p1c/reviews/c2-retirement-addendum.md": "b2cab6c82166e1ad7574734cd0f2cbeae236c25efd6fcf78c38d82f8e2507d47",
+    "research/implementation/p1c/reviews/c2-windows-mixed-test-disposition.md": "20cc8018a1a2f7c59f9f18244adf3e2077d2776abf4b65888848ede56aa4d23b",
+    "research/implementation/p1c/reviews/security-cleanroom.md": "88226fc356680c862e49f598fb101b942a0c81be2f452405c1bfa8101131568c",
+    "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-CURRENT-SOURCE-CHECK.json": "5aeab8971d393b7180a5c4ca5aa539449b9643c3a4ded6579f7c0cc86832d212",
+    "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-GUARD-EVIDENCE-CHECK.json": "e11ff8535f228f9195b6644ca19f94337fc40f0077cc8bdba348e56c95481e1f",
+    "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-GATE-ACCEPTANCE.json": "4339513057b071cce0bd85af95ea0d14ec5497911e4cff5fa814bd7c9e21e2c5",
+    "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-RECOVERY.json": "15a5e412ee40517023fe21b85b42c58af0178c6e2cd8d7599b7e1ebadd126d4e",
+    "research/implementation/p1c/reviews/security-recovery/C2-SECURITY-SOURCE-RECOVERY.md": "df7b561ea5d04e3be08a71ded3107ecb0e5a5d4a2204469512f6220ca18e11a7",
+    "research/implementation/p1c/reviews/security-recovery/recovery-diff.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/reviews/security-recovery/recovery-diff.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/reviews/security-recovery/recovery-fmt.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/reviews/security-recovery/recovery-fmt.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/implementation/p1c/reviews/standards-cleanroom.md": "9b5565303c863f65fa052e2f57977cc68a76c9ca414321327a6b5ab82dec4ac5"
+  },
+  "metadata_git_blob_sha256": {
+    "research/implementation/p1c/reviews/final-milestone/security.json": "28b68f9757109d3bb57bbc799190470ac6140044aa7d7c914d2ab333e92ef3ac",
+    "research/implementation/p1c/reviews/final-milestone/security.md": "4158ba20ddbd9b17aa241e6e4542673205272b3e4e11b4708a046a20c647bf67",
+    "research/implementation/p1c/reviews/final-milestone/security-whitespace.json": "2ebcb4c863a68b82c35df0ed9d03aa98f3fc6a8f4ef8a00baa452c06cff2aadc",
+    "research/implementation/p1c/reviews/final-milestone/security-whitespace.md": "a86e0d98183751c8140ca6344f1dbbb016f83182190fde3697776f4627b09adb",
+    "research/implementation/p1c/reviews/final-milestone/staged-whitespace-disposition.json": "dbfe399aa19c0776ca4cbaabcc1e97242d876ca2333fc2b5eff646d1ab61dbff",
+    "research/implementation/p1c/reviews/final-milestone/standards.json": "5af37590850142d7a959a0ffbd7f3b3672249583dbaa8a0010cec59c8ed95e00",
+    "research/implementation/p1c/reviews/final-milestone/standards.md": "250e952aead18f5fed5f302d70a8d916eca5ff0be91e4b5d6a2fac41bc5499a1",
+    "research/implementation/p1c/reviews/final-milestone/standards-v2.json": "f4f2c52fb6c2c76b68303787b1c399307954db7e3225394f740a8722f77fb75b",
+    "research/implementation/p1c/reviews/final-milestone/standards-v2.md": "22719c681a334ee98c0ecd4e44d2b4aeb9e866853ddf57fe978dc34907867f89",
+    "research/implementation/p1c/reviews/final-milestone/standards-whitespace.json": "8bc9f3ab2f48f0cdfba52e4ec0ee772f9f672d8186d4d78810437ac83692ccbb",
+    "research/implementation/p1c/reviews/final-milestone/standards-whitespace.md": "86a7aa4c19ce310c7c0981914a0102cac4fb02d73bcb80b25d36d9e9001fd0c1"
+  },
+  "decision": "ACCEPTED_EXACT_SHA_C2_SCOPED_MILESTONE",
+  "full_p1c_decision": "NO",
+  "tests_rerun": false,
+  "reason_tests_reused": "Committed source, parser, pins and actual raw are byte-identical to the independently accepted frozen candidate.",
+  "whitespace_disposition": "Default staged check2 stays NON_PASS for15 exact immutable-data paths/17 warnings; source and other staged files literal-exclusion supplemental check0. No broad exception or original evidence rewrite.",
+  "next_phase_authorized": false,
+  "merge_or_deploy_authorized": false,
+  "repo_mutations_by_reviewer": [],
+  "next_required_step": "Separately inspect the planned additive documentation-only exact-review/Git-delivery commit; current attestation binds only the actual implementation SHA above."
+}
