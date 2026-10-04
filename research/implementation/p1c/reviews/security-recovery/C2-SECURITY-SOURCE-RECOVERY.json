@@ -1,0 +1,81 @@
+{
+  "axis": "SPEC_SECURITY",
+  "reviewer": "fresh independent Sol Max",
+  "repo_mode": "READ_ONLY",
+  "base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "branch": "impl/webcodex-p1c-durable-execution",
+  "source_decision": "ACCEPTED_FOR_EXACT_FROZEN_C2_SOURCE",
+  "blocking_findings_remaining": [],
+  "formal_c2_milestone_decision": "PENDING_NEW_COMPLETE_GUARD_AND_FINAL_CANDIDATE_PACKAGE",
+  "full_p1c_decision": "NO",
+  "current_binding_path": "research/implementation/p1c/evidence/recovery-current-source.json",
+  "current_binding_sha256": "713cdfa7421f04dcba2619d1bcaa2b09f697f8388d8dae99241934f58a25de29",
+  "current_source_bindings_verified": 14,
+  "unchanged_exact_base_bindings_verified": 11,
+  "independent_current_check": "security-recovery-20261004/C2-SECURITY-CURRENT-SOURCE-CHECK.json",
+  "current_guard_sha256": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+  "current_parser_sha256": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+  "accepted_overlay_sha256": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f",
+  "candidate_status_reverse_literal_sha256": "1016b312e7fa10b291b17b1eedc38ae09899b029142f0cb706bf38298c563202",
+  "narrow_guard_fix": {
+    "test": "p1b_platform_handoff_sites_are_exact_and_named",
+    "problem": "Expected method::exec set retained the already signed retired PersistentShellManager::exec_ssh tuple",
+    "verified_resolution": "Exactly five tuple lines deleted; reinstating them reproduces prior reviewed whole-file hash bcf67312... exactly",
+    "remaining_exact_test_assertions_preserved": true,
+    "scanner_or_production_code_change": false,
+    "new_retirement_scope": false
+  },
+  "accounting": {
+    "original_c9_total": 9,
+    "migrated": 0,
+    "deferred_fail_closed": 2,
+    "active_architecture_pending": 7,
+    "unclassified": 0,
+    "whole_dedicated_tests_retired": 11,
+    "mixed_remote_half_retired": 1,
+    "mixed_local_half_retained": 1
+  },
+  "available_evidence_verified": {
+    "repo_copied_manifest_sha256": "e2215218c313afcce2210565e089a6cbd30d5a5b0569daf0e28b453eb9aa78eb",
+    "copied_artifact_hashes_matched": 83,
+    "native_build_and_raw_current_repo_hashes_verified": true,
+    "normal_production_binary_record_sha256": "40b7c376e9fe40c83e4e42b750eabc213eaad183536b6a0315e53145ebb6118e",
+    "normal_build_harness_runner_exit": 0,
+    "production_results": 2,
+    "production_model_markers": 0,
+    "old_route_results": 2,
+    "old_route_model_connect_markers": 1,
+    "old_route_runner_exit": 0,
+    "same_noeffect_assertion_actual_harness_exit": 1,
+    "local_fallback": "SOURCE_DERIVED_ONLY",
+    "windows_linux_real_remote_native": "NOT_RUN"
+  },
+  "evidence_loss_disposition": {
+    "cause": "User-confirmed external work and target disk cleanup",
+    "earlier_external_5983_manifest_and_reviewer_files": "NOT_AVAILABLE",
+    "external_normal_native_binaries_and_accepted_base_source_copy": "NOT_AVAILABLE",
+    "original_83_external_copy_sources": "NOT_AVAILABLE except later newly produced files; no current equality claim",
+    "repo_source_and_83_curated_copies": "PRESENT_AND_HASH_VERIFIED",
+    "previous_native_binary_and_626_origin_inspection": "Prior independent inspection recorded in conversation; fresh review uses preserved repo build/source/raw evidence and discloses originals unavailable",
+    "old_external_files_or_signatures_reconstructed": false,
+    "new_source_opinion": "Fresh current-byte review; does not recreate a missing previous signature"
+  },
+  "fresh_format_check_exit": 0,
+  "fresh_diff_check_exit": 0,
+  "guard_count_honesty": {
+    "default_total": 20,
+    "expected_active_passes_after_fix": 18,
+    "accepted_base_existing_ignored": 2,
+    "ignored_lanes": ["held-pipe explicit timing lane", "npm pack explicit lane"],
+    "new_full_or_explicit_lane_results": "PENDING; not assumed PASS"
+  },
+  "remaining_gates": [
+    "new_actual_default_guard_and_explicit_ignored_lane_raw_exit_review",
+    "final_candidate_docs_and_complete_deliverable_binding",
+    "fresh_exact_commit_sha_confirmation"
+  ],
+  "architecture_fork_chosen": false,
+  "next_phase_authorized": false,
+  "skills_used": ["code-review", "specialized-domain-audit"],
+  "repo_mutations_by_reviewer": []
+}

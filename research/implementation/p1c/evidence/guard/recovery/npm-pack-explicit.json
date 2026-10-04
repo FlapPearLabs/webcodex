@@ -1,0 +1,24 @@
+{
+  "lane": "npm-pack-explicit",
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "-p",
+    "webcodex-process",
+    "--test",
+    "p1b_guard",
+    "--",
+    "--ignored",
+    "--exact",
+    "p1b_npm_pack_and_asset_compare_reject_all_regular_bin_overlay_files",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "cwd": "/Users/songshiyao/Desktop/Projects/webcodex",
+  "exit_code": 0,
+  "expected_counts": "1 passed; 0 failed; 0 ignored",
+  "actual_counts_match": true,
+  "elapsed_seconds": 1.3880477499915287
+}

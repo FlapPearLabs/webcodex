@@ -1,0 +1,43 @@
+
+running 38 tests
+test execution_broker::compiler::tests::empty_plan_is_refused ... ok
+test execution_broker::compiler::tests::relative_root_is_refused ... ok
+test execution_broker::compiler::tests::arbitrary_root_cannot_become_a_toolchain_grant ... ok
+test execution_broker::compiler::tests::resolver_derives_a_bounded_prefix_from_a_real_executable ... ok
+test execution_broker::compiler::tests::unresolvable_root_is_refused ... ok
+test execution_broker::compiler::tests::network_allow_is_refused ... ok
+test execution_broker::compiler::tests::toolchain_root_inside_home_is_refused ... ok
+test execution_broker::compiler::tests::network_deny_is_explicit ... ok
+test execution_broker::compiler::tests::profile_is_deny_default_with_codex_base ... ok
+test execution_broker::compiler::tests::writable_root_is_also_readable ... ok
+test execution_broker::fidelity_tests::broker_owns_command_construction ... ok
+test execution_broker::compiler::tests::roots_travel_as_argv_never_as_profile_text ... ok
+test execution_broker::compiler::tests::trusted_toolchain_root_reaches_the_profile_as_argv_only ... ok
+test execution_broker::fidelity_tests::control_plane_is_never_consumed ... ok
+test execution_broker::fidelity_tests::network_allow_plan_is_refused_because_no_proxy_exists ... ok
+test execution_broker::fidelity_tests::permissive_helper_still_uses_the_real_launcher ... ok
+test execution_broker::fidelity_tests::production_api_has_no_unrestricted_execution_escape_hatch ... ok
+test execution_broker::fidelity_tests::refused_plan_never_reaches_spawn ... ok
+test execution_broker::fidelity_tests::roots_are_passed_as_argv_definitions_not_profile_text ... ok
+test execution_broker::fidelity_tests::sandbox_plan_has_no_unconfined_variant ... ok
+test execution_broker::fidelity_tests::two_plans_are_independent_at_profile_level ... ok
+test execution_broker::workspace_authority::tests::a_file_is_not_a_workspace ... ok
+test execution_broker::workspace_authority::tests::empty_trusted_roots_fail_closed ... ok
+test execution_broker::workspace_authority::tests::narrowest_covering_prefers_the_project_over_the_home_root ... ok
+test execution_broker::workspace_authority::tests::no_trusted_context_fails_closed ... ok
+test execution_broker::workspace_authority::tests::plan_grants_the_workspace_and_nothing_else ... ok
+test execution_broker::workspace_authority::tests::relative_trusted_root_is_refused ... ok
+test execution_broker::workspace_authority::tests::toolchain_grant_never_covers_the_workspace_or_the_filesystem_root ... ok
+test execution_broker::workspace_authority::tests::unresolvable_trusted_root_is_refused ... ok
+test execution_broker::fidelity_tests::f3_stdin_pipe_preserved ... ok
+test execution_broker::fidelity_tests::f1_stdout_pipe_preserved ... ok
+test execution_broker::fidelity_tests::f2_stderr_pipe_preserved ... ok
+test execution_broker::fidelity_tests::f4_cwd_preserved ... ok
+test execution_broker::fidelity_tests::f6_runner_secret_env_not_inherited_by_default ... ok
+test execution_broker::fidelity_tests::f6b_inherit_is_explicit_opt_in ... ok
+test execution_broker::fidelity_tests::f7_exit_status_preserved ... ok
+test execution_broker::fidelity_tests::f5_explicit_env_propagated ... ok
+test execution_broker::fidelity_tests::f8_process_lifecycle_unchanged ... ok
+
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

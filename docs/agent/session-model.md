@@ -257,7 +257,7 @@ Inheritance is intentionally closed and per field:
 | `run_script` | inherited when `cwd` is omitted | not applicable | unsupported; fails before script start |
 | `run_shell` | inherited when `cwd` is omitted | inherited when `shell` is omitted | routes this call through the named SSH resource |
 | `run_job` | inherited when `cwd` is omitted | inherited when `shell` is omitted | routes this Job through the named SSH resource |
-| `open_session_shell` | inherited when `cwd` is omitted | inherited when `shell` is omitted | opens the persistent shell through the named SSH resource |
+| `open_session_shell` | inherited when `cwd` is omitted | inherited when `shell` is omitted | rejects named-resource remote opens while the P1C remote authority backend is unavailable |
 
 Structured Cargo/Go tools (`cargo_fmt`, `cargo_check`, `cargo_test`, `go_test`)
 do not inherit `default_cwd` or `default_shell`; a named `resource` is also
@@ -266,9 +266,8 @@ than silently falling back to the Runner-host project. File, Git, LSP, and
 checkpoint tools do not inherit any execution default.
 
 `run_shell` and `run_job` remain independent-process tools. When an SSH
-resource is selected, `run_shell`, `run_job`, and a newly opened
-`open_session_shell` execute through that remote resource. Remote cwd
-precedence for one-shot SSH commands is:
+resource is selected, those one-shot tools execute through that remote resource.
+Remote cwd precedence for one-shot SSH commands is:
 
 ```text
 per-call cwd
@@ -352,29 +351,27 @@ Opening creates one real long-lived Runner-owned shell process, at most one
 active shell per Workflow Session: `sh`/`bash` on Unix, or the configured
 PowerShell program/profile on Windows. For an `agent:<client>:<project>` the Runner owns
 and controls the shell. Without `execution_context.resource`, it runs against
-the registered project host. With a named resource, the Runner opens a remote
-persistent shell through that SSH resource; this requires `persistent_shell` +
-`ssh_persistent_shell`, not the separate one-shot/background `ssh_shell`
-capability, and never silently falls back to the registered Project host. Unix may reuse its OpenSSH mux;
-Windows owns one direct long-lived `ssh.exe` channel while the remote shell remains
-`sh`/`bash`. No PTY/ConPTY or terminal-control protocol is implied. Registered
-Project execution is Runner-owned; the Server has no Project-local process or
-persistent-shell fallback. `read_only` Sessions cannot open or execute a persistent
-shell. The pre-0.4 `inspect` Session mode is retired.
+the registered project host. A named-resource remote persistent-shell `open` or
+`exec` is rejected with `remote_durable_authority_unavailable` because the remote
+durable-authority backend is unavailable; the Runner does not fall back to the
+registered Project host. The separate one-shot/background `ssh_shell` capability
+is unchanged. Remote persistent execution remains deferred until its P1C authority
+contract and per-job confinement are implemented. No PTY/ConPTY or
+terminal-control protocol is implied. Registered Project execution is Runner-owned;
+the Server has no Project-local process or persistent-shell fallback. `read_only`
+Sessions cannot open or execute a persistent shell. The pre-0.4 `inspect` Session
+mode is retired.
 
 Runner-project open resolution is explicit `cwd`/`shell`, then the exact Session's
 `default_cwd`/`default_shell`, then the project/Runner defaults. The explicit
 `sh`/`bash` override is Unix-only; Windows callers omit it and the Runner uses
 the configured PowerShell program/profile, failing closed for incompatible
-configuration. For an SSH persistent shell, cwd precedence is explicit open
-`cwd`, Session `default_cwd`,
-the named resource's default cwd, then the remote login default; the selected
-Session `default_shell` is also inherited when `shell` is omitted. Profile
-environment and initialization run once at open. Later commands retain the
-same process's cwd, exports, unset state, umask, functions, and ordinary shell
-variables. The shell record retains the execution location selected at open, so
-updating Session execution defaults never redirects, moves, restarts, or
-changes an already-open shell; close and reopen it to apply new defaults.
+configuration. Profile environment and initialization run once at open. Later
+commands retain the same process's cwd, exports, unset state, umask, functions,
+and ordinary shell variables. The shell record retains the execution location
+selected at open, so updating Session execution defaults never redirects, moves,
+restarts, or changes an already-open shell; close and reopen it to apply new
+defaults.
 `run_shell` and `run_job` never reuse this process.
 
 The random `shell_id` is bound to the exact Session, runtime project, executor,

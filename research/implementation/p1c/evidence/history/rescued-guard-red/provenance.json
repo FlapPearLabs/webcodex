@@ -1,0 +1,85 @@
+{
+  "kind": "recovered from retained exact tool-read output; original work artifact paths currently missing",
+  "original_cargo_command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "-p",
+    "webcodex-process",
+    "--test",
+    "p1b_guard",
+    "--",
+    "--nocapture"
+  ],
+  "original_cargo_cwd": "/Users/songshiyao/Desktop/Projects/webcodex",
+  "original_orchestration_cwd": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c",
+  "original_result_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/production-guard-final-20261004/result.json",
+  "original_result_file_currently_available": false,
+  "cargo_exit_code_observed": 101,
+  "default_suite_counts": {
+    "passed": 17,
+    "failed": 1,
+    "ignored": 2
+  },
+  "failing_test": "p1b_platform_handoff_sites_are_exact_and_named",
+  "actual_scanner_test": "p1b_all_production_targets_are_discoverable passed; raw250/referenceDelta0/originClosurePASS",
+  "source_before_after_observed_equal": true,
+  "before_after_binding": {
+    "p1b_guard": "bcf67312bdfef788e0ce9a28c6675df73ddc9fb1b1671caba9858cd967e50a96",
+    "parser": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+    "persistent": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+    "ssh": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+    "remote_tests": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+    "overlay": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f"
+  },
+  "reviewed_source_freeze_sha256": "5983f9a8f475e2b6b3fd12ee63291249eba471e07f86a9c437bddefb8fc2dc65",
+  "normal_rustc": "1.94.0 Homebrew aarch64-apple-darwin",
+  "bootstrap_injected": false,
+  "reviewer_repo_mutations": [],
+  "tool_read_results": {
+    "stdout": {
+      "status": "fulfilled",
+      "value": {
+        "chunk_id": "ce41d4",
+        "wall_time_seconds": 0.000004125,
+        "exit_code": 0,
+        "original_token_count": 467,
+        "output": "\nrunning 20 tests\ntest p1b_metadata_deadline_returns_when_grandchild_holds_stdout_and_stderr ... ignored, timing-sensitive held-pipe deadline negative control; run explicitly with --ignored --exact --test-threads=1\ntest p1b_npm_pack_and_asset_compare_reject_all_regular_bin_overlay_files ... ignored, requires the external npm publication tool; run the explicit npm pack lane\ntest p1b_pipe_holder_child_fixture ... ok\ntest p1b_pipe_holder_grandchild_fixture ... ok\ntest p1b_exact_inventory_compare_rejects_count_and_symbol_drift ... ok\ntest p1b_boundary_reference_compare_rejects_new_and_renamed_callers ... ok\ntest p1b_parser_follows_real_imports_and_production_cfg ... ok\ntest p1b_trusted_profile_prepare_dispatch_keeps_exact_branch_fingerprints ... ok\ntest p1b_configured_node_probe_keeps_fixed_version_payload ... ok\ntest p1b_non_rust_release_asset_closure_matches_fingerprints ... ok\ntest p1c_c2_overlay::p1c_c2_candidate_overlay_is_sparse_and_fully_bound_to_signed_rows ... ok\ntest p1c_c2_overlay::p1c_c2_accepted_status_requires_all_frozen_source_hashes ... ok\ntest p1b_compiled_native_api_aliases_are_detected_and_macro_aliases_fail_closed ... ok\ntest p1b_required_boundary_bodies_and_direct_callers_are_discoverable ... ok\ntest p1c_c2_overlay::p1c_c2_overlay_rejects_unknown_missing_duplicate_and_unbound_inputs ... ok\ntest p1b_non_rust_overlay_rejects_new_production_asset_but_ignores_test_only_file ... ok\ntest p1b_platform_handoff_sites_are_exact_and_named ... FAILED\ntest p1b_profile_prepare_symbols_have_fixed_production_origins ... ok\ntest p1b_compiled_existing_helper_reuse_is_red_by_production_origin_json_gate ... ok\ntest p1b_all_production_targets_are_discoverable ... ok\n\nfailures:\n\nfailures:\n    p1b_platform_handoff_sites_are_exact_and_named\n\ntest result: FAILED. 17 passed; 1 failed; 2 ignored; 0 measured; 0 filtered out; finished in 8.89s\n\n"
+      }
+    },
+    "stderr": {
+      "status": "fulfilled",
+      "value": {
+        "chunk_id": "14d113",
+        "wall_time_seconds": 0.000011125,
+        "exit_code": 0,
+        "original_token_count": 1107,
+        "output": "   Compiling libc v0.2.186\n   Compiling version_check v0.9.5\n   Compiling cfg-if v1.0.4\n   Compiling rustix v1.1.4\n   Compiling getrandom v0.4.2\n   Compiling typenum v1.20.0\n   Compiling bitflags v2.13.1\n   Compiling proc-macro2 v1.0.106\n   Compiling once_cell v1.21.4\n   Compiling fastrand v2.4.1\n   Compiling zmij v1.0.21\n   Compiling quote v1.0.45\n   Compiling serde_core v1.0.228\n   Compiling unicode-ident v1.0.24\n   Compiling generic-array v0.14.7\n   Compiling serde_json v1.0.150\n   Compiling itoa v1.0.18\n   Compiling memchr v2.8.1\n   Compiling errno v0.3.14\n   Compiling cpufeatures v0.2.17\n   Compiling tempfile v3.27.0\n   Compiling webcodex-process v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process)\n   Compiling syn v2.0.117\n   Compiling crypto-common v0.1.7\n   Compiling block-buffer v0.10.4\n   Compiling digest v0.10.7\n   Compiling sha2 v0.10.9\n    Finished `test` profile [unoptimized] target(s) in 7.82s\n     Running tests/p1b_guard.rs (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/production-guard-final-20261004/target/debug/deps/p1b_guard-9243a5d16c3ad286)\nEXPECTED_NEW_BOUNDARY_CALLER_RED\tErr(\"boundary reference drift; missing=[]; added=[\\\"crates/webcodex-runner/src/webcodex_runner/shell.rs::newly_added_caller -> native_command\\\"]; changed=[]\")\nEXPECTED_RENAMED_BOUNDARY_CALLER_RED\tErr(\"boundary reference drift; missing=[\\\"crates/webcodex-runner/src/webcodex_runner/shell.rs::existing_caller -> prepare\\\"]; added=[\\\"crates/webcodex-runner/src/webcodex_runner/shell.rs::renamed_caller -> prepare\\\"]; changed=[]\")\nRESTORED_BOUNDARY_REFERENCE_BASELINE_PASS\nNATIVE_ALIAS_DETECTED\t{\"crate::fake_native_launcher::aliased_call\", \"crate::fake_native_launcher::block_alias_call\", \"crate::fake_native_launcher::literal_call\", \"crate::fake_native_launcher::production_only::included\"}\nNATIVE_MACRO_FAIL_CLOSED\t{\"src/lib.rs::crate::fake_native_launcher has unresolved enumerated native API macro tokens requiring exact review: () => { unsafe { Launch () } }\"}\n\nthread 'p1b_platform_handoff_sites_are_exact_and_named' (17537812) panicked at crates/webcodex-process/tests/p1b_guard.rs:1396:5:\nassertion `left == right` failed\n  left: {(\"crates/webcodex-cli/src/webcodex_cli/service.rs\", \"crate::webcodex_cli::service::run_internal_binary\", 1), (\"crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs\", \"crate::webcodex_runner::persistent_shell::PersistentShellManager::exec\", 1), (\"crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs\", \"crate::webcodex_runner::persistent_shell::PersistentShellManager::handle_operation\", 1)}\n right: {(\"crates/webcodex-cli/src/webcodex_cli/service.rs\", \"crate::webcodex_cli::service::run_internal_binary\", 1), (\"crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs\", \"crate::webcodex_runner::persistent_shell::PersistentShellManager::exec\", 1), (\"crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs\", \"crate::webcodex_runner::persistent_shell::PersistentShellManager::exec_ssh\", 1), (\"crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs\", \"crate::webcodex_runner::persistent_shell::PersistentShellManager::handle_operation\", 1)}\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nBASELINE_FIXTURE_RAW_REFERENCE_COMPARE_PASS\nNEW_CALLER_RAW_REFERENCE_GATE_STILL_PASS\nEXPECTED_COMPILED_HELPER_REUSE_RED\tErr(\"production source origin drift; missing=[]; added=[\\\"src/added_caller.rs\\\"]; changed=[(\\\"src/lib.rs\\\", ProductionOriginSource { sha256: \\\"d908d1d0d450f13cb3807fe65315f51dad2a6859c37fe20c7d58a1b2926911c8\\\", targets: {\\\"fixture:lib\\\"} }, ProductionOriginSource { sha256: \\\"7b2e400ebd0b415361e76a8fc359b21dc8bbceb1d50beeb95324fb3efb6f977a\\\", targets: {\\\"fixture:lib\\\"} })]\")\nEXPECTED_SOURCE_CONTENT_CHANGE_RED\tErr(\"production source origin drift; missing=[]; added=[]; changed=[(\\\"src/lib.rs\\\", ProductionOriginSource { sha256: \\\"d908d1d0d450f13cb3807fe65315f51dad2a6859c37fe20c7d58a1b2926911c8\\\", targets: {\\\"fixture:lib\\\"} }, ProductionOriginSource { sha256: \\\"a141ab06c561642a171106eb1995b48296ef631d5c953131606e39f289ec32b4\\\", targets: {\\\"fixture:lib\\\"} })]\")\nRESTORED_JSON_ORIGIN_BASELINE_PASS\nP1C_C2_PRODUCTION_SCANNER_RAW_DELTA=10_REFERENCE_DELTA=0\nP1C_C2_FROZEN_PRODUCTION_ORIGIN_CLOSURE_MATCH=PASS\nP1B_RUST_RAW_SITE_COUNT=250\nerror: test failed, to rerun pass `-p webcodex-process --test p1b_guard`\n"
+      }
+    }
+  },
+  "missing_work_check_results": [
+    {
+      "status": "fulfilled",
+      "value": {
+        "chunk_id": "625536",
+        "wall_time_seconds": 0.000014625,
+        "exit_code": 0,
+        "original_token_count": 24,
+        "output": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5\n"
+      }
+    },
+    {
+      "status": "fulfilled",
+      "value": {
+        "chunk_id": "12604e",
+        "wall_time_seconds": 0.000007042,
+        "exit_code": 0,
+        "original_token_count": 147,
+        "output": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c:\ntotal 0\ndrwxr-xr-x  3 songshiyao  staff  96 Oct  4 22:00 .\ndrwxr-xr-x  3 songshiyao  staff  96 Oct  4 22:00 ..\ndrwxr-xr-x  3 songshiyao  staff  96 Oct  4 22:00 reviews\n\n/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews:\ntotal 24\ndrwxr-xr-x  3 songshiyao  staff    96 Oct  4 22:00 .\ndrwxr-xr-x  3 songshiyao  staff    96 Oct  4 22:00 ..\n-rw-r--r--  1 songshiyao  staff  9428 Oct  4 22:00 C2-STANDARDS-FST4-CODEGRAPH.json\n"
+      }
+    }
+  ],
+  "missing_cause": "UNKNOWN; no cwd migration or cleanup cause is inferred"
+}

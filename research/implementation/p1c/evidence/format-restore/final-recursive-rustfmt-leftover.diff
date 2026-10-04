@@ -1,0 +1,21 @@
+diff --git a/crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs b/crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs
+index e87e7b96..b07362a3 100644
+--- a/crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs
++++ b/crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs
+@@ -17,10 +17,12 @@ fn macos_control_socket_path_fits_with_openssh_temporary_suffix() {
+         std::fs::metadata(&root).unwrap().permissions().mode() & 0o777,
+         0o700
+     );
+-    assert!(!std::fs::symlink_metadata(&root)
+-        .unwrap()
+-        .file_type()
+-        .is_symlink());
++    assert!(
++        !std::fs::symlink_metadata(&root)
++            .unwrap()
++            .file_type()
++            .is_symlink()
++    );
+     assert_eq!(ensure_control_root(&mut state).unwrap(), root);
+     std::fs::remove_dir(root).unwrap();
+ }

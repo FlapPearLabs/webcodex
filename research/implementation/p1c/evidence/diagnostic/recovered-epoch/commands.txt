@@ -1,0 +1,16 @@
+Host OS: macOS (darwin, local)
+Toolchain: rustc 1.94.0; cargo 1.94.0
+All commands used --offline --locked. Diagnostic runner commands additionally used child-local RUSTC_BOOTSTRAP=1 and RUSTFLAGS=-Zcrate-attr=feature(atomic_try_update). Runner scratch target: runner-final/target.
+
+Normal candidate parser:
+cargo test --offline --locked -p webcodex-process --test p1c_c2_overlay
+
+Diagnostic mutant negative control (scratch, expected actual Cargo exit 101):
+cargo test --offline --locked -p webcodex-runner --bin webcodex-runner omitted_resource_marker_cannot_write_to_an_owned_ssh_transport
+
+After restoring scratch persistent_shell.rs to SHA a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff:
+cargo test --offline --locked -p webcodex-runner --bin webcodex-runner omitted_resource_marker_cannot_write_to_an_owned_ssh_transport
+cargo test --offline --locked -p webcodex-runner --bin webcodex-runner remote_authority_tests
+cargo test --offline --locked -p webcodex-runner --bin webcodex-runner runner_preserves_state_and_rechecks_raw_shell_policy
+cargo test --offline --locked -p webcodex-runner --bin webcodex-runner capability_catalog_does_not_enable_configured_off_implementations
+cargo test --offline --locked -p webcodex-runner --bin webcodex-runner configured_capabilities_cannot_grant_provider_support

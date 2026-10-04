@@ -1,0 +1,23 @@
+{
+  "classification": "NATIVE_TEST_COMPILE",
+  "command": "cargo test --offline --locked -p webcodex-runner --bin webcodex-runner remote_authority_tests --no-run",
+  "argv": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "-p",
+    "webcodex-runner",
+    "--bin",
+    "webcodex-runner",
+    "remote_authority_tests",
+    "--no-run"
+  ],
+  "cwd": "/Users/songshiyao/Desktop/Projects/webcodex",
+  "exit_code": 101,
+  "timestamp_utc": "2026-10-04T10:10:19.456867+00:00",
+  "head": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "platform": "Darwin-25.2.0-arm64-arm-64bit-Mach-O",
+  "stdout_log": "normal-test-compile.stdout.log",
+  "stderr_log": "normal-test-compile.stderr.log"
+}

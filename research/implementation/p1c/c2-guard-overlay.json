@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "status": "SOL_REVIEWED_C2_OVERLAY_ACCEPTED",
+  "base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "base_inventory_sha256": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+  "source_replacements": [
+    {
+      "path": "crates/webcodex-runner/src/main.rs",
+      "base_sha256": "46b18c9b772f9773075c210e3aa58f9eb8fd9864bd61896e0771662212f58136",
+      "expected_sha256": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+      "targets": [
+        "webcodex-runner:webcodex-runner"
+      ]
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/mod.rs",
+      "base_sha256": "48acf5fbadaa8c656540b6395b507bad22f830395b9c9843dab07062c55e7c37",
+      "expected_sha256": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+      "targets": [
+        "webcodex-runner:webcodex-runner"
+      ]
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs",
+      "base_sha256": "29d04bf43b3880b6d5975a695024a38b65f7b77c81f3413bfd0fce41af63375f",
+      "expected_sha256": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+      "targets": [
+        "webcodex-runner:webcodex-runner"
+      ]
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/ssh.rs",
+      "base_sha256": "74da296a366a98e27899259da40fd32cb4a06ec2b825bafa36849230df7a8053",
+      "expected_sha256": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+      "targets": [
+        "webcodex-runner:webcodex-runner"
+      ]
+    },
+    {
+      "path": "crates/webcodex-runner/src/webcodex_runner/transport.rs",
+      "base_sha256": "81227a8860a900d53e9a8cd7651e516d82979f5b4abb35beb83a163d8f284528",
+      "expected_sha256": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+      "targets": [
+        "webcodex-runner:webcodex-runner"
+      ]
+    }
+  ],
+  "removed_origin": {
+    "path": "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs",
+    "sha256": "29a06f8a347cd25e181d9a6a4218b685a01b6c18cde1993fc2c180c3117804b3",
+    "targets": [
+      "webcodex-runner:webcodex-runner"
+    ]
+  },
+  "raw_removals": [
+    {
+      "section": "raw_sites",
+      "key": {
+        "file": "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs",
+        "symbol": "crate::webcodex_runner::persistent_shell::PersistentShellManager::exec_ssh",
+        "primitive": "method::exec",
+        "count": 1,
+        "targets": [
+          "webcodex-runner:webcodex-runner"
+        ]
+      },
+      "base_row_sha256": "741facf8ddd102eaec3973d69e1a466e69c8d374cbcf7368f80bb7f6ecc67384"
+    },
+    {
+      "section": "raw_sites",
+      "key": {
+        "file": "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs",
+        "symbol": "crate::webcodex_runner::persistent_shell::PersistentShellManager::exec_ssh",
+        "primitive": "method::status",
+        "count": 1,
+        "targets": [
+          "webcodex-runner:webcodex-runner"
+        ]
+      },
+      "base_row_sha256": "c5cec70238ea3eaa479d7f8c864b455c678b8fa3aa10f38a1c79daced48a181b"
+    },
+    {
+      "section": "raw_sites",
+      "key": {
+        "file": "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs",
+        "symbol": "crate::webcodex_runner::remote_shell::RemoteShellTransport::spawn",
+        "primitive": "ManagedChild::spawn",
+        "count": 1,
+        "targets": [
+          "webcodex-runner:webcodex-runner"
+        ]
+      },
+      "base_row_sha256": "84997c4f43be7f54914ca532868d02141f3d6159f202f1d9f3aedeef04b52176"
+    },
+    {
+      "section": "raw_sites",
+      "key": {
+        "file": "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs",
+        "symbol": "crate::webcodex_runner::remote_shell::RemoteShellTransport::spawn",
+        "primitive": "method::spawn",
+        "count": 1,
+        "targets": [
+          "webcodex-runner:webcodex-runner"
+        ]
+      },
+      "base_row_sha256": "29dfa0854b35f14af2aba4208dbdb1521f2215d254841c3994c72e1e96f9f24f"
+    },
+    {
+      "section": "raw_sites",
+      "key": {
+        "file": "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs",
+        "symbol": "crate::webcodex_runner::remote_shell::spawn_stderr_reader",
+        "primitive": "method::spawn",
+        "count": 1,
+        "targets": [
+          "webcodex-runner:webcodex-runner"
+        ]
+      },
+      "base_row_sha256": "21c4a352337774e3591c74c228eeab401282eb336898232131661ea2fecd2681"
+    },
+    {
+      "section": "raw_sites",
+      "key": {
+        "file": "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs",
+        "symbol": "crate::webcodex_runner::remote_shell::spawn_stdout_reader",
+        "primitive": "method::spawn",
+        "count": 1,
+        "targets": [
+          "webcodex-runner:webcodex-runner"
+        ]
+      },
+      "base_row_sha256": "59c0136c80b1b88ced40bd222cc734c52ae53f0a5c79ec93be30e8f2fd311ad0"
+    },
+    {
+      "section": "raw_sites",
+      "key": {
+        "file": "crates/webcodex-runner/src/webcodex_runner/ssh.rs",
+        "symbol": "crate::webcodex_runner::ssh::SshConnectionPool::persistent_shell_available",
+        "primitive": "Command::new",
+        "count": 1,
+        "targets": [
+          "webcodex-runner:webcodex-runner"
+        ]
+      },
+      "base_row_sha256": "c2e151b1ddeba80f8c5b4d727c66b8a8b85275eb513f500660d9df05e8c66648"
+    },
+    {
+      "section": "raw_sites",
+      "key": {
+        "file": "crates/webcodex-runner/src/webcodex_runner/ssh.rs",
+        "symbol": "crate::webcodex_runner::ssh::SshConnectionPool::persistent_shell_available",
+        "primitive": "method::status",
+        "count": 1,
+        "targets": [
+          "webcodex-runner:webcodex-runner"
+        ]
+      },
+      "base_row_sha256": "abf85c22a2bffc19641b3c88ed74eee132830fef8a359e72b730acef02e94fde"
+    },
+    {
+      "section": "raw_sites",
+      "key": {
+        "file": "crates/webcodex-runner/src/webcodex_runner/ssh.rs",
+        "symbol": "crate::webcodex_runner::ssh::SshConnectionPool::prepare_persistent_shell_command",
+        "primitive": "Command::new",
+        "count": 1,
+        "targets": [
+          "webcodex-runner:webcodex-runner"
+        ]
+      },
+      "base_row_sha256": "424a0cc775918c60a6367e7d2422233d8cc595e485fb8a29c3167895bb705d6c"
+    },
+    {
+      "section": "raw_sites",
+      "key": {
+        "file": "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs",
+        "symbol": "crate::webcodex_runner::persistent_shell::summary_error_result_from_status",
+        "primitive": "method::status",
+        "count": 1,
+        "targets": [
+          "webcodex-runner:webcodex-runner"
+        ]
+      },
+      "base_row_sha256": "a1ef23d5e4f52f7c18c4aa6de992f80b8618e7af8e987289b6050ae11ffd7242"
+    }
+  ],
+  "reference_removals": []
+}

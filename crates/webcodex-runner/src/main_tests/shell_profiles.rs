@@ -227,10 +227,7 @@ fn prepared_profile_run_shell_and_run_job_see_same_env() {
     let mut cfg = test_config(project_registry_dir.clone());
     cfg.shell = shell.clone();
     let hot = runtime_config(&cfg);
-    let persistent_shells = webcodex_runner::PersistentShellManager::new(
-        &cfg.shell,
-        webcodex_runner::SshConnectionPool::default(),
-    );
+    let persistent_shells = webcodex_runner::PersistentShellManager::new(&cfg.shell);
     dispatch_request(
         &sink,
         &hot.snapshot(),

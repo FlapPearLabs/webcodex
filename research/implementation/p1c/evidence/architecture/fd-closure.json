@@ -1,0 +1,21 @@
+{
+  "command": [
+    "/bin/bash",
+    "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/fd-closure-probe.sh"
+  ],
+  "platform": "Darwin-25.2.0-arm64-arm-64bit-Mach-O",
+  "execution_context": "native macOS host through escalated exec_command; same fixed synthetic script; temporary control fixture only; bash EXIT trap cleanup; no repository edits or real secret reads",
+  "exit_code": 0,
+  "exit_source": "subprocess.run.returncode",
+  "seconds": 0.031,
+  "source_sha256_before": "735ab7cdb1db78de3da47e447d9f2cc916ddc18397fcb41f7fecd4f7f7d559cb",
+  "source_sha256_after": "735ab7cdb1db78de3da47e447d9f2cc916ddc18397fcb41f7fecd4f7f7d559cb",
+  "source_unchanged": true,
+  "stdout_file": "independent-native-fd-closure.stdout.log",
+  "stdout_sha256": "d25f2d79d7a432641ea9370f68946db388292605cbfce51b0aca834505b009df",
+  "stderr_file": "independent-native-fd-closure.stderr.log",
+  "stderr_sha256": "e88181e52e89eb4b6eb728a195730b4e5765b36fba3a0d8624c17b8ab8d9a8de",
+  "stdout_text": "probe_descriptor_12probe_descriptor_10unrelated_descendant_reached_control",
+  "observed_unrelated_descendant_marker": true,
+  "meaning": "This proves descriptor closing around current-shell eval does not prove capability isolation: bash saves writer to descriptor 10 and payload can duplicate it to inheritable 99. Fixture exit zero records completion, not FD isolation PASS."
+}

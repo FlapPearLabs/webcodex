@@ -1,0 +1,64 @@
+{
+  "label": "production",
+  "binary": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/target-final-source-20261004/debug/webcodex-runner",
+  "binary_sha256": "40b7c376e9fe40c83e4e42b750eabc213eaad183536b6a0315e53145ebb6118e",
+  "argv": [
+    "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/target-final-source-20261004/debug/webcodex-runner",
+    "--config",
+    "/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/webcodex-c2-native-9kw6o8c2/runner.toml",
+    "--stop-on-stdin-eof"
+  ],
+  "returncode": 0,
+  "timed_out": false,
+  "poll_count": 6,
+  "registration_capabilities": {
+    "ssh_persistent_shell": false,
+    "persistent_shell": true,
+    "ssh_shell": true
+  },
+  "result_count": 2,
+  "results": [
+    {
+      "request_id": "c2-open",
+      "error_code": "remote_durable_authority_unavailable",
+      "error": "remote durable authority backend unavailable",
+      "command_started": false,
+      "command_completed": false,
+      "shell_state": "unknown",
+      "execution_state": "rejected"
+    },
+    {
+      "request_id": "c2-exec",
+      "error_code": "remote_durable_authority_unavailable",
+      "error": "remote durable authority backend unavailable",
+      "command_started": false,
+      "command_completed": false,
+      "shell_state": "unknown",
+      "execution_state": "rejected"
+    }
+  ],
+  "ssh_markers": [
+    {
+      "kind": "fixed_probe",
+      "argv": [
+        "-V"
+      ]
+    }
+  ],
+  "model_ssh_marker_count": 0,
+  "no_effect_assertion": true,
+  "http_paths": [
+    "/api/shell/agent/register",
+    "/api/shell/agent/poll",
+    "/api/shell/agent/poll",
+    "/api/shell/agent/poll",
+    "/api/shell/agent/persistent_shell_result",
+    "/api/shell/agent/poll",
+    "/api/shell/agent/poll",
+    "/api/shell/agent/persistent_shell_result",
+    "/api/shell/agent/poll"
+  ],
+  "stdout": "",
+  "stderr": "webcodex-runner registered client_id=c2-native-evidence server=http://127.0.0.1:56539 preferred_transport=polling actual_transport=polling projects=1\nwebcodex-runner shutdown signal received\nwebcodex-runner shutdown complete elapsed_ms=32 timed_out_phases=none failed_phases=none\n",
+  "capability_assertion": true
+}

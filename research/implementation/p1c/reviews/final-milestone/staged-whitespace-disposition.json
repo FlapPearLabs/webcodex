@@ -1,0 +1,214 @@
+{
+  "scope": "C2 final staged source/docs and immutable original evidence",
+  "full_default_check": {
+    "command": [
+      "git",
+      "diff",
+      "--cached",
+      "--check"
+    ],
+    "exit_code": 2,
+    "result": "FAIL_RAW_ARTIFACT_WHITESPACE_ONLY",
+    "warning_count": 17,
+    "unique_paths": 15,
+    "stdout": "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch:9: trailing whitespace.\n+ \nresearch/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch:11: trailing whitespace.\n+ \nresearch/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch:30: trailing whitespace.\n+ \nresearch/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log:20: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log:150: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log:150: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log:150: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log:37: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log:150: new blank line at EOF.\nresearch/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log:154: new blank line at EOF.\nresearch/implementation/p1c/evidence/guard/independent-parser-final.stdout.log:9: new blank line at EOF.\nresearch/implementation/p1c/evidence/guard/independent-parser.stdout.log:9: new blank line at EOF.\nresearch/implementation/p1c/evidence/guard/recovery/default.stdout.log:25: new blank line at EOF.\nresearch/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log:6: new blank line at EOF.\nresearch/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log:6: new blank line at EOF.\nresearch/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log:30: new blank line at EOF.\nresearch/implementation/p1c/evidence/regression/process-lib.stdout.log:43: new blank line at EOF.\n",
+    "stderr": ""
+  },
+  "source_and_all_other_files_check": {
+    "command": [
+      "git",
+      "diff",
+      "--cached",
+      "--check",
+      "--",
+      ".",
+      ":(exclude,literal)research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/independent-parser-final.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/independent-parser.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/default.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/regression/process-lib.stdout.log"
+    ],
+    "exit_code": 0,
+    "result": "PASS",
+    "stdout": "",
+    "stderr": ""
+  },
+  "exact_frozen_data_exclusions": [
+    {
+      "path": "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+      "sha256": "d24721f6b69535da43f4e48949f700c61da44e146db0d291bafe836bd39c8dad",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log",
+      "sha256": "c5c91a6fe2b08c18ca0bbddb423a92c8c28988235b621cdbbd03b1bcce1c2fc2",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log",
+      "sha256": "495e67555f7b7abd2e067d2cea21e4c2b26175c2181a6b25df32fbb9b172b64b",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log",
+      "sha256": "d9481e3c6db0a2b0d39827f4930336aa275ff5485cb5908678363c6ec4be30bf",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log",
+      "sha256": "52c5a084e9d4ccb148edd5615d65c12bf2858203044abef1b134df1bd80deed7",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log",
+      "sha256": "10a063e0a50a363239e235144bcb7fa4beadc977c3a58613f421fc7d44db1299",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log",
+      "sha256": "70ceb37234ee2239eb173840368290fe1310b02f099f9df1ee2e37a0edd9d84a",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log",
+      "sha256": "5f7f70007fb1297bb2a4b1d1665fe7893a7120903e87554ea62412e26b796fda",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/independent-parser-final.stdout.log",
+      "sha256": "dde9d9e94127858ae77284c2f50e08942ae173daab18de44acabcd73b86cc852",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/independent-parser.stdout.log",
+      "sha256": "b420c69838e184a9c1b89c8406da1c28854767148787f925bf3cbd6931139f58",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/default.stdout.log",
+      "sha256": "4ed3170ebec6f222e53a6eb473c0fa153d577996049dadf45c88c0175b18f186",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log",
+      "sha256": "f770fb6226fc9dbebf28b02e516c789c06eefa255b7f7455f5e4231996d0dc03",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log",
+      "sha256": "bec4ad300dab6708fae837cb3478da200af600ae054f248c559d739c47e02193",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log",
+      "sha256": "6fa8c64c702755d0d3f21a918782356b9fa4a3b2597054fe3d5c907d77ef21a1",
+      "staged_worktree_freeze_bytes_equal": true
+    },
+    {
+      "path": "research/implementation/p1c/evidence/regression/process-lib.stdout.log",
+      "sha256": "343fdf9984dfc90f5482ee6af39597b4d5b358faa4dbcf1397f81248f9e3e0cf",
+      "staged_worktree_freeze_bytes_equal": true
+    }
+  ],
+  "warnings": [
+    {
+      "path": "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+      "line": 9,
+      "warning": "trailing whitespace."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+      "line": 11,
+      "warning": "trailing whitespace."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+      "line": 30,
+      "warning": "trailing whitespace."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log",
+      "line": 20,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log",
+      "line": 150,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log",
+      "line": 150,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log",
+      "line": 150,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log",
+      "line": 37,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log",
+      "line": 150,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log",
+      "line": 154,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/independent-parser-final.stdout.log",
+      "line": 9,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/independent-parser.stdout.log",
+      "line": 9,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/default.stdout.log",
+      "line": 25,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log",
+      "line": 6,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log",
+      "line": 6,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log",
+      "line": 30,
+      "warning": "new blank line at EOF."
+    },
+    {
+      "path": "research/implementation/p1c/evidence/regression/process-lib.stdout.log",
+      "line": 43,
+      "warning": "new blank line at EOF."
+    }
+  ],
+  "source_and_raw_modified": false,
+  "whitespace_settings_changed": false,
+  "reason": "Preserve original raw stdout and patch context bytes. Only these fifteen data paths are excluded from the supplemental check. Full default check exit2 is explicitly non-pass; no source/test/document exclusion, no settings change, no trimming or fabricated default PASS.",
+  "final_candidate_manifest_sha256": "37499fe48e2686303c2c62d402c91e359f9412b1050a6dd76eeb77b4d7b1e08e"
+}

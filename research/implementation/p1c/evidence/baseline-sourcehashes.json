@@ -1,0 +1,32 @@
+{
+  "repository": "/Users/songshiyao/Desktop/Projects/webcodex",
+  "branch": "impl/webcodex-p1c-durable-execution",
+  "head": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "inventory": "research/implementation/p1b/launch-inventory.json",
+  "inventory_sha256": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+  "source_sha256": {
+    "crates/webcodex-core/src/runner_operation.rs": "de890a976c4d7b9c3384fe4aa43b1bc9e04d960fb12583dcfb87a7f46057b0a4",
+    "crates/webcodex-persistent-shell/src/lib.rs": "11213b504698812e266ce6f9051cb212d7d751863bec41b27dd565071a62ea84",
+    "crates/webcodex-persistent-shell/src/windows.rs": "ed164ecc85bdb8d6472e41dc0bbb4b17fdd3de3398eb49f031544c1e4507db31",
+    "crates/webcodex-process/src/unix.rs": "a5d487a716a88183c6063d42f272879837c0ae1c29a6074277500dc3181c07eb",
+    "crates/webcodex-process/src/windows.rs": "d2164ed2db8453326522f3c20b17c1af099f0ae4d0078a4dd85d73304d399a7b",
+    "crates/webcodex-runner-registry/src/job_updates.rs": "b63206cbbd96fff54094932a88b6fb157634be049cbecf3d3edbbc79fde66a11",
+    "crates/webcodex-runner-registry/src/requests.rs": "ba28994677cd5f34342f52a3ea8ec9823e780dcfe9df05f5eb063fb1cc699f62",
+    "crates/webcodex-runner/src/webcodex_runner/detached_job.rs": "c2a85f041ffafce868bf2ffc32c474d95a1a67038a07752ad59335dd72d5bb20",
+    "crates/webcodex-runner/src/webcodex_runner/dispatch.rs": "20e49e1fb7b2746574ae39bb0f02276bae96e4b1d63b05635bbb92d98193d6a2",
+    "crates/webcodex-runner/src/webcodex_runner/job_manager.rs": "80894df583e273a2dd7ebc16f746ffb9aa1d44793a38283796035b75e5b28131",
+    "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": "29d04bf43b3880b6d5975a695024a38b65f7b77c81f3413bfd0fce41af63375f",
+    "crates/webcodex-runner/src/webcodex_runner/process_command.rs": "7d6543027199284666cf4f224d8adaae6a16a509b81cafe63df133a23b9a3a42",
+    "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs": "29a06f8a347cd25e181d9a6a4218b685a01b6c18cde1993fc2c180c3117804b3",
+    "crates/webcodex-runner/src/webcodex_runner/shell.rs": "3136cf0efadeca94161c46a69130dc60a50d6513d8c7ab60b96c6dd27a6dbe39",
+    "crates/webcodex-runner/src/webcodex_runner/ssh.rs": "74da296a366a98e27899259da40fd32cb4a06ec2b825bafa36849230df7a8053",
+    "crates/webcodex-tool-contracts/src/tool_call.rs": "c849a49761b26763eecad3648fac79efd74264c53aafe654521f57c4c8f5b487",
+    "research/implementation/p1b/launch-inventory.json": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+    "src/mcp.rs": "1a027bbe64624e7b68f4a63af5820cce870f4669854fd258fd20b2f510e6a40f",
+    "src/mcp/tools.rs": "bfe2a261b00da6f5998693aa6a54c9df9d115d2538fb67e597352510e361835b",
+    "src/tool_runtime/dispatch.rs": "1bfef9c671af6bf3ac1f3c6e5087475cacf9b312fcf7ca8490ae560429a29390",
+    "src/tool_runtime/process.rs": "d2c8e1da28f2c9c00015891de03469ebab4e6194f6c7122b2f6be253190feddd",
+    "src/tool_runtime/session_shell.rs": "01e99dec7bd93b6671009a09217f8c4fb6ec8027d4e863265386543ebe18bd28",
+    "src/tool_runtime/shell_tools.rs": "0c95f136b5c6c3fc933fb26a0e55fc15f43f9e48485d919dffdfb60035f43981"
+  }
+}

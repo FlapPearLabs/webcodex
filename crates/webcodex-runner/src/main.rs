@@ -1511,13 +1511,6 @@ fn runner_register_capabilities(cfg: &RunnerConfig) -> RunnerCapabilities {
         RunnerCapabilityId::PersistentShell,
         webcodex_persistent_shell::local_shell_supported(),
     );
-    // SSH persistent shells reuse the same OpenSSH executable as `ssh_shell`.
-    // Older binaries omit this field and therefore fail closed; it is never
-    // inferred from `ssh_shell` + `persistent_shell`.
-    capabilities.set(
-        RunnerCapabilityId::SshPersistentShell,
-        SshConnectionPool::persistent_shell_available(),
-    );
     capabilities.set(RunnerCapabilityId::StructuredValidationArgv, true);
     // This binary durably round-trips Cargo test-count assertions with
     // validation Job context and reconciliation snapshots.

@@ -1,0 +1,719 @@
+{
+  "created_utc": "2026-10-04T14:09:08.359639+00:00",
+  "repo_read_only": true,
+  "external_originals": "NOT_AVAILABLE",
+  "checks": {
+    "base_head": {
+      "passed": true,
+      "detail": null
+    },
+    "expected_branch": {
+      "passed": true,
+      "detail": null
+    },
+    "current_binding_hash": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-process/tests/p1b_guard.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-process/tests/p1c_c2_overlay.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-runner/src/main.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-runner/src/main_tests/dispatch_file.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-runner/src/main_tests/dispatch_shell.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-runner/src/main_tests/registration.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-runner/src/main_tests/shell_profiles.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-runner/src/webcodex_runner/mod.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-runner/src/webcodex_runner/remote_shell.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-runner/src/webcodex_runner/ssh.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:crates/webcodex-runner/src/webcodex_runner/transport.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_current:docs/agent/session-model.md": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_exact_base:research/implementation/p1b/launch-inventory.json": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_exact_base:Cargo.lock": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_exact_base:Cargo.toml": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_exact_base:crates/webcodex-process/src/execution_broker/mod.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_exact_base:crates/webcodex-process/src/execution_broker/compiler.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_exact_base:crates/webcodex-persistent-shell/src/lib.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_exact_base:crates/webcodex-persistent-shell/src/windows.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_exact_base:crates/webcodex-runner/src/webcodex_runner/detached_job.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_exact_base:crates/webcodex-runner/src/webcodex_runner/process_command.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_exact_base:crates/webcodex-runner/src/webcodex_runner/coding_agent.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "binding_exact_base:crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "fst4_anchor_unique": {
+      "passed": true,
+      "detail": null
+    },
+    "fst4_only_exact_five_line_deletion_from_prior_reviewed_guard": {
+      "passed": true,
+      "detail": null
+    },
+    "new_guard_hash": {
+      "passed": true,
+      "detail": null
+    },
+    "source:crates/webcodex-process/tests/p1c_c2_overlay.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "source:crates/webcodex-runner/src/main.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "source:crates/webcodex-runner/src/webcodex_runner/mod.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "source:crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "source:crates/webcodex-runner/src/webcodex_runner/ssh.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "source:crates/webcodex-runner/src/webcodex_runner/transport.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "source:crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "source:crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "remote_retired_file_absent": {
+      "passed": true,
+      "detail": null
+    },
+    "macos_test_remains_exact_base_bytes": {
+      "passed": true,
+      "detail": null
+    },
+    "current_accepted_overlay_hash": {
+      "passed": true,
+      "detail": null
+    },
+    "candidate_reconstruction_exact_previous_bytes": {
+      "passed": true,
+      "detail": null
+    },
+    "fixed_overlay_counts": {
+      "passed": true,
+      "detail": null
+    },
+    "overlay_origin_pin:crates/webcodex-runner/src/main.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "overlay_origin_pin:crates/webcodex-runner/src/webcodex_runner/mod.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "overlay_origin_pin:crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "overlay_origin_pin:crates/webcodex-runner/src/webcodex_runner/ssh.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "overlay_origin_pin:crates/webcodex-runner/src/webcodex_runner/transport.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "immutable_p1b_exact_base": {
+      "passed": true,
+      "detail": null
+    },
+    "all_original_c9_rows": {
+      "passed": true,
+      "detail": null
+    },
+    "c2_c7_accounting": {
+      "passed": true,
+      "detail": null
+    },
+    "active_c7_unchanged:crates/webcodex-persistent-shell/src/lib.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "active_c7_unchanged:crates/webcodex-runner/src/webcodex_runner/detached_job.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "active_c7_unchanged:crates/webcodex-runner/src/webcodex_runner/process_command.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "active_c7_unchanged:crates/webcodex-persistent-shell/src/windows.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "active_c7_unchanged:crates/webcodex-process/src/windows.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "active_c7_unchanged:crates/webcodex-process/src/unix.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "protected_source_or_lock:crates/webcodex-runner/src/webcodex_runner/coding_agent.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "protected_source_or_lock:crates/webcodex-process/src/lib.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "protected_source_or_lock:Cargo.lock": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:acceptance.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:architecture.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:durable-surface-inventory.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:durable-surface-inventory.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/architecture/fd-closure-probe.sh.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/architecture/fd-closure.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/architecture/fd-closure.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/architecture/fd-closure.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/architecture/sealed-s1-prototype.patch": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/architecture/setsid-Cargo.lock.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/architecture/setsid-Cargo.toml.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/architecture/setsid-main.rs.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/architecture/setsid.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/architecture/setsid.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/architecture/setsid.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/baseline-sourcehashes.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/baseline-surface-matrix.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/candidate-source-freeze.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/diagnostic/normal-test-compile.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/diagnostic/normal-test-compile.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/diagnostic/omitted-marker-mutation.diff": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/diagnostic/omitted-marker-negative-control.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/diagnostic/omitted-marker.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/diagnostic/omitted-marker.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/diagnostic/producer-history.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/format-restore/final-cargo-fmt-all-check.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/format-restore/final-current-before.sha256": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/format-restore/final-git-diff-check.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/format-restore/final-owned-bytes-unchanged.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/format-restore/final-recursive-rustfmt-leftover.diff": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/format-restore/final-restoration-note.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/format-restore/final-restored-after.sha256": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/independent-parser-final.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/independent-parser-final.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/independent-parser-final.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/independent-parser-result.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/independent-parser.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/independent-parser.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/launcher-mutation.diff": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/launcher-nc-epoch1-final-mutated-cargo-check.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/launcher-nc-epoch1-final-mutated-production-gate.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/launcher-nc-epoch1-final-platform-toolchain.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/launcher-nc-epoch1-final-restored-production-gate.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/launcher-nc-epoch1-final-source-restoration.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/guard/launcher-nc-epoch1-final-source-sha256.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/history-final.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/history.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/history/native-contract-old-binding.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/C2-NATIVE-FINAL-SOURCE-20261004.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/accepted-base-fmt-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/accepted-base-fmt-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/accepted-base-fmt-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/c2_native_harness.py.txt": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/final-source-native.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/old-route-harness-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/old-route-harness-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/old-route-harness-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/old-route-native-result-final-source-20261004.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/owned-five-rustfmt-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/owned-five-rustfmt-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/owned-five-rustfmt-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/production-build-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/production-build-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/production-build-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/production-fmt-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/production-fmt-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/production-fmt-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/production-harness-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/production-harness-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/production-harness-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/native/production-native-result-final-source-20261004.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/regression/process-lib.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/regression/process-lib.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:evidence/regression/process-lib.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:reviews/architecture-decision.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:reviews/c2-implementation-contract.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:reviews/c2-native-evidence-contract-review.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:reviews/c2-native-evidence-contract.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:reviews/c2-overlay-contract-v2.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:reviews/c2-retirement-addendum.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:reviews/c2-windows-mixed-test-disposition.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:reviews/security-cleanroom.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_repo_copy_sha:reviews/standards-cleanroom.md": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:accepted-base-fmt-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:accepted-base-fmt-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:accepted-base-fmt-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:old-route-harness-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:old-route-harness-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:old-route-harness-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:old-route-native-result-final-source-20261004.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:owned-five-rustfmt-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:owned-five-rustfmt-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:owned-five-rustfmt-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:production-build-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:production-build-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:production-build-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:production-fmt-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:production-fmt-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:production-fmt-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:production-harness-final-source-20261004.exit-code": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:production-harness-final-source-20261004.stderr.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:production-harness-final-source-20261004.stdout.log": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:production-native-result-final-source-20261004.json": {
+      "passed": true,
+      "detail": null
+    },
+    "available_native_raw_sha:C2-NATIVE-FINAL-SOURCE-20261004.md": {
+      "passed": true,
+      "detail": null
+    },
+    "native_positive_raw": {
+      "passed": true,
+      "detail": null
+    },
+    "native_negative_raw": {
+      "passed": true,
+      "detail": null
+    },
+    "native_actual_harness_0_and_1_files": {
+      "passed": true,
+      "detail": null
+    },
+    "actual_negative_assertion_traceback": {
+      "passed": true,
+      "detail": null
+    },
+    "same_harness_copy": {
+      "passed": true,
+      "detail": null
+    },
+    "recovery_fmt_exit0": {
+      "passed": true,
+      "detail": null
+    },
+    "recovery_diff_exit0": {
+      "passed": true,
+      "detail": null
+    }
+  },
+  "errors": [],
+  "head": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "branch": "impl/webcodex-p1c-durable-execution",
+  "current_binding_sha256": "713cdfa7421f04dcba2619d1bcaa2b09f697f8388d8dae99241934f58a25de29",
+  "source_hashes": {
+    "crates/webcodex-process/tests/p1b_guard.rs": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+    "crates/webcodex-process/tests/p1c_c2_overlay.rs": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+    "crates/webcodex-runner/src/main.rs": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+    "crates/webcodex-runner/src/webcodex_runner/mod.rs": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+    "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+    "crates/webcodex-runner/src/webcodex_runner/ssh.rs": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+    "crates/webcodex-runner/src/webcodex_runner/transport.rs": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+    "crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+    "crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs": "e498ec1adaecec21ef76432b7d48feb5a57174e8f10f181e403136d21c26ce73"
+  },
+  "copied_artifact_count": 83,
+  "copy_scope": "Repo hashes verified against current copied manifest; missing external originals not claimed available or currently equal.",
+  "native_binaries_current_availability": {
+    "production": false,
+    "accepted_base": false
+  },
+  "accepted_base_626_origins_current_availability": "NOT_AVAILABLE: prior independently verified source copy lost with external work directory; repo provenance/raw retained",
+  "complete_guard_status": "PENDING_NEW_ACTUAL_FULL_GUARD_AFTER_FST4_FIX; previous RED raw external unavailable",
+  "status": "CURRENT_SOURCE_AND_AVAILABLE_COPY_BINDINGS_PASS"
+}

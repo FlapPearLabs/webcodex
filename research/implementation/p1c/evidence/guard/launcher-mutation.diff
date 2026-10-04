@@ -1,0 +1,10 @@
+--- a/crates/webcodex-runner/src/main.rs
++++ b/crates/webcodex-runner/src/main.rs
+@@ -2786,3 +2786,7 @@
+ #[cfg(test)]
+ #[path = "main_tests.rs"]
+ mod tests;
++
++fn p1c_actual_launcher_mutation() {
++    let _ = std::process::Command::new("/usr/bin/true").spawn();
++}

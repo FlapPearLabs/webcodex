@@ -1,0 +1,11 @@
+    Finished `test` profile [unoptimized] target(s) in 0.12s
+     Running tests/p1b_guard.rs (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/target/debug/deps/p1b_guard-9243a5d16c3ad286)
+NPM_PACK_OFFLINE_IGNORE_SCRIPTS	bin/p1b-overlay-launcher.mjs	status=0	published=true
+NPM_ASSET_COMPARE_RED	npm/webcodex/bin/p1b-overlay-launcher.mjs
+NPM_ASSET_RESTORE_PASS	npm/webcodex/bin/p1b-overlay-launcher.mjs
+NPM_PACK_OFFLINE_IGNORE_SCRIPTS	bin/p1b-overlay-launcher.cjs	status=0	published=true
+NPM_ASSET_COMPARE_RED	npm/webcodex/bin/p1b-overlay-launcher.cjs
+NPM_ASSET_RESTORE_PASS	npm/webcodex/bin/p1b-overlay-launcher.cjs
+NPM_PACK_OFFLINE_IGNORE_SCRIPTS	bin/p1b-overlay-launcher	status=0	published=true
+NPM_ASSET_COMPARE_RED	npm/webcodex/bin/p1b-overlay-launcher
+NPM_ASSET_RESTORE_PASS	npm/webcodex/bin/p1b-overlay-launcher

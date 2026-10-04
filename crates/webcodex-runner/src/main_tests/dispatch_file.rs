@@ -256,10 +256,7 @@ fn dispatch_request_edit_routes_to_file_handler() {
     let pdir = project_registry_dir(&cfg).unwrap();
     let lsp = webcodex_runner::LspSupervisor::default();
     let hot = runtime_config(&cfg);
-    let persistent_shells = webcodex_runner::PersistentShellManager::new(
-        &cfg.shell,
-        webcodex_runner::SshConnectionPool::default(),
-    );
+    let persistent_shells = webcodex_runner::PersistentShellManager::new(&cfg.shell);
     let ran = dispatch_request(
         &sink,
         &hot.snapshot(),
@@ -298,10 +295,7 @@ fn dispatch_request_rejects_unsupported_file_kinds_without_starting_command() {
     let jobs = JobManager::new(max_concurrent_jobs(&cfg));
     let pdir = project_registry_dir(&cfg).unwrap();
     let hot = runtime_config(&cfg);
-    let persistent_shells = webcodex_runner::PersistentShellManager::new(
-        &cfg.shell,
-        webcodex_runner::SshConnectionPool::default(),
-    );
+    let persistent_shells = webcodex_runner::PersistentShellManager::new(&cfg.shell);
     let kinds = [
         "file_replace_line_range",
         "file_insert_at_line",

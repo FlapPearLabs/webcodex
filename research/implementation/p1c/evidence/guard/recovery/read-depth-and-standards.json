@@ -1,0 +1,43 @@
+{
+  "axis": "STANDARDS",
+  "reviewer": "independent Sol Max",
+  "repo_mode": "READ_ONLY",
+  "cleanroom_before_implementation_diff": true,
+  "cleanroom_current_repo_copy": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/reviews/standards-cleanroom.md",
+  "old_standards_conclusions_read": false,
+  "history": "The initial external cleanroom/read-depth reports were removed by the user's work/target cleanup. This is a new account of this continuing review, not a recreated original report. The repository cleanroom copy and independently checked evidence copies survived.",
+  "rules_and_specs": [
+    "/Users/songshiyao/.codex/attachments/32399854-2b1e-4b92-9dcc-d4a4764c9ae2/已粘贴的文本.txt",
+    "/Users/songshiyao/Desktop/Projects/webcodex/AGENTS.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/CONTRIBUTING.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/docs/TESTING.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/reviews/c2-implementation-contract.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/reviews/c2-overlay-contract-v2.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/reviews/c2-retirement-addendum.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/reviews/c2-native-evidence-contract.md"
+  ],
+  "minimal_model": "An early fixed remote open/exec refusal, a stored-executor omitted-resource fence, exact owned transport cleanup and preserved close/status; retire the exclusive remote chain. Keep immutable P1B and a fixed sparse C2 overlay. No new durable backend or speculative general policy abstraction.",
+  "source_read_depth": {
+    "persistent_shell.rs": "All changed production/test hunks, current production prefix through line699, private helpers and stored-executor fence, full old Windows mixed/real-transport tests, actual retained local-half test. No claim to exhaustively reread all unchanged bodies.",
+    "ssh.rs": "Complete production diff; complete retired 785-line dedicated tests/helper block; orphan import provenance; later scope/format restore diffs. Shared B22 bodies not exhaustively reread.",
+    "remote_shell.rs": "Signed whole-file retirement, exact baseline archive/hash and raw rows/callers checked; full779-line implementation not read line by line.",
+    "remote_authority_tests.rs": "Entire source, including Windows TOML pure encode assertion, SpyTransport writes/shutdown, named/omitted resource, wrong identity, helpers/status/close/capability tests.",
+    "p1c_c2_overlay.rs": "Entire507-line parser, strict keys/exact full sets/frozen byte hashes, application and tests; independent ordinary Rust parser audit plus18 extra mutations and changed base bytes. Final f72 hash unchanged after current guard repair.",
+    "p1b_guard.rs": "Complete changed diff, candidate/status split, actual scanner/status order; after real full-gate RED, entire platform-handoff test and both existing ignored-lane bodies. F-ST4 five-line delta reversed in memory to old bcf hash; no scanner rewrite.",
+    "small_changes": "Entire main/mod/transport/main_tests/session-model diffs and constructor/capability context; adjacent B22 formatting-only hunk observed and restored exact baseline.",
+    "documents": "All four architecture/acceptance/durable-surface documents read; nine logical baseline rows exact checked. Final actual-result revisions will be checked separately."
+  },
+  "graph": {
+    "operation": "Read-only existing CodeGraph index through approved elevated CLI; no MCP CodeGraph tools were exposed. No init/sync/index write.",
+    "prior_queries": "C2 manager/preparer/helper impact, callers, callees and affected queries were used before implementation diff; raw external pre-review log was removed during user cleanup.",
+    "fresh_fst4": "Exact test symbol impact/callers/callees returned not-found; broad explore returned irrelevant truncated matches, so it is not evidence of that symbol's semantics. affected p1b_guard.rs returned that test file only. Current source and actual full-gate output determine scope.",
+    "limits": "Some broad graph output was truncated. Graph results are neither permission nor approval authority. The existing index describes baseline structure; dirty current source is authoritative."
+  },
+  "skills": [
+    "/Users/songshiyao/.codex/skills/code-review/SKILL.md",
+    "/Users/songshiyao/.codex/skills/codebase-design/SKILL.md",
+    "/Users/songshiyao/.codex/skills/codegraph-integration/SKILL.md"
+  ],
+  "repo_mutations_by_reviewer": [],
+  "subagents_spawned_by_reviewer": []
+}

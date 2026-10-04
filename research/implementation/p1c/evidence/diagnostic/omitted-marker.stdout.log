@@ -1,0 +1,20 @@
+
+running 1 test
+test webcodex_runner::persistent_shell::remote_authority_tests::omitted_resource_marker_cannot_write_to_an_owned_ssh_transport ... FAILED
+
+failures:
+
+---- webcodex_runner::persistent_shell::remote_authority_tests::omitted_resource_marker_cannot_write_to_an_owned_ssh_transport stdout ----
+
+thread 'webcodex_runner::persistent_shell::remote_authority_tests::omitted_resource_marker_cannot_write_to_an_owned_ssh_transport' (16508493) panicked at crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs:286:5:
+assertion `left == right` failed
+  left: 2
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    webcodex_runner::persistent_shell::remote_authority_tests::omitted_resource_marker_cannot_write_to_an_owned_ssh_transport
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1001 filtered out; finished in 0.01s
+

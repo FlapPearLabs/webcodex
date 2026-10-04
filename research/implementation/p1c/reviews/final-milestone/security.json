@@ -1,0 +1,165 @@
+{
+  "schema": "p1c-c2-independent-security-final-milestone-v1",
+  "created_utc": "2026-10-04T14:35:23.605129+00:00",
+  "axis": "SPEC_SECURITY",
+  "reviewer": "fresh independent Sol Max",
+  "repo_mode": "READ_ONLY",
+  "base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "branch": "impl/webcodex-p1c-durable-execution",
+  "source_decision": "ACCEPTED_FOR_EXACT_FROZEN_C2_SOURCE",
+  "guard_decision": "PASS_FOR_CURRENT_C2_FIXED_OVERLAY_AND_COMPLETE_P1B_GUARD",
+  "formal_c2_milestone_decision": "PASS_C2_SCOPED_MILESTONE",
+  "blocking_findings_remaining": [],
+  "full_p1c_decision": "NO",
+  "final_delivery_manifest": {
+    "path": "research/implementation/p1c/evidence/final-candidate-files-v2.json",
+    "sha256": "37499fe48e2686303c2c62d402c91e359f9412b1050a6dd76eeb77b4d7b1e08e",
+    "paths_verified": 165,
+    "all_frozen_current_bytes_match": true,
+    "changed_and_new_paths_complete_including_ignored_evidence": true,
+    "excluded_self": "research/implementation/p1c/evidence/final-candidate-files-v2.json",
+    "later_additive_review_metadata_requires_separate_review": true
+  },
+  "source_binding": {
+    "path": "research/implementation/p1c/evidence/recovery-current-source.json",
+    "sha256": "713cdfa7421f04dcba2619d1bcaa2b09f697f8388d8dae99241934f58a25de29",
+    "source_entries_verified": 14,
+    "protected_exact_base_files_verified": 11,
+    "accepted_p1b_inventory_sha256": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+    "guard_source_sha256": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+    "accepted_overlay_sha256": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f"
+  },
+  "accepted_c2_behavior": [
+    "Named SSH persistent open/exec refuse before prepare/connect/spawn, fixed remote_durable_authority_unavailable and command_started=false.",
+    "Omitted resource exec rechecks trusted stored SSH executor before output-limit modification or command write; cleanup remains exact shell/session/project.",
+    "Local persistent shell, B22 one-shot/background SSH, ordinary broker, status/close semantics retain their existing scope.",
+    "SshPersistentShell capability is withdrawn; private remote helpers fail closed; remote-specific transport/preparer/availability retirement is exact."
+  ],
+  "contract_and_retirement": {
+    "sparse_overlay": "five fixed source replacements, one retired origin, ten raw removals, zero reference removals; accepted immutable baseline retained",
+    "retired_dedicated_fidelity_tests": 11,
+    "windows_mixed_test": "only remote half retired; local Bash refusal handler assertion and active_count=0 retained",
+    "fst4": "only five-line stale retired exec_ssh expected raw tuple removed; in-memory before/after proof; scanner and remaining assertions unchanged",
+    "unauthorized_additional_retirement": false
+  },
+  "actual_evidence": {
+    "ordinary_native_production": {
+      "binary_sha256": "40b7c376e9fe40c83e4e42b750eabc213eaad183536b6a0315e53145ebb6118e",
+      "platform": "macOS arm64",
+      "build_exit": 0,
+      "bootstrap_or_feature_override": false,
+      "legal_result_count": 2,
+      "model_ssh_marker_count": 0,
+      "runner_exit": 0,
+      "harness_exit": 0,
+      "raw_and_production_source_binding_current": true
+    },
+    "native_accepted_base_negative_control": {
+      "binary_sha256": "0b4bea55069a73c32399bcb8774e5df844f8cab99abb85e0377899ebdf7e6150",
+      "accepted_base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+      "legal_result_count": 2,
+      "model_connect_marker_count": 1,
+      "runner_exit": 0,
+      "same_no_effect_assertion_harness_exit": 1,
+      "required_marker_positive_AND_actual_assertion_nonzero": true,
+      "not_compile_failure_or_timeout_or_capability_only_failure": true
+    },
+    "complete_ordinary_guard": {
+      "record_sha256": "1c54cd8778d9958948e6a4f069b7ccfa3a79a26f888583b070e32cbc9a6a5c6d",
+      "default": "18 passed; 0 failed; 2 ignored; exit0",
+      "held_pipe_explicit": "1 passed; 0 failed; 0 ignored; exit0",
+      "npm_pack_explicit": "1 passed; 0 failed; 0 ignored; exit0",
+      "all_twenty_cases_executed_across_three_lanes": true,
+      "bootstrap_injected": false,
+      "raw_delta": 10,
+      "reference_delta": 0,
+      "origin_closure": "PASS",
+      "source_before_and_after_equal_current": true
+    },
+    "structural_launcher_negative_control": {
+      "grade": "ordinary structural negative control in distinct recorded scratch epoch",
+      "mutant_check_exit": 0,
+      "same_production_gate_exit": 101,
+      "new_raw_rows": 2,
+      "source_restored_exact": true,
+      "later_epoch_metadata_not_represented_as_NC_timepoint": true
+    },
+    "omitted_resource_fence_negative_control": {
+      "grade": "DIAGNOSTIC_ONLY",
+      "child_local_flags": "RUSTC_BOOTSTRAP=1; RUSTFLAGS=-Zcrate-attr=feature(atomic_try_update)",
+      "before_and_restored_persistent_sha256": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+      "in_memory_exact_patch_derived_mutant_sha256": "d8fb95a7ccf61252baa61aa150d82c5c0321d6923d79d59219dd4e269f8e8711",
+      "only_nine_stored_executor_fence_lines_removed": true,
+      "mutant_actual_assertion": "write_count left2/right1; Cargo exit101",
+      "same_test_after_exact_restoration": "1 passed; 0 failed; exit0",
+      "fixture_source_hash_unchanged": true
+    },
+    "additional_diagnostic_runner_fixtures": {
+      "remote_authority": "5 passed; exit0",
+      "local_persistent": "1 passed; exit0",
+      "capability_catalog": "1 passed; exit0",
+      "capability_provider": "1 passed; exit0"
+    },
+    "ordinary_overlay_parser": "3 passed; 0 failed; exit0",
+    "current_ordinary_format_and_whitespace": "cargo fmt --all --check exit0; git diff --check exit0; raw stdout/stderr empty",
+    "review_method": "independent current bytes, full raw/exit consistency, same assertion code and mutation/restoration inspection; tests were executed by designated executors; no duplicate unchanged test run"
+  },
+  "resolved_final_document_finding": {
+    "id": "F-SEC-FINAL-AVAILABILITY",
+    "finding": "Two current copied manifest revision notes incorrectly claimed old external candidates remained available after user disk cleanup.",
+    "resolution": "Only architecture.md and durable-surface-inventory.md revision_note fields corrected to NOT_AVAILABLE and exact retained history scope; old copied manifest and original 36e348 candidate manifest preserved without rewriting.",
+    "v2_delta": "one copied manifest hash changed; two historical files added; all source/tests/raw/document bodies unchanged",
+    "independently_verified": true
+  },
+  "evidence_limits": {
+    "external_loss": "User disk cleanup removed original external work reports, native binaries and accepted-base scratch. Removed originals are NOT_AVAILABLE; repo copies were hash-verified. No reconstruction of lost signatures or original raw files.",
+    "preserved_current_copy_manifest_files": 83,
+    "native_current_inspection": "Previously directly inspected native binaries and accepted-base sources in this review; current conclusion uses unchanged source bindings plus preserved ordinary raw. No claim of presently rehashing removed binaries.",
+    "local_fallback": "SOURCE_DERIVED_ONLY; no native local payload/profile-init positive control",
+    "not_run": [
+      "Windows native",
+      "Linux native",
+      "real remote host",
+      "eight required restarts",
+      "PID reuse",
+      "whole family termination and restart reconciliation",
+      "output continuity",
+      "complete P1C acceptance"
+    ],
+    "diagnostic_flags_not_promoted_to_native_or_production_proof": true,
+    "retired_tests_not_counted_as_pass": true
+  },
+  "class_c": {
+    "original_ids": 9,
+    "migrated": 0,
+    "remote_deferred_fail_closed": 2,
+    "active_architecture_decision_pending": 7,
+    "unclassified": 0
+  },
+  "long_term_user_trust_boundary_choice": "UNANSWERED; no reviewer choice made",
+  "failed_architecture_counterexamples": "Signed setsid/FD counterexamples remain design FAIL; sealed prototype has no production consumer.",
+  "next_phase_authorized": false,
+  "merge_authorized": false,
+  "deployment_authorized": false,
+  "exact_commit_sha_review": {
+    "status": "PENDING_ACTUAL_COMMIT",
+    "require": "Actual parent equals accepted base, frozen 165 path bytes and v2 manifest committed intact, three globally ignored evidence patches included, only separately reviewed additive review/Git delivery metadata, no unreviewed source/doc/evidence drift."
+  },
+  "ignored_patch_delivery_paths": [
+    "research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/fst4/exact-five-line.patch",
+    "research/implementation/p1c/evidence/diagnostic/recovered-epoch/negative-control/actual-applied-mutation.patch"
+  ],
+  "independent_check": {
+    "path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/security-recovery-20261004/C2-SECURITY-FINAL-CANDIDATE-CHECK.json",
+    "sha256": "df2de7202aa3303d6307a3cc9f03117e00d8c2e37177ae0d1cc3c77dfb6f6e4a",
+    "status": "FINAL_C2_CANDIDATE_BINDINGS_AND_BOUNDED_EVIDENCE_PASS",
+    "errors": []
+  },
+  "skills_used": [
+    "code-review",
+    "specialized-domain-audit"
+  ],
+  "subagents_spawned_by_this_reviewer": [],
+  "repo_mutations_by_this_reviewer": []
+}

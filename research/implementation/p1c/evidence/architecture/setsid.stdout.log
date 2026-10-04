@@ -1,0 +1,2 @@
+platform=macOS owner_group=39981 payload_pid=39982 payload_group_after=39982 payload_session_after=39982 observation=Ok(Ok("setsid_result=39982 errno=Undefined error: 0 (os error 0)\n"))
+stderr=(Ok(0), "")

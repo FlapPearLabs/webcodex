@@ -1,0 +1,13 @@
+{
+  "reviewer": "independent Sol Spec/security architecture context",
+  "disposition": "ACCEPTED_WITH_PRECISE_EVIDENCE_REQUIREMENTS",
+  "required_supplements": [
+    "Old route marker observed AND actual no-effect assertion exit nonzero after collection",
+    "Local fallback marker actually zero OR explicitly source-derived only"
+  ],
+  "implementation_runtime_acceptance": "NOT_SIGNED",
+  "sha256": {
+    "architecture/C2-NATIVE-EVIDENCE-CONTRACT.md": "368589c7e2ef15ef8b8392cd692c4a0d8a67dd782576eca0fa11ee0817d8fcd6",
+    "architecture/C2-NATIVE-EVIDENCE-CONTRACT-REVIEW.md": "dbe89ad7947ffb95627285376d50d1148451867cf82578160c9a412fcb9a0ef4"
+  }
+}

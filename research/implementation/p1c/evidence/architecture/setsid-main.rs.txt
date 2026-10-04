@@ -1,0 +1,70 @@
+use std::io::{BufRead, BufReader, Read, Write};
+use std::process::{Command, Stdio};
+use std::sync::mpsc;
+use std::time::{Duration, Instant};
+use webcodex_process::{execution_broker::{ExecutionBroker, SandboxPlan, SpawnSpec, StreamPolicy}, ManagedChild};
+
+fn reap_bounded(child: &mut std::process::Child) {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => return,
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(10)),
+            other => panic!("owned fixture failed bounded reap: {other:?}"),
+        }
+    }
+}
+
+fn main() {
+    if std::env::args().nth(1).as_deref() == Some("--owned-child-setsid") {
+        let result = unsafe { libc::setsid() };
+        let error = std::io::Error::last_os_error();
+        println!("setsid_result={result} errno={error}");
+        std::io::stdout().flush().unwrap();
+        std::thread::sleep(Duration::from_secs(60));
+        return;
+    }
+    let fixture = std::env::temp_dir().join(format!("p1c-setsid-owned-{}", std::process::id()));
+    std::fs::create_dir(&fixture).expect("create owned fixture directory");
+    let root = fixture.canonicalize().unwrap();
+    let own_payload = root.join("owned-setsid-payload");
+    std::fs::copy(std::env::current_exe().unwrap(), &own_payload).unwrap();
+    let mut owner_command = Command::new("/bin/sleep");
+    owner_command.arg("60").stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+    let mut owner = ManagedChild::spawn(&mut owner_command).expect("owned private-group leader");
+    let before_group = owner.id();
+    let request = SpawnSpec::new(&own_payload, &root, SandboxPlan::read_write_in(&[root.clone()]))
+        .args(["--owned-child-setsid"])
+        .stdout(StreamPolicy::Piped).stderr(StreamPolicy::Piped);
+    let mut payload = ExecutionBroker::new().spawn_in_supervised_unix_tree(&request, &[], &mut owner)
+        .expect("actual S1 confined payload spawn");
+    let pid = payload.id() as libc::pid_t;
+    let stdout = payload.stdout.take().unwrap();
+    let stderr = payload.stderr.take().unwrap();
+    let error_reader = std::thread::spawn(move || {
+        let mut text = String::new();
+        let result = BufReader::new(stderr).read_to_string(&mut text);
+        (result, text)
+    });
+    let (sender, receiver) = mpsc::channel();
+    let reader = std::thread::spawn(move || {
+        let mut line = String::new();
+        let result = BufReader::new(stdout).read_line(&mut line).map(|_| line);
+        let _ = sender.send(result);
+    });
+    let observation = receiver.recv_timeout(Duration::from_secs(5));
+    let after_group = unsafe { libc::getpgid(pid) };
+    let after_session = unsafe { libc::getsid(pid) };
+    println!("platform=macOS owner_group={before_group} payload_pid={pid} payload_group_after={after_group} payload_session_after={after_session} observation={observation:?}");
+    payload.kill().expect("kill only actual owned unreaped direct payload");
+    reap_bounded(&mut payload);
+    owner.terminate_tree().expect("terminate owned fixture group");
+    assert!(owner.wait_tree_exit(Duration::from_secs(3)).unwrap());
+    reap_bounded(owner.child_mut());
+    reader.join().expect("reader closed after direct child cleanup");
+    let error_observation = error_reader.join().expect("stderr closed after direct child cleanup");
+    println!("stderr={error_observation:?}");
+    std::fs::remove_file(own_payload).unwrap();
+    std::fs::remove_dir(&fixture).expect("remove empty owned fixture directory");
+    assert!(matches!(observation, Ok(Ok(ref text)) if !text.trim().is_empty()), "host did not supply bounded nonempty observation");
+}

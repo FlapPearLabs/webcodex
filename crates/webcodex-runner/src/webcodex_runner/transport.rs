@@ -215,10 +215,9 @@ impl RunnerRuntimeState {
     fn with_shutdown_budget(cfg: &RunnerConfig, path: PathBuf, budget: Duration) -> Self {
         let jobs = JobManager::new(max_concurrent_jobs(cfg))
             .with_detached_profile_identity(&cfg.server_url);
-        // Persistent shells reuse the same authenticated OpenSSH multiplex pool
-        // as async jobs: one transport per (session, resource, generation),
-        // never a second SSH configuration or connection pool.
-        let persistent_shells = PersistentShellManager::new(&cfg.shell, jobs.ssh_pool().clone());
+        // The Session shell manager owns process-local shell identity and cleanup.
+        // Remote persistent-shell transport is deferred from async-job SSH.
+        let persistent_shells = PersistentShellManager::new(&cfg.shell);
         Self {
             lsp: LspSupervisor::default(),
             browser: BrowserSupervisor::new(),

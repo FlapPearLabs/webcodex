@@ -1,0 +1,11 @@
+#!/bin/bash
+set -eu
+probe_dir=$(mktemp -d /private/tmp/p1c-fd-closure.XXXXXX)
+trap 'rm -f "$probe_dir/control"; rmdir "$probe_dir"' EXIT
+exec 9>"$probe_dir/control"
+# Demonstrate the observable descriptor ownership of a current-shell eval
+# redirection without using real project state or host credentials.
+eval 'for descriptor in 9 10 11 12 13 14 15 16 17 18 19 20; do eval "printf probe_descriptor_${descriptor} >&${descriptor}" 2>/dev/null || :; done' 7>&- 8>&- 9>&-
+eval 'exec 99>&10; /bin/sh -c "printf unrelated_descendant_reached_control >&99"; exec 99>&-' 9>&-
+exec 9>&-
+cat "$probe_dir/control"

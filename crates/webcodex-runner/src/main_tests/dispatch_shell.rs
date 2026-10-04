@@ -7,10 +7,7 @@ fn dispatch_request_run_shell_sends_result_over_sink() {
     let jobs = JobManager::new(max_concurrent_jobs(&cfg));
     let pdir = project_registry_dir(&cfg).unwrap();
     let hot = runtime_config(&cfg);
-    let persistent_shells = webcodex_runner::PersistentShellManager::new(
-        &cfg.shell,
-        webcodex_runner::SshConnectionPool::default(),
-    );
+    let persistent_shells = webcodex_runner::PersistentShellManager::new(&cfg.shell);
 
     type SinkFactory = fn(&str) -> (RunnerSink, tokio::sync::mpsc::Receiver<RunnerEnvelope>);
     for (label, make_sink, client_id, expected_stdout) in [
@@ -84,10 +81,7 @@ fn dispatch_request_detached_process_job_enters_job_manager_without_generic_resu
     let jobs = JobManager::new(max_concurrent_jobs(&cfg));
     let pdir = project_registry_dir(&cfg).unwrap();
     let hot = runtime_config(&cfg);
-    let persistent_shells = webcodex_runner::PersistentShellManager::new(
-        &cfg.shell,
-        webcodex_runner::SshConnectionPool::default(),
-    );
+    let persistent_shells = webcodex_runner::PersistentShellManager::new(&cfg.shell);
     let (sink, mut rx) = ws_sink("ws-client");
     let request = RunnerRequest {
         login: false,
@@ -167,10 +161,7 @@ fn dispatch_request_internal_search_uses_posix_runtime_not_configured_shell_pars
     let jobs = JobManager::new(max_concurrent_jobs(&cfg));
     let pdir = project_registry_dir(&cfg).unwrap();
     let hot = runtime_config(&cfg);
-    let persistent_shells = webcodex_runner::PersistentShellManager::new(
-        &cfg.shell,
-        webcodex_runner::SshConnectionPool::default(),
-    );
+    let persistent_shells = webcodex_runner::PersistentShellManager::new(&cfg.shell);
     let (sink, mut rx) = ws_sink("ws-client");
     let marker = r#"{"webcodex_search":{"backend":"grep","feature_unavailable":false}}"#;
     let request = RunnerRequest {
@@ -248,10 +239,7 @@ fn dispatch_request_internal_posix_script_ignores_configured_shell_parser() {
     let jobs = JobManager::new(max_concurrent_jobs(&cfg));
     let pdir = project_registry_dir(&cfg).unwrap();
     let hot = runtime_config(&cfg);
-    let persistent_shells = webcodex_runner::PersistentShellManager::new(
-        &cfg.shell,
-        webcodex_runner::SshConnectionPool::default(),
-    );
+    let persistent_shells = webcodex_runner::PersistentShellManager::new(&cfg.shell);
     let (sink, mut rx) = ws_sink("ws-client");
     let request = RunnerRequest {
         login: false,
@@ -323,10 +311,7 @@ fn dispatch_request_run_shell_rejects_oversized_wire_command_before_start() {
     let jobs = JobManager::new(max_concurrent_jobs(&cfg));
     let pdir = project_registry_dir(&cfg).unwrap();
     let hot = runtime_config(&cfg);
-    let persistent_shells = webcodex_runner::PersistentShellManager::new(
-        &cfg.shell,
-        webcodex_runner::SshConnectionPool::default(),
-    );
+    let persistent_shells = webcodex_runner::PersistentShellManager::new(&cfg.shell);
     let (sink, mut rx) = ws_sink("ws-client");
     let request = RunnerRequest {
         login: false,
@@ -419,10 +404,7 @@ fn dispatch_request_structured_process_uses_typed_argv_and_never_shell_fallback(
     let jobs = JobManager::new(max_concurrent_jobs(&cfg));
     let pdir = project_registry_dir(&cfg).unwrap();
     let hot = runtime_config(&cfg);
-    let persistent_shells = webcodex_runner::PersistentShellManager::new(
-        &cfg.shell,
-        webcodex_runner::SshConnectionPool::default(),
-    );
+    let persistent_shells = webcodex_runner::PersistentShellManager::new(&cfg.shell);
     let marker = tmp.path().join("marker");
 
     let (sink, mut rx) = ws_sink("ws-client");
@@ -555,10 +537,7 @@ fn dispatch_request_structured_script_uses_typed_file_and_never_shell_fallback()
     let jobs = JobManager::new(max_concurrent_jobs(&cfg));
     let pdir = project_registry_dir(&cfg).unwrap();
     let hot = runtime_config(&cfg);
-    let persistent_shells = webcodex_runner::PersistentShellManager::new(
-        &cfg.shell,
-        webcodex_runner::SshConnectionPool::default(),
-    );
+    let persistent_shells = webcodex_runner::PersistentShellManager::new(&cfg.shell);
     let observed_path = tmp.path().join("observed-script-path");
     let marker = tmp.path().join("marker");
     let shell_fallback_marker = tmp.path().join("shell-fallback-marker");

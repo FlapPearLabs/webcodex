@@ -1,0 +1,426 @@
+{
+  "base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "status": "CURRENT_C2_DOCUMENT_DISPOSITION_P1C_INCOMPLETE",
+  "note": "Raw evidence copies retain original execution epoch and source hashes. Root-authored current documents have explicit revision notes. Sealed prototype is inactive; history binding is not a signature on a revised contract.",
+  "files": [
+    {
+      "path": "acceptance.md",
+      "sha256": "edd52eca2ee93cadf56be7de5f6fce8a7f30df246a6c6d2498de901902f180d9",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/documentation/draft/acceptance.md",
+      "revision_note": "Root final current disposition after actual independent gate; prior bytes retained in evidence/history/before-final-* and prior manifest retained separately."
+    },
+    {
+      "path": "architecture.md",
+      "sha256": "e833b7cae44217876a7ac2377ee79ca0b586b00bdd0bb5e1f792a005815ae9ee",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/documentation/draft/architecture.md",
+      "revision_note": "Root-owned current disposition. Earlier external candidate originals are NOT_AVAILABLE after user work/ cleanup; no preserved earlier version of this document is claimed. Other retained historical raw records and before-final acceptance/inventory-JSON copies are separately identified in evidence/history/."
+    },
+    {
+      "path": "durable-surface-inventory.json",
+      "sha256": "f6628851efd3eda2fbbce31ffd518a50e4de5ef03ac5d962e465aab86e4064ec",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/documentation/draft/durable-surface-inventory.json",
+      "revision_note": "Root final current disposition after actual independent gate; prior bytes retained in evidence/history/before-final-* and prior manifest retained separately."
+    },
+    {
+      "path": "durable-surface-inventory.md",
+      "sha256": "86583db407340079eacc089753c89eed9ddeb2ca82bba5a183249dface54c43c",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/documentation/draft/durable-surface-inventory.md",
+      "revision_note": "Root-owned current disposition. Earlier external candidate originals are NOT_AVAILABLE after user work/ cleanup; no preserved earlier version of this document is claimed. Other retained historical raw records and before-final acceptance/inventory-JSON copies are separately identified in evidence/history/."
+    },
+    {
+      "path": "evidence/architecture/fd-closure-probe.sh.txt",
+      "sha256": "735ab7cdb1db78de3da47e447d9f2cc916ddc18397fcb41f7fecd4f7f7d559cb",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/fd-closure-probe.sh"
+    },
+    {
+      "path": "evidence/architecture/fd-closure.json",
+      "sha256": "9b78df3054f9660d5f3c3266bd995fd99424f9783ec176c979dcfc942bc64a8f",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/independent-native-fd-closure.json"
+    },
+    {
+      "path": "evidence/architecture/fd-closure.stderr.log",
+      "sha256": "e88181e52e89eb4b6eb728a195730b4e5765b36fba3a0d8624c17b8ab8d9a8de",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/independent-native-fd-closure.stderr.log"
+    },
+    {
+      "path": "evidence/architecture/fd-closure.stdout.log",
+      "sha256": "d25f2d79d7a432641ea9370f68946db388292605cbfce51b0aca834505b009df",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/independent-native-fd-closure.stdout.log"
+    },
+    {
+      "path": "evidence/architecture/sealed-s1-prototype.patch",
+      "sha256": "d24721f6b69535da43f4e48949f700c61da44e146db0d291bafe836bd39c8dad",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/s1/sealed-prototype/reviewed-prototype.patch"
+    },
+    {
+      "path": "evidence/architecture/setsid-Cargo.lock.txt",
+      "sha256": "8a7a404aa56c4e7c72a7e0ed4e28b11b9a8afcef51e4dc1a8f8df5747bbdeab7",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/Cargo.lock"
+    },
+    {
+      "path": "evidence/architecture/setsid-Cargo.toml.txt",
+      "sha256": "8d6f583627b578dbd13d64b6d82df4c97c3500a9fc84b1df10ad63d54685df70",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/Cargo.toml"
+    },
+    {
+      "path": "evidence/architecture/setsid-main.rs.txt",
+      "sha256": "cf13d0f69455e4c309783bb71aabff663a3a25131b02f6b2bebb0d621ea48799",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/src/main.rs"
+    },
+    {
+      "path": "evidence/architecture/setsid.json",
+      "sha256": "3f5f860259d3aad04effdc49843c6ee9f910f3690c94031a2a28150a19f90bff",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/independent-native-setsid.json"
+    },
+    {
+      "path": "evidence/architecture/setsid.stderr.log",
+      "sha256": "c66962e806132932c18dab1bbe61e6bd8c51ed86739fede724d7a0c166dba863",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/independent-native-setsid.stderr.log"
+    },
+    {
+      "path": "evidence/architecture/setsid.stdout.log",
+      "sha256": "7b9b029e96819f2488bcef0dde1365a992b1c220e1f59aac676ccc756da7481f",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/independent-native-setsid.stdout.log"
+    },
+    {
+      "path": "evidence/baseline-sourcehashes.json",
+      "sha256": "ecaf81cd5a4eb2fb81120ba03bb011aa463c2f29b6d1d6523ab5f5da2192c88f",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/surface/sourcehashes.json"
+    },
+    {
+      "path": "evidence/baseline-surface-matrix.md",
+      "sha256": "97f8dbd04cb9af48486dcafbb7e8ef6f5e11e271fb31d4ed81cc436d865fa16d",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/surface/P1C_SURFACE_MATRIX.md"
+    },
+    {
+      "path": "evidence/candidate-source-freeze.json",
+      "sha256": "5596d748764108112bb4428cc97c5c66d4f137d1418ab67a08fdaf9b7ef9c5d2",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/final-freeze/candidate-final-source-20261004.json"
+    },
+    {
+      "path": "evidence/diagnostic/normal-test-compile.json",
+      "sha256": "9a6370c7bb605ebc2a0359675edf02f84bbf9949458372777df3655dcf80a665",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/remote-c2/normal-test-compile.json"
+    },
+    {
+      "path": "evidence/diagnostic/normal-test-compile.stderr.log",
+      "sha256": "a3ac5856e34b8d2d751702587185af0864a65f5784a2558dd640cad82cb586f1",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/remote-c2/normal-test-compile.stderr.log"
+    },
+    {
+      "path": "evidence/diagnostic/omitted-marker-mutation.diff",
+      "sha256": "c135b508a496de99165ea98cd38785cec1360d31bd613eb27fdcb771694f852b",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/remote-c2/omitted-marker-negative-control-final.mutation.diff"
+    },
+    {
+      "path": "evidence/diagnostic/omitted-marker-negative-control.json",
+      "sha256": "2fa69f9bcbfeab6973031431041157a82ee7e7055ccdacf41809717a0c3df920",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/remote-c2/omitted-marker-negative-control-final.json"
+    },
+    {
+      "path": "evidence/diagnostic/omitted-marker.stderr.log",
+      "sha256": "96b9bb664fd3966c8b3797ec9d5f6e5146f0f7a1f9cb7fc46e609bbbe578358f",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/remote-c2/omitted-marker-negative-control-final.stderr.log"
+    },
+    {
+      "path": "evidence/diagnostic/omitted-marker.stdout.log",
+      "sha256": "c5c91a6fe2b08c18ca0bbddb423a92c8c28988235b621cdbbd03b1bcce1c2fc2",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/remote-c2/omitted-marker-negative-control-final.stdout.log"
+    },
+    {
+      "path": "evidence/diagnostic/producer-history.md",
+      "sha256": "be2e5b611d4a1ffb38ee497a59821541e41c01564d95a41f8612f7baefe38d0f",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/remote-c2/evidence-history.md"
+    },
+    {
+      "path": "evidence/format-restore/final-cargo-fmt-all-check.log",
+      "sha256": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-recursive-format-restore/final-cargo-fmt-all-check.log"
+    },
+    {
+      "path": "evidence/format-restore/final-current-before.sha256",
+      "sha256": "86eca1d4d3f14bd1fd4a422471fdd3f7a15fd355666ebbb4c7e07e45658016bd",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-recursive-format-restore/final-current-before.sha256"
+    },
+    {
+      "path": "evidence/format-restore/final-git-diff-check.log",
+      "sha256": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-recursive-format-restore/final-git-diff-check.log"
+    },
+    {
+      "path": "evidence/format-restore/final-owned-bytes-unchanged.txt",
+      "sha256": "6aa4095de3ddf7cc08e6dd2b673b195abcb01b15de2fa2d2f14e0ca4c059a5b5",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-recursive-format-restore/final-owned-bytes-unchanged.txt"
+    },
+    {
+      "path": "evidence/format-restore/final-recursive-rustfmt-leftover.diff",
+      "sha256": "13a971251c9e0da74871b3f4291427aa7ca3c25c1b67fde5b1b433be2c4946ca",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-recursive-format-restore/final-recursive-rustfmt-leftover.diff"
+    },
+    {
+      "path": "evidence/format-restore/final-restoration-note.txt",
+      "sha256": "101487f05cde38dcab715e81fe726fabb3f211258489c0690c2d9eceea747c84",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-recursive-format-restore/final-restoration-note.txt"
+    },
+    {
+      "path": "evidence/format-restore/final-restored-after.sha256",
+      "sha256": "5017776bdd1f344c49441e7896d6a6e707fc65ad3a63be7450b5660ecc21ff10",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-recursive-format-restore/final-restored-after.sha256"
+    },
+    {
+      "path": "evidence/guard/independent-parser-final.json",
+      "sha256": "acfedff63c6e4b4a8b69cb3e72cbe522a2208cd459d481b075bfb5934a401c9b",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/parser-audit-final-20261004/result.json"
+    },
+    {
+      "path": "evidence/guard/independent-parser-final.stderr.log",
+      "sha256": "69ecc94427c61c1208884cc788569245e33f61abe8bedea104c3b8197a54bcc7",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/parser-audit-final-20261004/test.stderr.log"
+    },
+    {
+      "path": "evidence/guard/independent-parser-final.stdout.log",
+      "sha256": "dde9d9e94127858ae77284c2f50e08942ae173daab18de44acabcd73b86cc852",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/parser-audit-final-20261004/test.stdout.log"
+    },
+    {
+      "path": "evidence/guard/independent-parser-result.json",
+      "sha256": "d4ce9c7be2efea00f9c66c88cc13e0175c7cee494f26c52bbec5f87e9d632aa5",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/parser-audit/result.json"
+    },
+    {
+      "path": "evidence/guard/independent-parser.stderr.log",
+      "sha256": "266827c05d050b2f27fe2be30315f889359d7215337d1d5c96d0f5b7b9b6a6f6",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/parser-audit/test.stderr.log"
+    },
+    {
+      "path": "evidence/guard/independent-parser.stdout.log",
+      "sha256": "b420c69838e184a9c1b89c8406da1c28854767148787f925bf3cbd6931139f58",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/parser-audit/test.stdout.log"
+    },
+    {
+      "path": "evidence/guard/launcher-mutation.diff",
+      "sha256": "e4e824711093c748160ddcb23af95d01e47840136405603771c7370d236404ed",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-resume-20261004/final-actual-launcher-mutation.patch"
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-mutated-cargo-check.log",
+      "sha256": "f89ce7ca33ff91d0a638e33170c62736d4747b083e6d3e4ed9fcea45a5f2b38a",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-resume-20261004/final-mutated-cargo-check.log"
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-mutated-production-gate.log",
+      "sha256": "82be341729b92707b1dd81bd99aa43ad4d1bdc34c76e15c0f2c80d775658ee83",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-resume-20261004/final-mutated-production-gate.log"
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-platform-toolchain.txt",
+      "sha256": "a8095649225bb267f7372c5b678b458a3158ead1e24c6c46644b2feb1d35ac0b",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-resume-20261004/final-platform-toolchain.txt"
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-restored-production-gate.log",
+      "sha256": "87b005addd3b3919c4c917d2a88251d9746da713b038dd3b99fda2dbeb25f3e2",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-resume-20261004/final-restored-production-gate.log"
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-source-restoration.txt",
+      "sha256": "893e9ed93d92d8a7827b65ff895a4d1e2c8c843f59d261a9b329a00ff0845798",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-resume-20261004/final-source-restoration.txt"
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-source-sha256.json",
+      "sha256": "716401f8f2de1149b99955768058b793ba9b740d48cfb8353a2e2d5745c458fb",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/evidence/final-luna-resume-20261004/final-source-sha256.json"
+    },
+    {
+      "path": "evidence/history-final.md",
+      "sha256": "3d574364beea959f213dfa65ce8f97d025f312bcca48fef76afa6dfa83ffceed",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/documentation/draft/evidence-history-final.md"
+    },
+    {
+      "path": "evidence/history.md",
+      "sha256": "03e26af9ae2bda5575b7e8c9eb08abdf638c33f6d418be6ded4220861f4bb741",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/documentation/draft/evidence-history.md"
+    },
+    {
+      "path": "evidence/history/native-contract-old-binding.json",
+      "sha256": "33d0d33b8d3abc25e1210306c2ce5f253da91bb5ffec6700c821a8bdd19a6dff",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/C2-NATIVE-EVIDENCE-CONTRACT-REVIEW-BINDING.json"
+    },
+    {
+      "path": "evidence/native/C2-NATIVE-FINAL-SOURCE-20261004.md",
+      "sha256": "005ee591a15571388db5ceff857e3304eddf6d16d7bde9889428a1e94a45e697",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/C2-NATIVE-FINAL-SOURCE-20261004.md"
+    },
+    {
+      "path": "evidence/native/accepted-base-fmt-final-source-20261004.exit-code",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/accepted-base-fmt-final-source-20261004.exit-code"
+    },
+    {
+      "path": "evidence/native/accepted-base-fmt-final-source-20261004.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/accepted-base-fmt-final-source-20261004.stderr.log"
+    },
+    {
+      "path": "evidence/native/accepted-base-fmt-final-source-20261004.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/accepted-base-fmt-final-source-20261004.stdout.log"
+    },
+    {
+      "path": "evidence/native/c2_native_harness.py.txt",
+      "sha256": "9a69946cbc02edd19b67d1c86c9b4c780a65ff3d47bbe57ea75d7336f85d16e8",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/c2_native_harness.py"
+    },
+    {
+      "path": "evidence/native/final-source-native.json",
+      "sha256": "3d661ac2077dd731504279e8df2b84c04fbe99fc978fd20d5a2466153fcd1dac",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/C2-NATIVE-FINAL-SOURCE-20261004.json"
+    },
+    {
+      "path": "evidence/native/old-route-harness-final-source-20261004.exit-code",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/old-route-harness-final-source-20261004.exit-code"
+    },
+    {
+      "path": "evidence/native/old-route-harness-final-source-20261004.stderr.log",
+      "sha256": "ea3262d72ce92720d658873154c072a884c4906e90406cc84bdc240b19a66aba",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/old-route-harness-final-source-20261004.stderr.log"
+    },
+    {
+      "path": "evidence/native/old-route-harness-final-source-20261004.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/old-route-harness-final-source-20261004.stdout.log"
+    },
+    {
+      "path": "evidence/native/old-route-native-result-final-source-20261004.json",
+      "sha256": "9b2ac5f0bec8742248889e933d5c6dccf0c484755f3677f52fbe1a8ef376d78d",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/old-route-native-result-final-source-20261004.json"
+    },
+    {
+      "path": "evidence/native/owned-five-rustfmt-final-source-20261004.exit-code",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/owned-five-rustfmt-final-source-20261004.exit-code"
+    },
+    {
+      "path": "evidence/native/owned-five-rustfmt-final-source-20261004.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/owned-five-rustfmt-final-source-20261004.stderr.log"
+    },
+    {
+      "path": "evidence/native/owned-five-rustfmt-final-source-20261004.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/owned-five-rustfmt-final-source-20261004.stdout.log"
+    },
+    {
+      "path": "evidence/native/production-build-final-source-20261004.exit-code",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/production-build-final-source-20261004.exit-code"
+    },
+    {
+      "path": "evidence/native/production-build-final-source-20261004.stderr.log",
+      "sha256": "401097959a33bed9710cbcfa3b7f3eafabf3e622f2f43409dd1e098e226eaa68",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/production-build-final-source-20261004.stderr.log"
+    },
+    {
+      "path": "evidence/native/production-build-final-source-20261004.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/production-build-final-source-20261004.stdout.log"
+    },
+    {
+      "path": "evidence/native/production-fmt-final-source-20261004.exit-code",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/production-fmt-final-source-20261004.exit-code"
+    },
+    {
+      "path": "evidence/native/production-fmt-final-source-20261004.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/production-fmt-final-source-20261004.stderr.log"
+    },
+    {
+      "path": "evidence/native/production-fmt-final-source-20261004.stdout.log",
+      "sha256": "ba60075a12ec5f5452550f2737db40a44d25e2edc2eae326769a1a978e93ccf6",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/production-fmt-final-source-20261004.stdout.log"
+    },
+    {
+      "path": "evidence/native/production-harness-final-source-20261004.exit-code",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/production-harness-final-source-20261004.exit-code"
+    },
+    {
+      "path": "evidence/native/production-harness-final-source-20261004.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/production-harness-final-source-20261004.stderr.log"
+    },
+    {
+      "path": "evidence/native/production-harness-final-source-20261004.stdout.log",
+      "sha256": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/production-harness-final-source-20261004.stdout.log"
+    },
+    {
+      "path": "evidence/native/production-native-result-final-source-20261004.json",
+      "sha256": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/production-native-result-final-source-20261004.json"
+    },
+    {
+      "path": "evidence/regression/process-lib.json",
+      "sha256": "8d544db87413a8189e8658efc784ad037305c42bc7ea921750d5bf2f6b492aef",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/root-checks/process-lib.json"
+    },
+    {
+      "path": "evidence/regression/process-lib.stderr.log",
+      "sha256": "02598a2b3459346d98bd92b8c9d4814eb151bd29a351db14520bf2a508338cd3",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/root-checks/process-lib.stderr.log"
+    },
+    {
+      "path": "evidence/regression/process-lib.stdout.log",
+      "sha256": "343fdf9984dfc90f5482ee6af39597b4d5b358faa4dbcf1397f81248f9e3e0cf",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/root-checks/process-lib.stdout.log"
+    },
+    {
+      "path": "reviews/architecture-decision.md",
+      "sha256": "c5208acae00cee08816c0601d46771575edb1709ef35aecdd1898dc7bbe3468d",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/SUPERVISION-DECISION.md"
+    },
+    {
+      "path": "reviews/c2-implementation-contract.md",
+      "sha256": "10f884b250471372ac21f8ae83f074879fd5c57b5d866aad051ee06d33dc3c87",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/REMOTE-C2-IMPLEMENTATION-FREEZE.md"
+    },
+    {
+      "path": "reviews/c2-native-evidence-contract-review.md",
+      "sha256": "dbe89ad7947ffb95627285376d50d1148451867cf82578160c9a412fcb9a0ef4",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/C2-NATIVE-EVIDENCE-CONTRACT-REVIEW.md"
+    },
+    {
+      "path": "reviews/c2-native-evidence-contract.md",
+      "sha256": "ab3236ae35d8629445d393f8c7a804e9c02028d866da3cef83a2d87ac713d6eb",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/C2-NATIVE-EVIDENCE-CONTRACT.md"
+    },
+    {
+      "path": "reviews/c2-overlay-contract-v2.md",
+      "sha256": "91fd897d365c90a42912e1e1fa38fb6df826bdc847e307063cab4fe38e96d550",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/C2-GUARD-OVERLAY-CONTRACT-V2.md"
+    },
+    {
+      "path": "reviews/c2-retirement-addendum.md",
+      "sha256": "b2cab6c82166e1ad7574734cd0f2cbeae236c25efd6fcf78c38d82f8e2507d47",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/C2-SIGNED-RETIREMENT-ADDENDUM.md"
+    },
+    {
+      "path": "reviews/c2-windows-mixed-test-disposition.md",
+      "sha256": "20cc8018a1a2f7c59f9f18244adf3e2077d2776abf4b65888848ede56aa4d23b",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/C2-WINDOWS-MIXED-TEST-DISPOSITION.md"
+    },
+    {
+      "path": "reviews/security-cleanroom.md",
+      "sha256": "88226fc356680c862e49f598fb101b942a0c81be2f452405c1bfa8101131568c",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/C2-SECURITY-FINAL-CLEANROOM.md"
+    },
+    {
+      "path": "reviews/standards-cleanroom.md",
+      "sha256": "9b5565303c863f65fa052e2f57977cc68a76c9ca414321327a6b5ab82dec4ac5",
+      "original_external_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/C2-STANDARDS-FINAL-CLEANROOM.md"
+    }
+  ]
+}

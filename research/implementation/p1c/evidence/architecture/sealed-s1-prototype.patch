@@ -1,0 +1,733 @@
+--- a/crates/webcodex-process/src/execution_broker/mod.rs
++++ b/crates/webcodex-process/src/execution_broker/mod.rs
+@@ -61,7 +61,7 @@
+ use std::ffi::OsString;
+ use std::io;
+ use std::path::PathBuf;
+-use std::process::{Command, Stdio};
++use std::process::{Child, Command, Stdio};
+ 
+ use crate::{ManagedChild, SpawnOptions};
+ 
+@@ -600,9 +600,11 @@
+     /// resulting child is a `ManagedChild` like any other, so process-group
+     /// ownership, `wait`, and `terminate_tree` are unchanged.
+     ///
+-    /// This is the **only** way to obtain a sandboxed child. There is no
+-    /// unrestricted counterpart, and none can be added without a `#[cfg(test)]`
+-    /// gate — see the note on [`SandboxPlan`].
++    /// This is the ordinary way to obtain a sandboxed, managed child. A
++    /// supervisor that must keep a payload in its existing watchdog process
++    /// group uses [`Self::spawn_in_supervised_unix_tree`] instead; both paths
++    /// build through the same private sandbox builder. There is no unrestricted
++    /// counterpart — see the note on [`SandboxPlan`].
+     #[cfg(target_os = "macos")]
+     pub fn spawn(&self, spec: &SpawnSpec) -> Result<ManagedChild, BrokerError> {
+         self.spawn_with_toolchain(spec, &[])
+@@ -645,6 +647,77 @@
+             .map_err(BrokerError::Launch)
+     }
+ 
++    /// Spawn a sandboxed payload into the live Unix process group owned by
++    /// `tree_owner`. The returned child is waited by its caller; the existing
++    /// tree owner remains responsible for descendant cleanup.
++    ///
++    /// This is deliberately not `ManagedChild::spawn`: that method starts a
++    /// new private process group, which would detach this payload from the
++    /// supervisor's watchdog group.
++    pub fn spawn_in_supervised_unix_tree(
++        &self,
++        spec: &SpawnSpec,
++        toolchain_roots: &[TrustedToolchainRoot],
++        tree_owner: &mut ManagedChild,
++    ) -> Result<Child, BrokerError> {
++        #[cfg(target_os = "macos")]
++        {
++            use std::os::unix::process::CommandExt;
++
++            if matches!(&spec.env, EnvPolicy::Inherit) {
++                return Err(BrokerError::SpecInvalid(
++                    "supervised payload cannot inherit the supervisor environment",
++                ));
++            }
++            if [spec.stdin, spec.stdout, spec.stderr]
++                .into_iter()
++                .any(|stream| stream == StreamPolicy::Inherit)
++            {
++                return Err(BrokerError::SpecInvalid(
++                    "supervised payload cannot inherit supervisor standard streams",
++                ));
++            }
++
++            let mut command = self.build_command_with_toolchain(spec, toolchain_roots)?;
++            if tree_owner
++                .try_wait()
++                .map_err(BrokerError::Launch)?
++                .is_some()
++            {
++                return Err(BrokerError::SpecInvalid(
++                    "supervised process-tree owner has already exited",
++                ));
++            }
++
++            let owner_pid = libc::pid_t::try_from(tree_owner.id())
++                .map_err(|_| BrokerError::SpecInvalid("invalid process-tree owner pid"))?;
++            // SAFETY: owner_pid is obtained from this borrowed ManagedChild;
++            // getsid(0) queries the current supervisor process.
++            let owner_group = unsafe { libc::getpgid(owner_pid) };
++            let owner_session = unsafe { libc::getsid(owner_pid) };
++            let current_session = unsafe { libc::getsid(0) };
++            if owner_group != owner_pid || owner_session < 0 || current_session < 0 {
++                return Err(BrokerError::SpecInvalid(
++                    "supervised process-tree owner is not a live private process-group leader",
++                ));
++            }
++            if owner_session != current_session {
++                return Err(BrokerError::SpecInvalid(
++                    "supervised process-tree owner is outside the supervisor session",
++                ));
++            }
++
++            command.process_group(owner_pid);
++            command.spawn().map_err(BrokerError::Launch)
++        }
++
++        #[cfg(not(target_os = "macos"))]
++        {
++            let _ = (spec, toolchain_roots, tree_owner);
++            Err(BrokerError::UnsupportedPlatform)
++        }
++    }
++
+     /// No supported backend on this platform: refuse rather than spawn bare.
+     #[cfg(not(target_os = "macos"))]
+     #[cfg(test)]
+@@ -739,3 +812,7 @@
+ #[cfg(test)]
+ #[path = "fidelity_tests.rs"]
+ mod fidelity_tests;
++
++#[cfg(test)]
++#[path = "supervised_tree_tests.rs"]
++mod supervised_tree_tests;
+--- /dev/null
++++ b/crates/webcodex-process/src/execution_broker/supervised_tree_tests.rs
+@@ -0,0 +1,618 @@
++// SPDX-License-Identifier: Apache-2.0
++//! Tests for the narrow supervisor-owned Unix process-group spawn primitive.
++
++use std::io::Read;
++use std::process::{Command, Stdio};
++
++use super::{
++    BrokerError, EnvPolicy, ExecutionBroker, NetworkPolicy, SandboxPlan, SpawnSpec, StreamPolicy,
++};
++use crate::ManagedChild;
++
++#[cfg(target_os = "macos")]
++fn spec(root: &std::path::Path, program: &str, args: &[&str]) -> SpawnSpec {
++    SpawnSpec::new(
++        program,
++        root,
++        SandboxPlan::read_write_in(&[root.to_path_buf()]),
++    )
++    .args(args.iter().copied())
++}
++
++#[cfg(target_os = "macos")]
++fn live_tree_owner() -> ManagedChild {
++    let mut command = Command::new("/bin/sleep");
++    command
++        .arg("60")
++        .stdin(Stdio::null())
++        .stdout(Stdio::null())
++        .stderr(Stdio::null());
++    ManagedChild::spawn(&mut command).expect("spawn owned tree fixture")
++}
++
++#[cfg(target_os = "macos")]
++#[test]
++fn supervised_spawn_rejects_inherited_environment_and_streams_before_spawn() {
++    let temp = tempfile::tempdir().expect("tempdir");
++    let marker = temp.path().join("must-not-exist");
++    let broker = ExecutionBroker::new();
++    let mut owner = live_tree_owner();
++
++    let inherited_env =
++        spec(temp.path(), "/usr/bin/touch", &[marker.to_str().unwrap()]).env(EnvPolicy::Inherit);
++    assert!(matches!(
++        broker.spawn_in_supervised_unix_tree(&inherited_env, &[], &mut owner),
++        Err(BrokerError::SpecInvalid(_))
++    ));
++
++    for (stdin, stdout, stderr) in [
++        (
++            StreamPolicy::Inherit,
++            StreamPolicy::Null,
++            StreamPolicy::Null,
++        ),
++        (
++            StreamPolicy::Null,
++            StreamPolicy::Inherit,
++            StreamPolicy::Null,
++        ),
++        (
++            StreamPolicy::Null,
++            StreamPolicy::Null,
++            StreamPolicy::Inherit,
++        ),
++    ] {
++        let mut inherited_stream = spec(temp.path(), "/usr/bin/touch", &[marker.to_str().unwrap()]);
++        inherited_stream.stdin = stdin;
++        inherited_stream.stdout = stdout;
++        inherited_stream.stderr = stderr;
++        assert!(matches!(
++            broker.spawn_in_supervised_unix_tree(&inherited_stream, &[], &mut owner),
++            Err(BrokerError::SpecInvalid(_))
++        ));
++    }
++
++    assert!(
++        !marker.exists(),
++        "refused specs must not launch their payload"
++    );
++    owner.terminate_tree().expect("terminate fixture owner");
++    owner
++        .wait_tree_exit(std::time::Duration::from_secs(2))
++        .unwrap();
++}
++
++#[cfg(target_os = "macos")]
++#[test]
++fn supervised_spawn_rejects_exited_owner_before_payload_creation() {
++    let temp = tempfile::tempdir().expect("tempdir");
++    let marker = temp.path().join("must-not-exist");
++    let broker = ExecutionBroker::new();
++    let mut command = Command::new("/usr/bin/true");
++    command
++        .stdin(Stdio::null())
++        .stdout(Stdio::null())
++        .stderr(Stdio::null());
++    let mut owner = ManagedChild::spawn(&mut command).expect("spawn exited owner fixture");
++    owner.wait().expect("wait for owner exit");
++
++    let request = spec(temp.path(), "/usr/bin/touch", &[marker.to_str().unwrap()]);
++    assert!(matches!(
++        broker.spawn_in_supervised_unix_tree(&request, &[], &mut owner),
++        Err(BrokerError::SpecInvalid(_))
++    ));
++    assert!(
++        !marker.exists(),
++        "an exited owner must not authorize a payload"
++    );
++}
++
++#[cfg(target_os = "macos")]
++#[test]
++fn supervised_spawn_rejects_invalid_cwd_and_uncompilable_plan_before_spawn() {
++    let temp = tempfile::tempdir().expect("tempdir");
++    let root = temp.path().join("allowed");
++    let outside = temp.path().join("outside");
++    std::fs::create_dir_all(&root).expect("create allowed root");
++    std::fs::create_dir_all(&outside).expect("create outside cwd");
++    let marker = root.join("must-not-exist");
++    let broker = ExecutionBroker::new();
++    let mut owner = live_tree_owner();
++
++    let invalid_cwd = SpawnSpec::new(
++        "/usr/bin/touch",
++        &outside,
++        SandboxPlan::read_write_in(std::slice::from_ref(&root)),
++    )
++    .arg(marker.to_str().unwrap());
++    assert!(matches!(
++        broker.spawn_in_supervised_unix_tree(&invalid_cwd, &[], &mut owner),
++        Err(BrokerError::CwdOutsideSandboxRoots { .. })
++    ));
++
++    let uncompileable = SpawnSpec::new(
++        "/usr/bin/touch",
++        &root,
++        SandboxPlan::Confined {
++            writable_roots: vec![root.clone()],
++            readable_roots: Vec::new(),
++            network: NetworkPolicy::Allow,
++        },
++    )
++    .arg(marker.to_str().unwrap());
++    assert!(matches!(
++        broker.spawn_in_supervised_unix_tree(&uncompileable, &[], &mut owner),
++        Err(BrokerError::PlanNotCompilable(_))
++    ));
++
++    assert!(
++        !marker.exists(),
++        "pre-start refusals must not launch payload"
++    );
++    owner.terminate_tree().expect("terminate fixture owner");
++    assert!(owner
++        .wait_tree_exit(std::time::Duration::from_secs(2))
++        .unwrap());
++}
++
++#[cfg(target_os = "macos")]
++#[test]
++#[ignore = "native Seatbelt/process-group gate; run explicitly on macOS"]
++fn supervised_payload_joins_live_owner_group_under_sandbox() {
++    let temp = tempfile::tempdir().expect("tempdir");
++    let marker = temp.path().join("payload-ran");
++    let broker = ExecutionBroker::new();
++    let mut owner = live_tree_owner();
++    let request = spec(temp.path(), "/usr/bin/touch", &[marker.to_str().unwrap()]);
++    let mut payload = broker
++        .spawn_in_supervised_unix_tree(&request, &[], &mut owner)
++        .expect("spawn confined payload in owner group");
++
++    assert_eq!(
++        unsafe { libc::getpgid(payload.id() as libc::pid_t) },
++        owner.id() as i32
++    );
++    assert!(payload.wait().expect("wait for payload").success());
++    assert!(
++        marker.exists(),
++        "payload should write inside its allowed root"
++    );
++    owner.terminate_tree().expect("terminate fixture tree");
++    owner
++        .wait_tree_exit(std::time::Duration::from_secs(2))
++        .unwrap();
++}
++
++#[cfg(target_os = "macos")]
++#[test]
++#[ignore = "native Seatbelt enforcement gate; run explicitly on macOS"]
++fn supervised_payload_is_confined_and_network_denied() {
++    use super::NetworkPolicy;
++    use std::net::TcpListener;
++    use std::path::Path;
++
++    const SYSTEM_NC: &str = "/usr/bin/nc";
++    assert!(
++        Path::new(SYSTEM_NC).is_file(),
++        "HOST_UNAVAILABLE: missing nc"
++    );
++    let temp = tempfile::tempdir().expect("tempdir");
++    let root = temp.path().join("authority");
++    let outside = temp.path().join("outside");
++    std::fs::create_dir_all(&root).expect("create authority root");
++    std::fs::create_dir_all(&outside).expect("create outside root");
++    let secret = outside.join("parent-secret");
++    std::fs::write(&secret, "PARENT_SECRET_7db1\n").expect("write secret fixture");
++
++    let listener = TcpListener::bind("127.0.0.1:0").expect("bind positive-control listener");
++    let port = listener.local_addr().unwrap().port().to_string();
++    let mut control = Command::new(SYSTEM_NC);
++    control
++        .args(["-w", "2", "127.0.0.1", &port])
++        .stdin(Stdio::null())
++        .stdout(Stdio::null())
++        .stderr(Stdio::null());
++    assert!(control
++        .status()
++        .expect("unsandboxed nc positive control")
++        .success());
++    drop(
++        listener
++            .accept()
++            .expect("accept positive-control connection"),
++    );
++
++    let marker = root.join("allowed-write");
++    let denied_marker = outside.join("denied-write");
++    let script = format!(
++        "touch '{}' && if touch '{}'; then printf 'EXTERNAL_WRITE_ALLOWED'; else printf 'EXTERNAL_WRITE_DENIED'; fi; if cat '{}' 2>/dev/null; then printf 'SECRET_VISIBLE'; else printf 'SECRET_ABSENT'; fi; if {SYSTEM_NC} -w 2 127.0.0.1 {port} </dev/null; then printf 'NETWORK_CONNECTED'; else printf 'NETWORK_DENIED'; fi",
++        marker.display(),
++        denied_marker.display(),
++        secret.display()
++    );
++    let request = SpawnSpec::new(
++        "/bin/sh",
++        &root,
++        SandboxPlan::Confined {
++            writable_roots: vec![root.clone()],
++            readable_roots: Vec::new(),
++            network: NetworkPolicy::Deny,
++        },
++    )
++    .args(["-c", script.as_str()])
++    .stdout(StreamPolicy::Piped)
++    .stderr(StreamPolicy::Piped);
++    let mut owner = live_tree_owner();
++    let mut payload = ExecutionBroker::new()
++        .spawn_in_supervised_unix_tree(&request, &[], &mut owner)
++        .expect("spawn confined probe");
++    let stdout = payload.stdout.take().expect("piped stdout");
++    let stderr = payload.stderr.take().expect("piped stderr");
++    let out_reader = std::thread::spawn(move || {
++        let mut bytes = Vec::new();
++        stdout.take(4096).read_to_end(&mut bytes).map(|_| bytes)
++    });
++    let err_reader = std::thread::spawn(move || {
++        let mut bytes = Vec::new();
++        stderr.take(4096).read_to_end(&mut bytes).map(|_| bytes)
++    });
++    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
++    let status = loop {
++        if let Some(status) = payload.try_wait().expect("poll probe") {
++            break status;
++        }
++        if std::time::Instant::now() >= deadline {
++            owner
++                .terminate_tree()
++                .expect("terminate timed out probe group");
++            panic!("native probe exceeded 8 second deadline");
++        }
++        std::thread::sleep(std::time::Duration::from_millis(10));
++    };
++    let out = out_reader
++        .join()
++        .expect("stdout reader thread")
++        .expect("read probe stdout");
++    let err = err_reader
++        .join()
++        .expect("stderr reader thread")
++        .expect("read probe stderr");
++    assert!(
++        status.success(),
++        "probe failed: {:?}",
++        String::from_utf8_lossy(&err)
++    );
++    let output = String::from_utf8_lossy(&out);
++    assert!(
++        marker.exists(),
++        "allowed root write must succeed: {output:?}"
++    );
++    assert!(
++        !denied_marker.exists(),
++        "external write must be denied: {output:?}"
++    );
++    assert!(output.contains("EXTERNAL_WRITE_DENIED"), "{output:?}");
++    assert!(
++        output.contains("SECRET_ABSENT"),
++        "parent secret leaked: {output:?}"
++    );
++    assert!(
++        !output.contains("PARENT_SECRET_7db1"),
++        "parent secret leaked: {output:?}"
++    );
++    assert!(
++        output.contains("NETWORK_DENIED"),
++        "network was not denied: {output:?}"
++    );
++    owner.terminate_tree().expect("terminate owner group");
++    assert!(owner
++        .wait_tree_exit(std::time::Duration::from_secs(2))
++        .unwrap());
++}
++
++#[cfg(target_os = "macos")]
++#[test]
++#[ignore = "native process-group distinction gate; run explicitly on macOS"]
++fn ordinary_broker_child_keeps_its_own_group() {
++    let temp = tempfile::tempdir().expect("tempdir");
++    let mut owner = live_tree_owner();
++    let mut ordinary = ExecutionBroker::new()
++        .spawn(&spec(temp.path(), "/bin/sleep", &["5"]))
++        .expect("ordinary broker spawn");
++    let ordinary_pid = ordinary.id() as libc::pid_t;
++    let owner_pid = owner.id() as libc::pid_t;
++    assert_eq!(unsafe { libc::getpgid(ordinary_pid) }, ordinary_pid);
++    assert_ne!(unsafe { libc::getpgid(ordinary_pid) }, owner_pid);
++    ordinary
++        .terminate_tree()
++        .expect("terminate ordinary child tree");
++    assert!(ordinary
++        .wait_tree_exit(std::time::Duration::from_secs(2))
++        .unwrap());
++    owner.terminate_tree().expect("terminate fixture owner");
++    assert!(owner
++        .wait_tree_exit(std::time::Duration::from_secs(2))
++        .unwrap());
++}
++
++#[cfg(target_os = "macos")]
++#[test]
++#[ignore = "native watchdog EOF/process-tree cleanup gate; run explicitly on macOS"]
++fn supervisor_watchdog_eof_kills_payload_group() {
++    use std::time::{Duration, Instant};
++
++    // This test binary acts as the supervisor fixture. Its stdin pipe is the
++    // watchdog lifetime channel; the test process drops the sole writer below.
++    let executable = std::env::current_exe().expect("current test executable");
++    let mut command = Command::new(executable);
++    command
++        .arg("--exact")
++        .arg("execution_broker::supervised_tree_tests::watchdog_subprocess_entrypoint")
++        .arg("--nocapture")
++        .env("WEBCODEX_TEST_WATCHDOG_HELPER", "1")
++        .stdin(Stdio::piped())
++        .stdout(Stdio::null())
++        .stderr(Stdio::null());
++    let mut owner = ManagedChild::spawn(&mut command).expect("spawn watchdog fixture");
++    let writer = owner
++        .child_mut()
++        .stdin
++        .take()
++        .expect("watchdog pipe writer");
++    let temp = tempfile::tempdir().expect("tempdir");
++    let marker = temp.path().join("payload-started");
++    let request = spec(
++        temp.path(),
++        "/bin/sh",
++        &[
++            "-c",
++            &format!("touch '{}'; exec /bin/sleep 60", marker.display()),
++        ],
++    );
++    let mut payload = ExecutionBroker::new()
++        .spawn_in_supervised_unix_tree(&request, &[], &mut owner)
++        .expect("spawn payload in watchdog group");
++    let deadline = Instant::now() + Duration::from_secs(3);
++    while !marker.exists() && Instant::now() < deadline {
++        std::thread::sleep(Duration::from_millis(10));
++    }
++    assert!(
++        marker.exists(),
++        "payload did not start before watchdog close"
++    );
++    drop(writer);
++    while payload.try_wait().expect("poll payload exit").is_none()
++        && Instant::now() < deadline + Duration::from_secs(3)
++    {
++        std::thread::sleep(Duration::from_millis(10));
++    }
++    assert!(
++        payload.try_wait().expect("final payload poll").is_some(),
++        "watchdog EOF must kill payload"
++    );
++    assert!(owner
++        .wait_tree_exit(Duration::from_secs(2))
++        .expect("wait group exit"));
++}
++
++#[cfg(target_os = "macos")]
++#[test]
++#[ignore = "native Seatbelt environment-isolation gate; run explicitly on macOS"]
++fn supervised_spawn_uses_minimal_environment_and_project_home() {
++    use std::time::{Duration, Instant};
++
++    const HOST_SECRET: &str = "WEBCODEX_TEST_HOST_SECRET";
++    const FAKE_HOME: &str = "WEBCODEX_TEST_FAKE_HOME";
++    const PROJECT_ROOT: &str = "WEBCODEX_TEST_PROJECT_ROOT";
++
++    let temp = tempfile::tempdir().expect("tempdir");
++    let fake_home = temp.path().join("fake-host-home");
++    let project_root = temp.path().join("authorized-project");
++    std::fs::create_dir_all(&fake_home).expect("create fake host HOME");
++    std::fs::create_dir_all(&project_root).expect("create authorized project root");
++
++    let mut command = Command::new(std::env::current_exe().expect("current test executable"));
++    command
++        .arg("--exact")
++        .arg("execution_broker::supervised_tree_tests::environment_fixture_entrypoint")
++        .arg("--nocapture")
++        .env("WEBCODEX_TEST_ENV_HELPER", "1")
++        .env(HOST_SECRET, "SYNTHETIC_HOST_SECRET_SENTINEL_96f2")
++        .env(FAKE_HOME, &fake_home)
++        .env("HOME", &fake_home)
++        .env(PROJECT_ROOT, &project_root)
++        .stdin(Stdio::null())
++        .stdout(Stdio::piped())
++        .stderr(Stdio::piped());
++    let mut fixture = ManagedChild::spawn(&mut command).expect("spawn trusted env fixture");
++    let stdout = fixture
++        .child_mut()
++        .stdout
++        .take()
++        .expect("fixture stdout pipe");
++    let stderr = fixture
++        .child_mut()
++        .stderr
++        .take()
++        .expect("fixture stderr pipe");
++    let out_reader = std::thread::spawn(move || {
++        let mut bytes = Vec::new();
++        stdout
++            .take(16 * 1024)
++            .read_to_end(&mut bytes)
++            .map(|_| bytes)
++    });
++    let err_reader = std::thread::spawn(move || {
++        let mut bytes = Vec::new();
++        stderr
++            .take(16 * 1024)
++            .read_to_end(&mut bytes)
++            .map(|_| bytes)
++    });
++    let deadline = Instant::now() + Duration::from_secs(15);
++    let status = loop {
++        if let Some(status) = fixture.try_wait().expect("poll env fixture") {
++            break status;
++        }
++        if Instant::now() >= deadline {
++            fixture
++                .terminate_tree()
++                .expect("terminate timed out env fixture tree");
++            panic!("environment fixture exceeded 15 second deadline");
++        }
++        std::thread::sleep(Duration::from_millis(10));
++    };
++    let output = String::from_utf8_lossy(
++        &out_reader
++            .join()
++            .expect("fixture stdout reader")
++            .expect("read fixture stdout"),
++    )
++    .into_owned();
++    let error = String::from_utf8_lossy(
++        &err_reader
++            .join()
++            .expect("fixture stderr reader")
++            .expect("read fixture stderr"),
++    )
++    .into_owned();
++    assert!(
++        status.success(),
++        "fixture process failed; stdout={output:?}, stderr={error:?}"
++    );
++    assert!(
++        output.contains("WEBCODEX_ENV_FIXTURE=PASS"),
++        "fixture did not report its environment assertions: stdout={output:?}, stderr={error:?}"
++    );
++    assert!(fixture
++        .wait_tree_exit(Duration::from_secs(2))
++        .expect("wait for env fixture tree"));
++}
++
++#[cfg(target_os = "macos")]
++#[test]
++fn environment_fixture_entrypoint() {
++    if std::env::var_os("WEBCODEX_TEST_ENV_HELPER").is_none() {
++        return;
++    }
++
++    const HOST_SECRET: &str = "WEBCODEX_TEST_HOST_SECRET";
++    const FAKE_HOME: &str = "WEBCODEX_TEST_FAKE_HOME";
++    const PROJECT_ROOT: &str = "WEBCODEX_TEST_PROJECT_ROOT";
++    let host_secret = std::env::var(HOST_SECRET).expect("synthetic host secret fixture");
++    let fake_home = std::env::var(FAKE_HOME).expect("fake host HOME fixture");
++    assert_eq!(host_secret, "SYNTHETIC_HOST_SECRET_SENTINEL_96f2");
++    assert_eq!(std::env::var("HOME").expect("fixture HOME"), fake_home);
++    let project_root = std::path::PathBuf::from(
++        std::env::var_os(PROJECT_ROOT).expect("authorized project root fixture"),
++    );
++
++    let mut owner = live_tree_owner();
++    let script = "printf 'HOST_SECRET=%s\\nEXPLICIT=%s\\nHOME=%s\\n' \"${WEBCODEX_TEST_HOST_SECRET-ABSENT}\" \"${WEBCODEX_ALLOWED_TEST_VALUE-ABSENT}\" \"${HOME-ABSENT}\"";
++    let request = SpawnSpec::new(
++        "/bin/sh",
++        &project_root,
++        SandboxPlan::read_write_in(&[project_root.clone()]),
++    )
++    .args(["-c", script])
++    .env_var("WEBCODEX_ALLOWED_TEST_VALUE", "explicit-ok")
++    .stdout(StreamPolicy::Piped)
++    .stderr(StreamPolicy::Piped);
++    let mut payload = ExecutionBroker::new()
++        .spawn_in_supervised_unix_tree(&request, &[], &mut owner)
++        .expect("spawn minimal-environment probe");
++    let stdout = payload.stdout.take().expect("probe stdout pipe");
++    let stderr = payload.stderr.take().expect("probe stderr pipe");
++    let out_reader = std::thread::spawn(move || {
++        let mut bytes = Vec::new();
++        stdout.take(4096).read_to_end(&mut bytes).map(|_| bytes)
++    });
++    let err_reader = std::thread::spawn(move || {
++        let mut bytes = Vec::new();
++        stderr.take(4096).read_to_end(&mut bytes).map(|_| bytes)
++    });
++    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
++    let status = loop {
++        if let Some(status) = payload.try_wait().expect("poll env probe") {
++            break status;
++        }
++        if std::time::Instant::now() >= deadline {
++            owner
++                .terminate_tree()
++                .expect("terminate timed out env probe group");
++            panic!("environment probe exceeded 8 second deadline");
++        }
++        std::thread::sleep(std::time::Duration::from_millis(10));
++    };
++    let output = String::from_utf8_lossy(
++        &out_reader
++            .join()
++            .expect("probe stdout reader")
++            .expect("read probe stdout"),
++    )
++    .into_owned();
++    let error = String::from_utf8_lossy(
++        &err_reader
++            .join()
++            .expect("probe stderr reader")
++            .expect("read probe stderr"),
++    )
++    .into_owned();
++    assert!(
++        status.success(),
++        "minimal-environment probe failed: stdout={output:?}, stderr={error:?}"
++    );
++    assert!(output.contains("HOST_SECRET=ABSENT"), "{output:?}");
++    assert!(output.contains("EXPLICIT=explicit-ok"), "{output:?}");
++    assert!(
++        output.contains(&format!("HOME={}\n", project_root.display())),
++        "HOME did not use authorized project cwd: {output:?}"
++    );
++    assert!(
++        !output.contains(&fake_home),
++        "fake fixture HOME leaked into payload: {output:?}"
++    );
++    println!("WEBCODEX_ENV_FIXTURE=PASS");
++    owner.terminate_tree().expect("terminate env probe owner");
++    assert!(owner
++        .wait_tree_exit(std::time::Duration::from_secs(2))
++        .unwrap());
++}
++
++#[cfg(target_os = "macos")]
++#[test]
++fn watchdog_subprocess_entrypoint() {
++    if std::env::var_os("WEBCODEX_TEST_WATCHDOG_HELPER").is_none() {
++        return;
++    }
++    let mut byte = [0u8; 1];
++    let _ = std::io::stdin().read(&mut byte);
++    // SAFETY: this test-only helper is the process-group leader whose group
++    // the parent test created; kill(0) targets only its own group.
++    unsafe { libc::kill(0, libc::SIGKILL) };
++}
++
++#[cfg(all(unix, not(target_os = "macos")))]
++#[test]
++fn supervised_spawn_refuses_without_a_macos_sandbox_backend() {
++    let mut command = Command::new("/bin/sleep");
++    command
++        .arg("60")
++        .stdin(Stdio::null())
++        .stdout(Stdio::null())
++        .stderr(Stdio::null());
++    let mut owner = ManagedChild::spawn(&mut command).expect("spawn fixture owner");
++    let spec = SpawnSpec::new(
++        "/bin/true",
++        std::env::temp_dir(),
++        SandboxPlan::read_write_in(&[std::env::temp_dir()]),
++    );
++    assert!(matches!(
++        ExecutionBroker::new().spawn_in_supervised_unix_tree(&spec, &[], &mut owner),
++        Err(BrokerError::UnsupportedPlatform)
++    ));
++    owner.terminate_tree().expect("terminate fixture owner");
++    owner
++        .wait_tree_exit(std::time::Duration::from_secs(2))
++        .unwrap();
++}

@@ -1,0 +1,154 @@
+   Compiling webcodex-core v0.4.3 (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/externalvalidation-final-20261004-root-update/negative-control/scratch/crates/webcodex-core)
+warning: function `find_in_path` is never used
+   --> crates/webcodex-browser/src/cdp.rs:338:4
+    |
+338 | fn find_in_path(executable: &str) -> Option<PathBuf> {
+    |    ^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `webcodex-browser` (lib) generated 1 warning
+   Compiling webcodex-runner-config v0.4.3 (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/externalvalidation-final-20261004-root-update/negative-control/scratch/crates/webcodex-runner-config)
+   Compiling webcodex-validation v0.4.3 (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/externalvalidation-final-20261004-root-update/negative-control/scratch/crates/webcodex-validation)
+   Compiling webcodex-computer v0.4.3 (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/externalvalidation-final-20261004-root-update/negative-control/scratch/crates/webcodex-computer)
+   Compiling webcodex-workspace v0.4.3 (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/externalvalidation-final-20261004-root-update/negative-control/scratch/crates/webcodex-workspace)
+   Compiling webcodex-lsp v0.4.3 (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/externalvalidation-final-20261004-root-update/negative-control/scratch/crates/webcodex-lsp)
+   Compiling webcodex-environment v0.4.3 (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/externalvalidation-final-20261004-root-update/negative-control/scratch/crates/webcodex-environment)
+warning: struct `GitOutput` is never constructed
+  --> crates/webcodex-workspace/src/git_broker.rs:52:19
+   |
+52 | pub(crate) struct GitOutput {
+   |                   ^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `run_git` is never used
+   --> crates/webcodex-workspace/src/git_broker.rs:221:15
+    |
+221 | pub(crate) fn run_git(
+    |               ^^^^^^^
+
+warning: variant `BothPiped` is never constructed
+   --> crates/webcodex-workspace/src/git_broker.rs:308:5
+    |
+306 | enum GitStreams {
+    |      ---------- variant in this enum
+307 |     /// Capture all of stdout and all of stderr.
+308 |     BothPiped,
+    |     ^^^^^^^^^
+    |
+    = note: `GitStreams` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: methods `finish` and `wait_for` are never used
+   --> crates/webcodex-workspace/src/git_broker.rs:643:8
+    |
+556 | impl BrokeredGit {
+    | ---------------- methods in this implementation
+...
+643 |     fn finish(mut self, timeout: Option<std::time::Duration>) -> Result<GitOutput, GitRefusal> {
+    |        ^^^^^^
+...
+783 |     fn wait_for(&mut self, timeout: Option<std::time::Duration>) -> Result<ExitStatus, GitRefusal> {
+    |        ^^^^^^^^
+
+warning: `webcodex-workspace` (lib) generated 4 warnings
+warning: field `account_name` is never read
+  --> crates/webcodex-environment/src/session_service.rs:19:5
+   |
+14 | struct HelperPlan {
+   |        ---------- field in this struct
+...
+19 |     account_name: String,
+   |     ^^^^^^^^^^^^
+   |
+   = note: `HelperPlan` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `webcodex-environment` (lib) generated 1 warning
+   Compiling webcodex-runner v0.4.3 (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/externalvalidation-final-20261004-root-update/negative-control/scratch/crates/webcodex-runner)
+warning: unused variable: `startup_pid`
+    --> crates/webcodex-runner/src/webcodex_runner/coding_agent.rs:5122:13
+     |
+5122 |         let startup_pid = log
+     |             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_startup_pid`
+     |
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `descendant_pid`
+    --> crates/webcodex-runner/src/webcodex_runner/coding_agent.rs:5126:13
+     |
+5126 |         let descendant_pid = log
+     |             ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_descendant_pid`
+
+warning: unused variable: `startup_pid`
+    --> crates/webcodex-runner/src/webcodex_runner/coding_agent.rs:5182:13
+     |
+5182 |         let startup_pid = log
+     |             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_startup_pid`
+
+warning: unused variable: `descendant_pid`
+    --> crates/webcodex-runner/src/webcodex_runner/coding_agent.rs:5186:13
+     |
+5186 |         let descendant_pid = log
+     |             ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_descendant_pid`
+
+warning: unused variable: `startup_pid`
+    --> crates/webcodex-runner/src/webcodex_runner/coding_agent.rs:5232:13
+     |
+5232 |         let startup_pid = log
+     |             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_startup_pid`
+
+warning: unused variable: `descendant_pid`
+    --> crates/webcodex-runner/src/webcodex_runner/coding_agent.rs:5236:13
+     |
+5236 |         let descendant_pid = log
+     |             ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_descendant_pid`
+
+warning: unused variable: `startup_pid`
+    --> crates/webcodex-runner/src/webcodex_runner/coding_agent.rs:5318:13
+     |
+5318 |         let startup_pid = log
+     |             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_startup_pid`
+
+warning: unused variable: `descendant_pid`
+    --> crates/webcodex-runner/src/webcodex_runner/coding_agent.rs:5322:13
+     |
+5322 |         let descendant_pid = log
+     |             ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_descendant_pid`
+
+warning: unused variable: `startup_pid`
+    --> crates/webcodex-runner/src/webcodex_runner/coding_agent.rs:5551:13
+     |
+5551 |         let startup_pid = log
+     |             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_startup_pid`
+
+warning: unused variable: `descendant_pid`
+    --> crates/webcodex-runner/src/webcodex_runner/coding_agent.rs:5555:13
+     |
+5555 |         let descendant_pid = log
+     |             ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_descendant_pid`
+
+warning: field `workspace` is never read
+  --> crates/webcodex-runner/src/webcodex_runner/normalization_p1_tests.rs:62:5
+   |
+60 | struct Project {
+   |        ------- field in this struct
+61 |     /// Directory holding the registered project root.
+62 |     workspace: tempfile::TempDir,
+   |     ^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `webcodex-runner` (bin "webcodex-runner" test) generated 11 warnings (run `cargo fix --bin "webcodex-runner" -p webcodex-runner --tests` to apply 10 suggestions)
+    Finished `test` profile [unoptimized] target(s) in 10.43s
+     Running unittests src/main.rs (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/externalvalidation-final-20261004-root-update/runner-final/target/debug/deps/webcodex_runner-7082e92425b442f9)
+
+running 5 tests
+test webcodex_runner::persistent_shell::remote_authority_tests::named_remote_exec_with_wrong_session_does_not_close_owned_transport ... ok
+test webcodex_runner::persistent_shell::remote_authority_tests::omitted_resource_marker_cannot_write_to_an_owned_ssh_transport ... ok
+test webcodex_runner::persistent_shell::remote_authority_tests::named_remote_open_and_exec_fail_closed_and_cleanup_owned_transport ... ok
+test webcodex_runner::persistent_shell::remote_authority_tests::private_remote_helpers_fail_closed_and_close_status_only_observe_owned_entries ... ok
+test webcodex_runner::persistent_shell::remote_authority_tests::runner_capabilities_do_not_advertise_remote_persistent_shell ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 997 filtered out; finished in 0.02s
+

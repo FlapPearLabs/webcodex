@@ -1,0 +1,43 @@
+   Compiling cfg-if v1.0.4
+   Compiling typenum v1.20.0
+   Compiling bitflags v2.13.1
+   Compiling once_cell v1.21.4
+   Compiling proc-macro2 v1.0.106
+   Compiling fastrand v2.4.1
+   Compiling errno v0.3.14
+   Compiling serde_core v1.0.228
+   Compiling serde_json v1.0.150
+   Compiling zmij v1.0.21
+   Compiling getrandom v0.4.2
+   Compiling cpufeatures v0.2.17
+   Compiling memchr v2.8.1
+   Compiling itoa v1.0.18
+   Compiling rustix v1.1.4
+   Compiling generic-array v0.14.7
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling tempfile v3.27.0
+   Compiling sha2 v0.10.9
+   Compiling webcodex-process v0.4.3 (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/scratch-p1c-c2-final-exec-windows-local/crates/webcodex-process)
+   Compiling quote v1.0.45
+   Compiling syn v2.0.117
+    Finished `test` profile [unoptimized] target(s) in 4.34s
+     Running tests/p1b_guard.rs (target-independent-rebuild/debug/deps/p1b_guard-46dab2047050aca6)
+
+running 1 test
+
+thread 'p1b_all_production_targets_are_discoverable' (17085370) panicked at crates/webcodex-process/tests/p1b_guard.rs:1165:29:
+accepted production raw inventory drift: inventory drift; missing=[]; added=[RawSite { file: "crates/webcodex-runner/src/main.rs", symbol: "crate::p1c_actual_launcher_mutation", primitive: "Command::new", count: 1, targets: {"webcodex-runner:webcodex-runner"} }, RawSite { file: "crates/webcodex-runner/src/main.rs", symbol: "crate::p1c_actual_launcher_mutation", primitive: "method::spawn", count: 1, targets: {"webcodex-runner:webcodex-runner"} }]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test p1b_all_production_targets_are_discoverable ... FAILED
+
+failures:
+
+failures:
+    p1b_all_production_targets_are_discoverable
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 19 filtered out; finished in 6.09s
+
+error: test failed, to rerun pass `-p webcodex-process --test p1b_guard`
+exit=101

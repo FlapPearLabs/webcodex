@@ -1,0 +1,258 @@
+import http.server
+import json
+import os
+import pathlib
+import signal
+import subprocess
+import tempfile
+import threading
+import time
+import hashlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent
+BINARY = pathlib.Path(os.environ.get(
+    'C2_RUNNER_BINARY', str(ROOT / 'target/debug/webcodex-runner')))
+RESULT_SUFFIX = os.environ.get('C2_RESULT_SUFFIX', '')
+TOKEN = 'synthetic-c2-evidence-token'
+CLIENT = 'c2-native-evidence'
+PROJECT_ID = 'c2-native-project'
+RUNTIME_PROJECT_ID = f'agent:{CLIENT}:{PROJECT_ID}'
+WORKFLOW = 'wc_sess_VnF_n8064HjRw95_'
+SHELL_ID = 'synthetic-shell'
+
+
+def shell_request(action, request_id):
+    persistent = {'action': action, 'shell_id': SHELL_ID,
+                  'workflow_session_id': WORKFLOW,
+                  'runtime_project_id': RUNTIME_PROJECT_ID}
+    if action == 'open':
+        persistent.update({'shell': 'bash', 'cwd': '/tmp', 'timeout_secs': 10})
+    if action == 'exec':
+        persistent.update({'command': 'printf c2-native-should-not-run',
+                           'timeout_secs': 10})
+    return {
+        'request_id': request_id, 'client_id': CLIENT,
+        'kind': 'persistent_shell', 'create_dirs': False,
+        'login': False, 'timeout_secs': 10,
+        'requested_by': 'synthetic-evidence', 'created_at': 0,
+        'cwd': persistent.get('cwd'),
+        'command': persistent.get('command') or '',
+        'timeout_secs': persistent.get('timeout_secs', 30),
+        'job_context': {
+            'runtime_project_id': RUNTIME_PROJECT_ID,
+            'workflow_session_id': WORKFLOW,
+            'ssh_resource': 'synthetic-remote',
+            'project_cwd': '<local-project>', 'cwd': '/tmp',
+            'command_preview': 'printf c2-native-should-not-run',
+            'validation_steps': []},
+        'persistent_shell': persistent}
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    requests = []
+    results = []
+    polls = 0
+    register_body = None
+    pending = []
+    in_flight = set()
+
+    def log_message(self, *_):
+        pass
+
+    def reply(self, value):
+        data = json.dumps(value).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def do_POST(self):
+        raw = self.rfile.read(int(self.headers.get('Content-Length', '0')))
+        body = json.loads(raw or b'{}')
+        Handler.requests.append({'path': self.path, 'body': body})
+        if self.path == '/api/shell/agent/register':
+            Handler.register_body = body
+            self.reply({'success': True, 'client': {
+                'client_id': CLIENT, 'agent_instance_id': 'synthetic-instance',
+                'status': 'online', 'connected': True, 'last_seen': int(time.time()),
+                'capabilities': {}, 'pending_requests': 0, 'projects': [],
+                'agent_protocol_generation': 2,
+                'project_inventory': {'sync_state': 'pending', 'generation': None,
+                    'total_reported': None, 'total_synced': 0,
+                    'last_error_code': None, 'last_sync_at': None,
+                    'max_summaries_per_page': 100,
+                    'max_serialized_bytes_per_page': 262144}}, 'error': None})
+        elif self.path == '/api/shell/agent/poll':
+            Handler.polls += 1
+            page = body.get('project_inventory_page')
+            if isinstance(page, dict):
+                self.reply({'success': True, 'request': None,
+                    'project_inventory': {
+                        'sync_state': 'complete' if page.get('complete') else 'in_progress',
+                        'generation': page.get('generation'),
+                        'total_reported': page.get('total_reported'),
+                        'total_synced': len(page.get('projects', [])),
+                        'max_summaries_per_page': 100,
+                        'max_serialized_bytes_per_page': 262144}})
+            else:
+                completed = {x.get('request_id') for x in Handler.results}
+                request = None
+                for item in Handler.pending:
+                    if item['request_id'] in completed:
+                        continue
+                    if item['request_id'] not in Handler.in_flight:
+                        request = item
+                        Handler.in_flight.add(request['request_id'])
+                    break
+                self.reply({'success': True, 'request': request, 'error': None})
+        elif self.path == '/api/shell/agent/persistent_shell_result':
+            Handler.results.append(body)
+            Handler.in_flight.discard(body.get('request_id'))
+            self.reply({'success': True})
+        elif self.path == '/api/shell/agent/offline':
+            self.reply({'success': True, 'error': None})
+        else:
+            self.send_error(404)
+
+
+def terminate_owned(proc):
+    if proc.poll() is None:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                pass
+
+
+def exercise(label):
+    if not BINARY.is_file():
+        raise RuntimeError(f'Runner binary missing: {BINARY}')
+    with tempfile.TemporaryDirectory(prefix='webcodex-c2-native-') as td:
+        base = pathlib.Path(td)
+        project, registry, home, fake = (base / x for x in ('project', 'registry', 'home', 'fakebin'))
+        project.mkdir(); registry.mkdir(); (home / '.ssh').mkdir(parents=True); fake.mkdir()
+        (project / 'tracked.txt').write_text('synthetic valid project\n')
+        git = pathlib.Path('/usr/bin/git')
+        if not git.exists():
+            git = pathlib.Path(subprocess.check_output(['which', 'git'], text=True).strip())
+        subprocess.run([str(git), 'init', '-q', '-b', 'c2-native-evidence'], cwd=project,
+                       check=True, timeout=5)
+        subprocess.run([str(git), '-c', 'user.name=Synthetic Evidence',
+                        '-c', 'user.email=evidence@example.invalid', 'add', 'tracked.txt'],
+                       cwd=project, check=True, timeout=5)
+        subprocess.run([str(git), '-c', 'user.name=Synthetic Evidence',
+                        '-c', 'user.email=evidence@example.invalid', 'commit', '-qm', 'fixture'],
+                       cwd=project, check=True, timeout=5)
+        (registry / f'{PROJECT_ID}.toml').write_text(
+            f'id = "{PROJECT_ID}"\npath = {json.dumps(str(project))}\nname = "C2 Native Synthetic Project"\n')
+        (home / '.ssh/config').write_text(
+            'Host synthetic.invalid\n  HostName synthetic.invalid\n  User synthetic-user\n'
+            '  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n')
+        marker = base / 'ssh-invocations.jsonl'
+        fake_ssh = fake / 'ssh'
+        fake_ssh.write_text('''#!/usr/bin/python3
+import os,sys,json
+args=sys.argv[1:]
+kind="fixed_probe" if args==["-V"] else ("prepare" if "-G" in args else ("connect" if any(x in args for x in ("-M","-S","-N")) else "spawn"))
+with open(os.environ["C2_SSH_MARKER"],"a") as f: f.write(json.dumps({"kind":kind,"argv":args})+"\\n")
+if kind=="fixed_probe": print("OpenSSH_9.0 synthetic"); sys.exit(0)
+if kind=="prepare": print("host synthetic.invalid\\nuser synthetic-user\\nport 22\\nhostname synthetic.invalid\\ncanonicalizehostname false\\n"); sys.exit(0)
+sys.exit(73)
+''')
+        fake_ssh.chmod(0o755)
+        config = base / 'runner.toml'
+        config.write_text(
+            'server_url = "PLACEHOLDER"\n'
+            f'token = "{TOKEN}"\nclient_id = "{CLIENT}"\n'
+            'transport = "polling"\npoll_interval_ms = 10\n'
+            f'project_registry_dir = {json.dumps(str(registry))}\n'
+            '[policy]\nallow_raw_shell = true\n'
+            f'allowed_roots = [{json.dumps(str(project))}]\n'
+            '[ssh.resources.synthetic-remote]\n'
+            'host = "synthetic.invalid"\ndefault_cwd = "/tmp"\n')
+        Handler.pending = [shell_request('open', 'c2-open'), shell_request('exec', 'c2-exec')]
+        Handler.requests = []; Handler.results = []; Handler.polls = 0
+        Handler.register_body = None; Handler.in_flight = set()
+        server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        server.daemon_threads = True
+        config.write_text(config.read_text().replace(
+            'PLACEHOLDER', f'http://127.0.0.1:{server.server_port}'))
+        thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+        argv = [str(BINARY), '--config', str(config), '--stop-on-stdin-eof']
+        env = {'HOME': str(home), 'PATH': f'{fake}:/usr/bin:/bin',
+               'C2_SSH_MARKER': str(marker), 'RUST_LOG': 'warn'}
+        proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, env=env, start_new_session=True)
+        try:
+            deadline = time.monotonic() + 35
+            while len(Handler.results) < 2 and time.monotonic() < deadline and proc.poll() is None:
+                time.sleep(.05)
+            results = list(Handler.results); http_events = list(Handler.requests)
+            registration = Handler.register_body
+            marker_lines = marker.read_text().splitlines() if marker.exists() else []
+            if proc.stdin:
+                proc.stdin.close()
+            try:
+                stdout, stderr = proc.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                terminate_owned(proc); stdout, stderr = proc.communicate(timeout=2)
+            server.shutdown(); server.server_close(); thread.join(timeout=2)
+            parsed = [json.loads(x) for x in marker_lines]
+            model = [x for x in parsed if x['kind'] != 'fixed_probe']
+            byid = {x.get('request_id'): x.get('result', {}) for x in results}
+            result_view = [{'request_id': x.get('request_id'),
+                **{k: x.get('result', {}).get(k) for k in
+                   ('error_code','error','command_started','command_completed','shell_state','execution_state')}}
+                for x in results]
+            caps = (registration or {}).get('capabilities', {})
+            cap_view = {k: caps.get(k) for k in
+                ('ssh_persistent_shell','persistent_shell','ssh_shell') if k in caps} if isinstance(caps,dict) else caps
+            noneffect = (len(results) == 2 and all(
+                byid.get(i,{}).get('error_code') == 'remote_durable_authority_unavailable'
+                and byid.get(i,{}).get('command_started') is False
+                for i in ('c2-open','c2-exec')) and len(model) == 0)
+            out = {'label':label, 'binary':str(BINARY),
+                'binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),
+                'argv':argv, 'returncode':proc.returncode,
+                'timed_out':len(results)<2 and time.monotonic()>=deadline,
+                'poll_count':Handler.polls,'registration_capabilities':cap_view,
+                'result_count':len(results),'results':result_view,
+                'ssh_markers':parsed,'model_ssh_marker_count':len(model),
+                'no_effect_assertion':noneffect,
+                'http_paths':[x['path'] for x in http_events],
+                'stdout':stdout.decode(errors='replace')[-12000:],
+                'stderr':stderr.decode(errors='replace')[-12000:]}
+            if label == 'production':
+                out['capability_assertion'] = cap_view.get('ssh_persistent_shell') is False
+                passed = proc.returncode == 0 and noneffect and out['capability_assertion']
+            else:
+                out['old_route_marker_seen'] = len(model) > 0
+                out['negative_control_red'] = (proc.returncode == 0 and len(results)==2
+                    and len(model)>0 and not noneffect)
+                passed = proc.returncode == 0 and noneffect
+            suffix = f'-{RESULT_SUFFIX}' if RESULT_SUFFIX else ''
+            out_path = ROOT / f'{label}-native-result{suffix}.json'
+            out_path.write_text(json.dumps(out,indent=2)+'\n')
+            if not passed:
+                raise AssertionError(f'{label} gate failed; raw result at {out_path}')
+            return out
+        finally:
+            if proc.stdin and not proc.stdin.closed: proc.stdin.close()
+            terminate_owned(proc)
+            server.shutdown(); server.server_close(); thread.join(timeout=2)
+
+
+if __name__ == '__main__':
+    print(json.dumps(exercise(sys.argv[1] if len(sys.argv)>1 else 'production'), indent=2))

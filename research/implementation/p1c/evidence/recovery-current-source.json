@@ -1,0 +1,39 @@
+{
+  "schema": "p1c-c2-recovery-current-source-v1",
+  "base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "branch": "impl/webcodex-p1c-durable-execution",
+  "status": "SOURCE_BINDING_NOT_FINAL_ACCEPTANCE",
+  "source_sha256": {
+    "crates/webcodex-process/tests/p1b_guard.rs": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+    "crates/webcodex-process/tests/p1c_c2_overlay.rs": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+    "crates/webcodex-runner/src/main.rs": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+    "crates/webcodex-runner/src/main_tests/dispatch_file.rs": "cf560a9eba46533f72164b8cad01126fe78ced4e720a275fc88c42234601c06c",
+    "crates/webcodex-runner/src/main_tests/dispatch_shell.rs": "5f246b27503eeb1121a9d0be552865e762bd06f18b25f2ae6becb4b99519aa4a",
+    "crates/webcodex-runner/src/main_tests/registration.rs": "a658834640f03d3347302114fb7e83ad49caa29168802101695f35abdb2d8bb4",
+    "crates/webcodex-runner/src/main_tests/shell_profiles.rs": "b4a4282e2c6d0b2282392d6cf25c0d93576554792bb6f00c9938ee8ee423d8e5",
+    "crates/webcodex-runner/src/webcodex_runner/mod.rs": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+    "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+    "crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+    "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs": null,
+    "crates/webcodex-runner/src/webcodex_runner/ssh.rs": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+    "crates/webcodex-runner/src/webcodex_runner/transport.rs": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+    "docs/agent/session-model.md": "c4fd8a7d200c645d79ee8f97da622cfa431ac73e19fec54d1ba91b3e4149bde8"
+  },
+  "unchanged_exact_base_sha256": {
+    "research/implementation/p1b/launch-inventory.json": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+    "Cargo.lock": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+    "Cargo.toml": "84dd798c53195d54f0127d058da3022aeb71004bb195ed90464829754a315c94",
+    "crates/webcodex-process/src/execution_broker/mod.rs": "2894a0e771e6245ae27b03a507ca524eeb8d1ce079e8610ec1cfc81b4129978e",
+    "crates/webcodex-process/src/execution_broker/compiler.rs": "126290bc083a5a39214bd86a184b54544ef018380649a6780503dd63fdf5221f",
+    "crates/webcodex-persistent-shell/src/lib.rs": "11213b504698812e266ce6f9051cb212d7d751863bec41b27dd565071a62ea84",
+    "crates/webcodex-persistent-shell/src/windows.rs": "ed164ecc85bdb8d6472e41dc0bbb4b17fdd3de3398eb49f031544c1e4507db31",
+    "crates/webcodex-runner/src/webcodex_runner/detached_job.rs": "c2a85f041ffafce868bf2ffc32c474d95a1a67038a07752ad59335dd72d5bb20",
+    "crates/webcodex-runner/src/webcodex_runner/process_command.rs": "7d6543027199284666cf4f224d8adaae6a16a509b81cafe63df133a23b9a3a42",
+    "crates/webcodex-runner/src/webcodex_runner/coding_agent.rs": "bd4f2096143a344dd0ce1b10fb033f04876759f9781440b026886de963c566fa",
+    "crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs": "e498ec1adaecec21ef76432b7d48feb5a57174e8f10f181e403136d21c26ce73"
+  },
+  "overlay_sha256": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f",
+  "preserved_evidence_manifest_sha256": "e2215218c313afcce2210565e089a6cbd30d5a5b0569daf0e28b453eb9aa78eb",
+  "preserved_evidence_files_verified": 83,
+  "history": "The user confirmed external work/ and target/ deletion for disk cleanup. Earlier 5983 source-freeze and independent report files not copied to the repository are unavailable. This is a new current-source binding, not a reconstruction of those files. Production source and the 83 copied raw artifacts survived. Only later Rust delta is the authorized five-line stale exec_ssh expected tuple retirement in p1b_guard; external before/after snapshots remain available."
+}

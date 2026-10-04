@@ -1,0 +1,9 @@
+
+running 4 tests
+test overlay::p1c_c2_candidate_overlay_is_sparse_and_fully_bound_to_signed_rows ... ok
+test overlay::p1c_c2_accepted_status_requires_all_frozen_source_hashes ... ok
+test overlay::p1c_c2_overlay_rejects_unknown_missing_duplicate_and_unbound_inputs ... ok
+test independent_audit::signed_scope_rejects_nested_payload_and_wrong_exact_row_keys ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.63s
+

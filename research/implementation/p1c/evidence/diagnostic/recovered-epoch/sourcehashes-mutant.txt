@@ -1,0 +1,2 @@
+d8fb95a7ccf61252baa61aa150d82c5c0321d6923d79d59219dd4e269f8e8711  externalvalidation-final-20261004-root-update/negative-control/scratch/crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs
+f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c  externalvalidation-final-20261004-root-update/negative-control/scratch/crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs

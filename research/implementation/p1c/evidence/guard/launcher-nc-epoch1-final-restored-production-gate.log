@@ -1,0 +1,23 @@
+    Finished `test` profile [unoptimized] target(s) in 0.24s
+     Running tests/p1b_guard.rs (target-independent-rebuild/debug/deps/p1b_guard-46dab2047050aca6)
+
+running 1 test
+P1C_C2_PRODUCTION_SCANNER_RAW_DELTA=10_REFERENCE_DELTA=0
+P1C_C2_FROZEN_PRODUCTION_ORIGIN_CLOSURE_MATCH=PASS
+
+thread 'p1b_all_production_targets_are_discoverable' (17087115) panicked at crates/webcodex-process/tests/p1b_guard.rs:1175:5:
+assertion `left == right` failed: NOT_RUN_PENDING_REVIEW: C2 candidate overlay has not received independent review
+  left: "UNREVIEWED_CANDIDATE"
+ right: "SOL_REVIEWED_C2_OVERLAY_ACCEPTED"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test p1b_all_production_targets_are_discoverable ... FAILED
+
+failures:
+
+failures:
+    p1b_all_production_targets_are_discoverable
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 19 filtered out; finished in 6.09s
+
+error: test failed, to rerun pass `-p webcodex-process --test p1b_guard`
+exit=101

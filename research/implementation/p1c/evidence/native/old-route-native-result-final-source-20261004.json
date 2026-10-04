@@ -1,0 +1,92 @@
+{
+  "label": "old-route",
+  "binary": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/accepted-base-target/debug/webcodex-runner",
+  "binary_sha256": "0b4bea55069a73c32399bcb8774e5df844f8cab99abb85e0377899ebdf7e6150",
+  "argv": [
+    "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/accepted-base-target/debug/webcodex-runner",
+    "--config",
+    "/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/webcodex-c2-native-5d2jo__s/runner.toml",
+    "--stop-on-stdin-eof"
+  ],
+  "returncode": 0,
+  "timed_out": false,
+  "poll_count": 7,
+  "registration_capabilities": {
+    "ssh_persistent_shell": true,
+    "persistent_shell": true,
+    "ssh_shell": true
+  },
+  "result_count": 2,
+  "results": [
+    {
+      "request_id": "c2-open",
+      "error_code": "ssh_persistent_shell_spawn_failed",
+      "error": "ssh_connection_failed: resource 'synthetic-remote'; command was not started",
+      "command_started": false,
+      "command_completed": false,
+      "shell_state": "unknown",
+      "execution_state": "rejected"
+    },
+    {
+      "request_id": "c2-exec",
+      "error_code": "persistent_shell_not_found",
+      "error": "persistent shell was not found or belongs to another runtime",
+      "command_started": false,
+      "command_completed": false,
+      "shell_state": "unknown",
+      "execution_state": "rejected"
+    }
+  ],
+  "ssh_markers": [
+    {
+      "kind": "fixed_probe",
+      "argv": [
+        "-V"
+      ]
+    },
+    {
+      "kind": "fixed_probe",
+      "argv": [
+        "-V"
+      ]
+    },
+    {
+      "kind": "connect",
+      "argv": [
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "LogLevel=ERROR",
+        "-o",
+        "ConnectTimeout=10",
+        "-o",
+        "ControlMaster=yes",
+        "-o",
+        "ControlPersist=300",
+        "-o",
+        "ControlPath=/tmp/wc-ssh-39072-8bd81b21b9444cab90cce9a146c43077/c0000000000000001",
+        "-N",
+        "-f",
+        "synthetic.invalid"
+      ]
+    }
+  ],
+  "model_ssh_marker_count": 1,
+  "no_effect_assertion": false,
+  "http_paths": [
+    "/api/shell/agent/register",
+    "/api/shell/agent/poll",
+    "/api/shell/agent/poll",
+    "/api/shell/agent/poll",
+    "/api/shell/agent/poll",
+    "/api/shell/agent/persistent_shell_result",
+    "/api/shell/agent/poll",
+    "/api/shell/agent/poll",
+    "/api/shell/agent/persistent_shell_result",
+    "/api/shell/agent/poll"
+  ],
+  "stdout": "",
+  "stderr": "webcodex-runner registered client_id=c2-native-evidence server=http://127.0.0.1:56648 preferred_transport=polling actual_transport=polling projects=1\nwebcodex-runner shutdown signal received\nwebcodex-runner shutdown complete elapsed_ms=37 timed_out_phases=none failed_phases=none\n",
+  "old_route_marker_seen": true,
+  "negative_control_red": true
+}

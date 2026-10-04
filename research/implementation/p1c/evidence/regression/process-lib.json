@@ -1,0 +1,40 @@
+{
+  "argv": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "-p",
+    "webcodex-process",
+    "--lib"
+  ],
+  "cwd": "/Users/songshiyao/Desktop/Projects/webcodex",
+  "platform": "Darwin-25.2.0-arm64-arm-64bit-Mach-O",
+  "returncode": 0,
+  "elapsed_seconds": 7.338,
+  "source_base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "source_note": "C2 candidate working tree; process production sources byte-identical to accepted base. Guard/test-only changes are not part of this lib target.",
+  "cargo": "cargo 1.94.0 (Homebrew)",
+  "rustc": "rustc 1.94.0 (4a4ef493e 2026-03-02) (Homebrew)",
+  "removed_child_env_overrides": [
+    "RUSTC_BOOTSTRAP",
+    "RUSTFLAGS",
+    "CARGO_ENCODED_RUSTFLAGS"
+  ],
+  "source_sha256": {
+    "crates/webcodex-process/src/bin/process_tree_helper.rs": "90645c7de55dc3b536286901bda16161acb651952a03d09aa146a2181421e8cd",
+    "crates/webcodex-process/src/bin/seatbelt_ae_probe.rs": "bf52cb23de9bbc30d09c702aa1b92f32fe4d077c2c296eaa695ead4c713e90ad",
+    "crates/webcodex-process/src/execution_broker/compiler.rs": "126290bc083a5a39214bd86a184b54544ef018380649a6780503dd63fdf5221f",
+    "crates/webcodex-process/src/execution_broker/fidelity_tests.rs": "eb085c735a73c676704e056408de8c717ecb63f68052b8aba81c4f2a5eb776a0",
+    "crates/webcodex-process/src/execution_broker/mod.rs": "2894a0e771e6245ae27b03a507ca524eeb8d1ce079e8610ec1cfc81b4129978e",
+    "crates/webcodex-process/src/execution_broker/sbpl/codex_base_policy.sbpl": "24f492ec3881200c443950d65ece64e360f51c4ea941bd51ec33b903d2e585a0",
+    "crates/webcodex-process/src/execution_broker/sbpl/codex_read_only_platform_defaults.sbpl": "e45e848d6b77572ebe44c855b6588a9e121c8f052b9f6f6f9439fc3c5c7aeece",
+    "crates/webcodex-process/src/execution_broker/workspace_authority.rs": "ccb80f7fe008b65270ac2c6aea4f932671b1f4f181a3f15125d24cdb7fc510ab",
+    "crates/webcodex-process/src/lib.rs": "322741b41bf273567020b6d9b5b9a551e7bde53c8438aff4c5f349fc9359c026",
+    "crates/webcodex-process/src/program.rs": "0c515fbea7ecf6929debd788e9cb8ad10eca9204d77a56942249c45bd7e0bfc9",
+    "crates/webcodex-process/src/unix.rs": "a5d487a716a88183c6063d42f272879837c0ae1c29a6074277500dc3181c07eb",
+    "crates/webcodex-process/src/windows.rs": "d2164ed2db8453326522f3c20b17c1af099f0ae4d0078a4dd85d73304d399a7b"
+  },
+  "classification": "PASS",
+  "native_security_note": "Ordinary library assertions only; ignored Seatbelt/native security evidence is not promoted to PASS."
+}

@@ -1,0 +1,2 @@
+restored=1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5  /Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/guard/scratch-p1c-c2-final-exec-windows-local/crates/webcodex-runner/src/main.rs
+expected_sha256=1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5

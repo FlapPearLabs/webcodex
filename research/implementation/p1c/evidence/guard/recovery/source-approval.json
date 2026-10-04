@@ -1,0 +1,537 @@
+{
+  "axis": "STANDARDS",
+  "repo_mode": "READ_ONLY",
+  "source_decision": "ACCEPTED_EXACT_FST4_DELTA",
+  "formal_c2_milestone": "PENDING_FRESH_FULL_GATE_AND_FINAL_DOCUMENT_PACKAGE",
+  "full_p1c": "NO",
+  "head": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "branch": "impl/webcodex-p1c-durable-execution",
+  "source_sha256": {
+    "Cargo.lock": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+    "Cargo.toml": "84dd798c53195d54f0127d058da3022aeb71004bb195ed90464829754a315c94",
+    "crates/webcodex-process/tests/p1b_guard.rs": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+    "crates/webcodex-process/tests/p1c_c2_overlay.rs": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+    "crates/webcodex-runner/src/main.rs": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+    "crates/webcodex-runner/src/main_tests/dispatch_file.rs": "cf560a9eba46533f72164b8cad01126fe78ced4e720a275fc88c42234601c06c",
+    "crates/webcodex-runner/src/main_tests/dispatch_shell.rs": "5f246b27503eeb1121a9d0be552865e762bd06f18b25f2ae6becb4b99519aa4a",
+    "crates/webcodex-runner/src/main_tests/registration.rs": "a658834640f03d3347302114fb7e83ad49caa29168802101695f35abdb2d8bb4",
+    "crates/webcodex-runner/src/main_tests/shell_profiles.rs": "b4a4282e2c6d0b2282392d6cf25c0d93576554792bb6f00c9938ee8ee423d8e5",
+    "crates/webcodex-runner/src/webcodex_runner/mod.rs": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+    "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+    "crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+    "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs": null,
+    "crates/webcodex-runner/src/webcodex_runner/ssh.rs": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+    "crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs": "e498ec1adaecec21ef76432b7d48feb5a57174e8f10f181e403136d21c26ce73",
+    "crates/webcodex-runner/src/webcodex_runner/transport.rs": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+    "research/implementation/p1b/launch-inventory.json": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+    "research/implementation/p1c/c2-guard-overlay.json": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f"
+  },
+  "guard_reverse_delta_sha256": "bcf67312bdfef788e0ce9a28c6675df73ddc9fb1b1671caba9858cd967e50a96",
+  "guard_delta": "Only five literal expected-tuple lines for the signed retired exec_ssh method::exec site removed; three surviving tuples remain exact. Parser, scanner and production source bytes unchanged.",
+  "WHY": "The actual full default gate found a stale dedicated-remote handoff expected tuple after retirement. This test-only correction aligns that exact expected set with the already signed ten raw removals without widening the overlay or scanner.",
+  "copied_artifact_entries": 83,
+  "copied_artifacts": [
+    {
+      "path": "acceptance.md",
+      "expected": "b822ae36a7caeb60eeafc0ee2476cd994077480f9354635784e17451a630cf56",
+      "actual": "b822ae36a7caeb60eeafc0ee2476cd994077480f9354635784e17451a630cf56",
+      "matches": true
+    },
+    {
+      "path": "architecture.md",
+      "expected": "e833b7cae44217876a7ac2377ee79ca0b586b00bdd0bb5e1f792a005815ae9ee",
+      "actual": "e833b7cae44217876a7ac2377ee79ca0b586b00bdd0bb5e1f792a005815ae9ee",
+      "matches": true
+    },
+    {
+      "path": "durable-surface-inventory.json",
+      "expected": "e9d998ff0a6cbecb14bb76f845f771401254648fe00f433df602e46980b36928",
+      "actual": "e9d998ff0a6cbecb14bb76f845f771401254648fe00f433df602e46980b36928",
+      "matches": true
+    },
+    {
+      "path": "durable-surface-inventory.md",
+      "expected": "86583db407340079eacc089753c89eed9ddeb2ca82bba5a183249dface54c43c",
+      "actual": "86583db407340079eacc089753c89eed9ddeb2ca82bba5a183249dface54c43c",
+      "matches": true
+    },
+    {
+      "path": "evidence/architecture/fd-closure-probe.sh.txt",
+      "expected": "735ab7cdb1db78de3da47e447d9f2cc916ddc18397fcb41f7fecd4f7f7d559cb",
+      "actual": "735ab7cdb1db78de3da47e447d9f2cc916ddc18397fcb41f7fecd4f7f7d559cb",
+      "matches": true
+    },
+    {
+      "path": "evidence/architecture/fd-closure.json",
+      "expected": "9b78df3054f9660d5f3c3266bd995fd99424f9783ec176c979dcfc942bc64a8f",
+      "actual": "9b78df3054f9660d5f3c3266bd995fd99424f9783ec176c979dcfc942bc64a8f",
+      "matches": true
+    },
+    {
+      "path": "evidence/architecture/fd-closure.stderr.log",
+      "expected": "e88181e52e89eb4b6eb728a195730b4e5765b36fba3a0d8624c17b8ab8d9a8de",
+      "actual": "e88181e52e89eb4b6eb728a195730b4e5765b36fba3a0d8624c17b8ab8d9a8de",
+      "matches": true
+    },
+    {
+      "path": "evidence/architecture/fd-closure.stdout.log",
+      "expected": "d25f2d79d7a432641ea9370f68946db388292605cbfce51b0aca834505b009df",
+      "actual": "d25f2d79d7a432641ea9370f68946db388292605cbfce51b0aca834505b009df",
+      "matches": true
+    },
+    {
+      "path": "evidence/architecture/sealed-s1-prototype.patch",
+      "expected": "d24721f6b69535da43f4e48949f700c61da44e146db0d291bafe836bd39c8dad",
+      "actual": "d24721f6b69535da43f4e48949f700c61da44e146db0d291bafe836bd39c8dad",
+      "matches": true
+    },
+    {
+      "path": "evidence/architecture/setsid-Cargo.lock.txt",
+      "expected": "8a7a404aa56c4e7c72a7e0ed4e28b11b9a8afcef51e4dc1a8f8df5747bbdeab7",
+      "actual": "8a7a404aa56c4e7c72a7e0ed4e28b11b9a8afcef51e4dc1a8f8df5747bbdeab7",
+      "matches": true
+    },
+    {
+      "path": "evidence/architecture/setsid-Cargo.toml.txt",
+      "expected": "8d6f583627b578dbd13d64b6d82df4c97c3500a9fc84b1df10ad63d54685df70",
+      "actual": "8d6f583627b578dbd13d64b6d82df4c97c3500a9fc84b1df10ad63d54685df70",
+      "matches": true
+    },
+    {
+      "path": "evidence/architecture/setsid-main.rs.txt",
+      "expected": "cf13d0f69455e4c309783bb71aabff663a3a25131b02f6b2bebb0d621ea48799",
+      "actual": "cf13d0f69455e4c309783bb71aabff663a3a25131b02f6b2bebb0d621ea48799",
+      "matches": true
+    },
+    {
+      "path": "evidence/architecture/setsid.json",
+      "expected": "3f5f860259d3aad04effdc49843c6ee9f910f3690c94031a2a28150a19f90bff",
+      "actual": "3f5f860259d3aad04effdc49843c6ee9f910f3690c94031a2a28150a19f90bff",
+      "matches": true
+    },
+    {
+      "path": "evidence/architecture/setsid.stderr.log",
+      "expected": "c66962e806132932c18dab1bbe61e6bd8c51ed86739fede724d7a0c166dba863",
+      "actual": "c66962e806132932c18dab1bbe61e6bd8c51ed86739fede724d7a0c166dba863",
+      "matches": true
+    },
+    {
+      "path": "evidence/architecture/setsid.stdout.log",
+      "expected": "7b9b029e96819f2488bcef0dde1365a992b1c220e1f59aac676ccc756da7481f",
+      "actual": "7b9b029e96819f2488bcef0dde1365a992b1c220e1f59aac676ccc756da7481f",
+      "matches": true
+    },
+    {
+      "path": "evidence/baseline-sourcehashes.json",
+      "expected": "ecaf81cd5a4eb2fb81120ba03bb011aa463c2f29b6d1d6523ab5f5da2192c88f",
+      "actual": "ecaf81cd5a4eb2fb81120ba03bb011aa463c2f29b6d1d6523ab5f5da2192c88f",
+      "matches": true
+    },
+    {
+      "path": "evidence/baseline-surface-matrix.md",
+      "expected": "97f8dbd04cb9af48486dcafbb7e8ef6f5e11e271fb31d4ed81cc436d865fa16d",
+      "actual": "97f8dbd04cb9af48486dcafbb7e8ef6f5e11e271fb31d4ed81cc436d865fa16d",
+      "matches": true
+    },
+    {
+      "path": "evidence/candidate-source-freeze.json",
+      "expected": "5596d748764108112bb4428cc97c5c66d4f137d1418ab67a08fdaf9b7ef9c5d2",
+      "actual": "5596d748764108112bb4428cc97c5c66d4f137d1418ab67a08fdaf9b7ef9c5d2",
+      "matches": true
+    },
+    {
+      "path": "evidence/diagnostic/normal-test-compile.json",
+      "expected": "9a6370c7bb605ebc2a0359675edf02f84bbf9949458372777df3655dcf80a665",
+      "actual": "9a6370c7bb605ebc2a0359675edf02f84bbf9949458372777df3655dcf80a665",
+      "matches": true
+    },
+    {
+      "path": "evidence/diagnostic/normal-test-compile.stderr.log",
+      "expected": "a3ac5856e34b8d2d751702587185af0864a65f5784a2558dd640cad82cb586f1",
+      "actual": "a3ac5856e34b8d2d751702587185af0864a65f5784a2558dd640cad82cb586f1",
+      "matches": true
+    },
+    {
+      "path": "evidence/diagnostic/omitted-marker-mutation.diff",
+      "expected": "c135b508a496de99165ea98cd38785cec1360d31bd613eb27fdcb771694f852b",
+      "actual": "c135b508a496de99165ea98cd38785cec1360d31bd613eb27fdcb771694f852b",
+      "matches": true
+    },
+    {
+      "path": "evidence/diagnostic/omitted-marker-negative-control.json",
+      "expected": "2fa69f9bcbfeab6973031431041157a82ee7e7055ccdacf41809717a0c3df920",
+      "actual": "2fa69f9bcbfeab6973031431041157a82ee7e7055ccdacf41809717a0c3df920",
+      "matches": true
+    },
+    {
+      "path": "evidence/diagnostic/omitted-marker.stderr.log",
+      "expected": "96b9bb664fd3966c8b3797ec9d5f6e5146f0f7a1f9cb7fc46e609bbbe578358f",
+      "actual": "96b9bb664fd3966c8b3797ec9d5f6e5146f0f7a1f9cb7fc46e609bbbe578358f",
+      "matches": true
+    },
+    {
+      "path": "evidence/diagnostic/omitted-marker.stdout.log",
+      "expected": "c5c91a6fe2b08c18ca0bbddb423a92c8c28988235b621cdbbd03b1bcce1c2fc2",
+      "actual": "c5c91a6fe2b08c18ca0bbddb423a92c8c28988235b621cdbbd03b1bcce1c2fc2",
+      "matches": true
+    },
+    {
+      "path": "evidence/diagnostic/producer-history.md",
+      "expected": "be2e5b611d4a1ffb38ee497a59821541e41c01564d95a41f8612f7baefe38d0f",
+      "actual": "be2e5b611d4a1ffb38ee497a59821541e41c01564d95a41f8612f7baefe38d0f",
+      "matches": true
+    },
+    {
+      "path": "evidence/format-restore/final-cargo-fmt-all-check.log",
+      "expected": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+      "actual": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+      "matches": true
+    },
+    {
+      "path": "evidence/format-restore/final-current-before.sha256",
+      "expected": "86eca1d4d3f14bd1fd4a422471fdd3f7a15fd355666ebbb4c7e07e45658016bd",
+      "actual": "86eca1d4d3f14bd1fd4a422471fdd3f7a15fd355666ebbb4c7e07e45658016bd",
+      "matches": true
+    },
+    {
+      "path": "evidence/format-restore/final-git-diff-check.log",
+      "expected": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+      "actual": "19eaf43821a7660ec323a87c8457bf74823beb296c39f5e01aa8a683aa50f061",
+      "matches": true
+    },
+    {
+      "path": "evidence/format-restore/final-owned-bytes-unchanged.txt",
+      "expected": "6aa4095de3ddf7cc08e6dd2b673b195abcb01b15de2fa2d2f14e0ca4c059a5b5",
+      "actual": "6aa4095de3ddf7cc08e6dd2b673b195abcb01b15de2fa2d2f14e0ca4c059a5b5",
+      "matches": true
+    },
+    {
+      "path": "evidence/format-restore/final-recursive-rustfmt-leftover.diff",
+      "expected": "13a971251c9e0da74871b3f4291427aa7ca3c25c1b67fde5b1b433be2c4946ca",
+      "actual": "13a971251c9e0da74871b3f4291427aa7ca3c25c1b67fde5b1b433be2c4946ca",
+      "matches": true
+    },
+    {
+      "path": "evidence/format-restore/final-restoration-note.txt",
+      "expected": "101487f05cde38dcab715e81fe726fabb3f211258489c0690c2d9eceea747c84",
+      "actual": "101487f05cde38dcab715e81fe726fabb3f211258489c0690c2d9eceea747c84",
+      "matches": true
+    },
+    {
+      "path": "evidence/format-restore/final-restored-after.sha256",
+      "expected": "5017776bdd1f344c49441e7896d6a6e707fc65ad3a63be7450b5660ecc21ff10",
+      "actual": "5017776bdd1f344c49441e7896d6a6e707fc65ad3a63be7450b5660ecc21ff10",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/independent-parser-final.json",
+      "expected": "acfedff63c6e4b4a8b69cb3e72cbe522a2208cd459d481b075bfb5934a401c9b",
+      "actual": "acfedff63c6e4b4a8b69cb3e72cbe522a2208cd459d481b075bfb5934a401c9b",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/independent-parser-final.stderr.log",
+      "expected": "69ecc94427c61c1208884cc788569245e33f61abe8bedea104c3b8197a54bcc7",
+      "actual": "69ecc94427c61c1208884cc788569245e33f61abe8bedea104c3b8197a54bcc7",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/independent-parser-final.stdout.log",
+      "expected": "dde9d9e94127858ae77284c2f50e08942ae173daab18de44acabcd73b86cc852",
+      "actual": "dde9d9e94127858ae77284c2f50e08942ae173daab18de44acabcd73b86cc852",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/independent-parser-result.json",
+      "expected": "d4ce9c7be2efea00f9c66c88cc13e0175c7cee494f26c52bbec5f87e9d632aa5",
+      "actual": "d4ce9c7be2efea00f9c66c88cc13e0175c7cee494f26c52bbec5f87e9d632aa5",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/independent-parser.stderr.log",
+      "expected": "266827c05d050b2f27fe2be30315f889359d7215337d1d5c96d0f5b7b9b6a6f6",
+      "actual": "266827c05d050b2f27fe2be30315f889359d7215337d1d5c96d0f5b7b9b6a6f6",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/independent-parser.stdout.log",
+      "expected": "b420c69838e184a9c1b89c8406da1c28854767148787f925bf3cbd6931139f58",
+      "actual": "b420c69838e184a9c1b89c8406da1c28854767148787f925bf3cbd6931139f58",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/launcher-mutation.diff",
+      "expected": "e4e824711093c748160ddcb23af95d01e47840136405603771c7370d236404ed",
+      "actual": "e4e824711093c748160ddcb23af95d01e47840136405603771c7370d236404ed",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-mutated-cargo-check.log",
+      "expected": "f89ce7ca33ff91d0a638e33170c62736d4747b083e6d3e4ed9fcea45a5f2b38a",
+      "actual": "f89ce7ca33ff91d0a638e33170c62736d4747b083e6d3e4ed9fcea45a5f2b38a",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-mutated-production-gate.log",
+      "expected": "82be341729b92707b1dd81bd99aa43ad4d1bdc34c76e15c0f2c80d775658ee83",
+      "actual": "82be341729b92707b1dd81bd99aa43ad4d1bdc34c76e15c0f2c80d775658ee83",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-platform-toolchain.txt",
+      "expected": "a8095649225bb267f7372c5b678b458a3158ead1e24c6c46644b2feb1d35ac0b",
+      "actual": "a8095649225bb267f7372c5b678b458a3158ead1e24c6c46644b2feb1d35ac0b",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-restored-production-gate.log",
+      "expected": "87b005addd3b3919c4c917d2a88251d9746da713b038dd3b99fda2dbeb25f3e2",
+      "actual": "87b005addd3b3919c4c917d2a88251d9746da713b038dd3b99fda2dbeb25f3e2",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-source-restoration.txt",
+      "expected": "893e9ed93d92d8a7827b65ff895a4d1e2c8c843f59d261a9b329a00ff0845798",
+      "actual": "893e9ed93d92d8a7827b65ff895a4d1e2c8c843f59d261a9b329a00ff0845798",
+      "matches": true
+    },
+    {
+      "path": "evidence/guard/launcher-nc-epoch1-final-source-sha256.json",
+      "expected": "716401f8f2de1149b99955768058b793ba9b740d48cfb8353a2e2d5745c458fb",
+      "actual": "716401f8f2de1149b99955768058b793ba9b740d48cfb8353a2e2d5745c458fb",
+      "matches": true
+    },
+    {
+      "path": "evidence/history-final.md",
+      "expected": "3d574364beea959f213dfa65ce8f97d025f312bcca48fef76afa6dfa83ffceed",
+      "actual": "3d574364beea959f213dfa65ce8f97d025f312bcca48fef76afa6dfa83ffceed",
+      "matches": true
+    },
+    {
+      "path": "evidence/history.md",
+      "expected": "03e26af9ae2bda5575b7e8c9eb08abdf638c33f6d418be6ded4220861f4bb741",
+      "actual": "03e26af9ae2bda5575b7e8c9eb08abdf638c33f6d418be6ded4220861f4bb741",
+      "matches": true
+    },
+    {
+      "path": "evidence/history/native-contract-old-binding.json",
+      "expected": "33d0d33b8d3abc25e1210306c2ce5f253da91bb5ffec6700c821a8bdd19a6dff",
+      "actual": "33d0d33b8d3abc25e1210306c2ce5f253da91bb5ffec6700c821a8bdd19a6dff",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/C2-NATIVE-FINAL-SOURCE-20261004.md",
+      "expected": "005ee591a15571388db5ceff857e3304eddf6d16d7bde9889428a1e94a45e697",
+      "actual": "005ee591a15571388db5ceff857e3304eddf6d16d7bde9889428a1e94a45e697",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/accepted-base-fmt-final-source-20261004.exit-code",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/accepted-base-fmt-final-source-20261004.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/accepted-base-fmt-final-source-20261004.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/c2_native_harness.py.txt",
+      "expected": "9a69946cbc02edd19b67d1c86c9b4c780a65ff3d47bbe57ea75d7336f85d16e8",
+      "actual": "9a69946cbc02edd19b67d1c86c9b4c780a65ff3d47bbe57ea75d7336f85d16e8",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/final-source-native.json",
+      "expected": "3d661ac2077dd731504279e8df2b84c04fbe99fc978fd20d5a2466153fcd1dac",
+      "actual": "3d661ac2077dd731504279e8df2b84c04fbe99fc978fd20d5a2466153fcd1dac",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/old-route-harness-final-source-20261004.exit-code",
+      "expected": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "actual": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/old-route-harness-final-source-20261004.stderr.log",
+      "expected": "ea3262d72ce92720d658873154c072a884c4906e90406cc84bdc240b19a66aba",
+      "actual": "ea3262d72ce92720d658873154c072a884c4906e90406cc84bdc240b19a66aba",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/old-route-harness-final-source-20261004.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/old-route-native-result-final-source-20261004.json",
+      "expected": "9b2ac5f0bec8742248889e933d5c6dccf0c484755f3677f52fbe1a8ef376d78d",
+      "actual": "9b2ac5f0bec8742248889e933d5c6dccf0c484755f3677f52fbe1a8ef376d78d",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/owned-five-rustfmt-final-source-20261004.exit-code",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/owned-five-rustfmt-final-source-20261004.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/owned-five-rustfmt-final-source-20261004.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/production-build-final-source-20261004.exit-code",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/production-build-final-source-20261004.stderr.log",
+      "expected": "401097959a33bed9710cbcfa3b7f3eafabf3e622f2f43409dd1e098e226eaa68",
+      "actual": "401097959a33bed9710cbcfa3b7f3eafabf3e622f2f43409dd1e098e226eaa68",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/production-build-final-source-20261004.stdout.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/production-fmt-final-source-20261004.exit-code",
+      "expected": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "actual": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/production-fmt-final-source-20261004.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/production-fmt-final-source-20261004.stdout.log",
+      "expected": "ba60075a12ec5f5452550f2737db40a44d25e2edc2eae326769a1a978e93ccf6",
+      "actual": "ba60075a12ec5f5452550f2737db40a44d25e2edc2eae326769a1a978e93ccf6",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/production-harness-final-source-20261004.exit-code",
+      "expected": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/production-harness-final-source-20261004.stderr.log",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/production-harness-final-source-20261004.stdout.log",
+      "expected": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+      "actual": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+      "matches": true
+    },
+    {
+      "path": "evidence/native/production-native-result-final-source-20261004.json",
+      "expected": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+      "actual": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+      "matches": true
+    },
+    {
+      "path": "evidence/regression/process-lib.json",
+      "expected": "8d544db87413a8189e8658efc784ad037305c42bc7ea921750d5bf2f6b492aef",
+      "actual": "8d544db87413a8189e8658efc784ad037305c42bc7ea921750d5bf2f6b492aef",
+      "matches": true
+    },
+    {
+      "path": "evidence/regression/process-lib.stderr.log",
+      "expected": "02598a2b3459346d98bd92b8c9d4814eb151bd29a351db14520bf2a508338cd3",
+      "actual": "02598a2b3459346d98bd92b8c9d4814eb151bd29a351db14520bf2a508338cd3",
+      "matches": true
+    },
+    {
+      "path": "evidence/regression/process-lib.stdout.log",
+      "expected": "343fdf9984dfc90f5482ee6af39597b4d5b358faa4dbcf1397f81248f9e3e0cf",
+      "actual": "343fdf9984dfc90f5482ee6af39597b4d5b358faa4dbcf1397f81248f9e3e0cf",
+      "matches": true
+    },
+    {
+      "path": "reviews/architecture-decision.md",
+      "expected": "c5208acae00cee08816c0601d46771575edb1709ef35aecdd1898dc7bbe3468d",
+      "actual": "c5208acae00cee08816c0601d46771575edb1709ef35aecdd1898dc7bbe3468d",
+      "matches": true
+    },
+    {
+      "path": "reviews/c2-implementation-contract.md",
+      "expected": "10f884b250471372ac21f8ae83f074879fd5c57b5d866aad051ee06d33dc3c87",
+      "actual": "10f884b250471372ac21f8ae83f074879fd5c57b5d866aad051ee06d33dc3c87",
+      "matches": true
+    },
+    {
+      "path": "reviews/c2-native-evidence-contract-review.md",
+      "expected": "dbe89ad7947ffb95627285376d50d1148451867cf82578160c9a412fcb9a0ef4",
+      "actual": "dbe89ad7947ffb95627285376d50d1148451867cf82578160c9a412fcb9a0ef4",
+      "matches": true
+    },
+    {
+      "path": "reviews/c2-native-evidence-contract.md",
+      "expected": "ab3236ae35d8629445d393f8c7a804e9c02028d866da3cef83a2d87ac713d6eb",
+      "actual": "ab3236ae35d8629445d393f8c7a804e9c02028d866da3cef83a2d87ac713d6eb",
+      "matches": true
+    },
+    {
+      "path": "reviews/c2-overlay-contract-v2.md",
+      "expected": "91fd897d365c90a42912e1e1fa38fb6df826bdc847e307063cab4fe38e96d550",
+      "actual": "91fd897d365c90a42912e1e1fa38fb6df826bdc847e307063cab4fe38e96d550",
+      "matches": true
+    },
+    {
+      "path": "reviews/c2-retirement-addendum.md",
+      "expected": "b2cab6c82166e1ad7574734cd0f2cbeae236c25efd6fcf78c38d82f8e2507d47",
+      "actual": "b2cab6c82166e1ad7574734cd0f2cbeae236c25efd6fcf78c38d82f8e2507d47",
+      "matches": true
+    },
+    {
+      "path": "reviews/c2-windows-mixed-test-disposition.md",
+      "expected": "20cc8018a1a2f7c59f9f18244adf3e2077d2776abf4b65888848ede56aa4d23b",
+      "actual": "20cc8018a1a2f7c59f9f18244adf3e2077d2776abf4b65888848ede56aa4d23b",
+      "matches": true
+    },
+    {
+      "path": "reviews/security-cleanroom.md",
+      "expected": "88226fc356680c862e49f598fb101b942a0c81be2f452405c1bfa8101131568c",
+      "actual": "88226fc356680c862e49f598fb101b942a0c81be2f452405c1bfa8101131568c",
+      "matches": true
+    },
+    {
+      "path": "reviews/standards-cleanroom.md",
+      "expected": "9b5565303c863f65fa052e2f57977cc68a76c9ca414321327a6b5ab82dec4ac5",
+      "actual": "9b5565303c863f65fa052e2f57977cc68a76c9ca414321327a6b5ab82dec4ac5",
+      "matches": true
+    }
+  ],
+  "historical_source_review": "Previously reviewed 5983 candidate; original external manifest was removed by user work/target cleanup. Its hash is historical context, not a reconstructed file. Current bindings here are freshly read from repository.",
+  "historical_full_gate": "Actual old guard101, 17passed1failed2ignored; recovered stdout/stderr are explicitly transcript/tool-output recovered in sibling standards-rescue-20261004.",
+  "repo_mutations_by_reviewer": [],
+  "new_subagents": []
+}

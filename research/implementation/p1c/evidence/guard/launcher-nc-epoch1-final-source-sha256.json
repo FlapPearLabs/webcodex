@@ -1,0 +1,21 @@
+{
+  "branch": "impl/webcodex-p1c-durable-execution",
+  "head": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "source_sha256": {
+    "crates/webcodex-process/tests/p1b_guard.rs": "bcf67312bdfef788e0ce9a28c6675df73ddc9fb1b1671caba9858cd967e50a96",
+    "crates/webcodex-process/tests/p1c_c2_overlay.rs": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+    "crates/webcodex-runner/src/main.rs": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+    "crates/webcodex-runner/src/main_tests/dispatch_file.rs": "cf560a9eba46533f72164b8cad01126fe78ced4e720a275fc88c42234601c06c",
+    "crates/webcodex-runner/src/main_tests/dispatch_shell.rs": "5f246b27503eeb1121a9d0be552865e762bd06f18b25f2ae6becb4b99519aa4a",
+    "crates/webcodex-runner/src/main_tests/registration.rs": "a658834640f03d3347302114fb7e83ad49caa29168802101695f35abdb2d8bb4",
+    "crates/webcodex-runner/src/main_tests/shell_profiles.rs": "b4a4282e2c6d0b2282392d6cf25c0d93576554792bb6f00c9938ee8ee423d8e5",
+    "crates/webcodex-runner/src/webcodex_runner/mod.rs": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+    "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+    "crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+    "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs": null,
+    "crates/webcodex-runner/src/webcodex_runner/ssh.rs": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+    "crates/webcodex-runner/src/webcodex_runner/transport.rs": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+    "docs/agent/session-model.md": "c4fd8a7d200c645d79ee8f97da622cfa431ac73e19fec54d1ba91b3e4149bde8",
+    "research/implementation/p1c/c2-guard-overlay.json": "1016b312e7fa10b291b17b1eedc38ae09899b029142f0cb706bf38298c563202"
+  }
+}

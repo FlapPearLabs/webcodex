@@ -1,0 +1,25 @@
+{
+  "classification": "NEGATIVE_CONTROL_DIAGNOSTIC",
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "-p",
+    "webcodex-runner",
+    "--bin",
+    "webcodex-runner",
+    "omitted_resource_marker_cannot_write_to_an_owned_ssh_transport"
+  ],
+  "cwd": "/Users/songshiyao/Desktop/Projects/webcodex",
+  "exit_code": 101,
+  "mutation": "removed only the summary.identity.executor == \"ssh\" fence, then restored the exact source in finally",
+  "source_sha256_before": "29db6512f97f0c53710c0f9a20b67040bc411d6fefea135c112d50f75f3b8d85",
+  "source_sha256_mutant": "a9378b5115e35deac3fe2c7eb7e793afdede9afd45198764a8bd67d786bb7ccb",
+  "source_sha256_restored": "29db6512f97f0c53710c0f9a20b67040bc411d6fefea135c112d50f75f3b8d85",
+  "platform": "Darwin-25.2.0-arm64-arm-64bit-Mach-O",
+  "rustc": "rustc 1.94.0 (4a4ef493e 2026-03-02) (Homebrew)",
+  "stdout_file": "omitted-marker-negative-control-final.stdout.log",
+  "stderr_file": "omitted-marker-negative-control-final.stderr.log",
+  "assertion_expected": "spy write count fails after one extra write"
+}

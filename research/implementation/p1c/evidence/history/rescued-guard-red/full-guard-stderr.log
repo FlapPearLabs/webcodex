@@ -1,0 +1,49 @@
+   Compiling libc v0.2.186
+   Compiling version_check v0.9.5
+   Compiling cfg-if v1.0.4
+   Compiling rustix v1.1.4
+   Compiling getrandom v0.4.2
+   Compiling typenum v1.20.0
+   Compiling bitflags v2.13.1
+   Compiling proc-macro2 v1.0.106
+   Compiling once_cell v1.21.4
+   Compiling fastrand v2.4.1
+   Compiling zmij v1.0.21
+   Compiling quote v1.0.45
+   Compiling serde_core v1.0.228
+   Compiling unicode-ident v1.0.24
+   Compiling generic-array v0.14.7
+   Compiling serde_json v1.0.150
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.1
+   Compiling errno v0.3.14
+   Compiling cpufeatures v0.2.17
+   Compiling tempfile v3.27.0
+   Compiling webcodex-process v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process)
+   Compiling syn v2.0.117
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling sha2 v0.10.9
+    Finished `test` profile [unoptimized] target(s) in 7.82s
+     Running tests/p1b_guard.rs (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/production-guard-final-20261004/target/debug/deps/p1b_guard-9243a5d16c3ad286)
+EXPECTED_NEW_BOUNDARY_CALLER_RED	Err("boundary reference drift; missing=[]; added=[\"crates/webcodex-runner/src/webcodex_runner/shell.rs::newly_added_caller -> native_command\"]; changed=[]")
+EXPECTED_RENAMED_BOUNDARY_CALLER_RED	Err("boundary reference drift; missing=[\"crates/webcodex-runner/src/webcodex_runner/shell.rs::existing_caller -> prepare\"]; added=[\"crates/webcodex-runner/src/webcodex_runner/shell.rs::renamed_caller -> prepare\"]; changed=[]")
+RESTORED_BOUNDARY_REFERENCE_BASELINE_PASS
+NATIVE_ALIAS_DETECTED	{"crate::fake_native_launcher::aliased_call", "crate::fake_native_launcher::block_alias_call", "crate::fake_native_launcher::literal_call", "crate::fake_native_launcher::production_only::included"}
+NATIVE_MACRO_FAIL_CLOSED	{"src/lib.rs::crate::fake_native_launcher has unresolved enumerated native API macro tokens requiring exact review: () => { unsafe { Launch () } }"}
+
+thread 'p1b_platform_handoff_sites_are_exact_and_named' (17537812) panicked at crates/webcodex-process/tests/p1b_guard.rs:1396:5:
+assertion `left == right` failed
+  left: {("crates/webcodex-cli/src/webcodex_cli/service.rs", "crate::webcodex_cli::service::run_internal_binary", 1), ("crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs", "crate::webcodex_runner::persistent_shell::PersistentShellManager::exec", 1), ("crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs", "crate::webcodex_runner::persistent_shell::PersistentShellManager::handle_operation", 1)}
+ right: {("crates/webcodex-cli/src/webcodex_cli/service.rs", "crate::webcodex_cli::service::run_internal_binary", 1), ("crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs", "crate::webcodex_runner::persistent_shell::PersistentShellManager::exec", 1), ("crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs", "crate::webcodex_runner::persistent_shell::PersistentShellManager::exec_ssh", 1), ("crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs", "crate::webcodex_runner::persistent_shell::PersistentShellManager::handle_operation", 1)}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+BASELINE_FIXTURE_RAW_REFERENCE_COMPARE_PASS
+NEW_CALLER_RAW_REFERENCE_GATE_STILL_PASS
+EXPECTED_COMPILED_HELPER_REUSE_RED	Err("production source origin drift; missing=[]; added=[\"src/added_caller.rs\"]; changed=[(\"src/lib.rs\", ProductionOriginSource { sha256: \"d908d1d0d450f13cb3807fe65315f51dad2a6859c37fe20c7d58a1b2926911c8\", targets: {\"fixture:lib\"} }, ProductionOriginSource { sha256: \"7b2e400ebd0b415361e76a8fc359b21dc8bbceb1d50beeb95324fb3efb6f977a\", targets: {\"fixture:lib\"} })]")
+EXPECTED_SOURCE_CONTENT_CHANGE_RED	Err("production source origin drift; missing=[]; added=[]; changed=[(\"src/lib.rs\", ProductionOriginSource { sha256: \"d908d1d0d450f13cb3807fe65315f51dad2a6859c37fe20c7d58a1b2926911c8\", targets: {\"fixture:lib\"} }, ProductionOriginSource { sha256: \"a141ab06c561642a171106eb1995b48296ef631d5c953131606e39f289ec32b4\", targets: {\"fixture:lib\"} })]")
+RESTORED_JSON_ORIGIN_BASELINE_PASS
+P1C_C2_PRODUCTION_SCANNER_RAW_DELTA=10_REFERENCE_DELTA=0
+P1C_C2_FROZEN_PRODUCTION_ORIGIN_CLOSURE_MATCH=PASS
+P1B_RUST_RAW_SITE_COUNT=250
+error: test failed, to rerun pass `-p webcodex-process --test p1b_guard`

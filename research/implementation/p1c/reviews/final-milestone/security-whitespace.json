@@ -1,0 +1,59 @@
+{
+  "schema": "p1c-c2-security-staged-evidence-whitespace-v1",
+  "created_utc": "2026-10-04T14:41:41.170293+00:00",
+  "axis": "SPEC_SECURITY",
+  "repo_mode": "READ_ONLY",
+  "decision": "ACCEPTED_EXACT_IMMUTABLE_EVIDENCE_WHITESPACE_DISPOSITION",
+  "blocking_findings_remaining": [],
+  "full_p1c_decision": "NO",
+  "formal_c2_milestone_decision": "PASS_C2_SCOPED_MILESTONE",
+  "disposition_path": "research/implementation/p1c/reviews/final-milestone/staged-whitespace-disposition.json",
+  "disposition_sha256": "dbfe399aa19c0776ca4cbaabcc1e97242d876ca2333fc2b5eff646d1ab61dbff",
+  "checks": {
+    "exact_disposition_sha": true,
+    "full_default_raw_is_actual_non_pass": true,
+    "only_exact_15_data_paths": true,
+    "all_exclusions_match_index_worktree_and_freeze": true,
+    "no_glob_or_source_exclusion_or_config_override": true,
+    "independent_actual_source_and_other_files_check0": true,
+    "final_manifest_binding": true
+  },
+  "full_default_check": {
+    "exit": 2,
+    "unique_data_paths": 15,
+    "warnings": 17,
+    "result": "NON_PASS; recorded as raw evidence whitespace only"
+  },
+  "supplemental_check": {
+    "command": [
+      "git",
+      "diff",
+      "--cached",
+      "--check",
+      "--",
+      ".",
+      ":(exclude,literal)research/implementation/p1c/evidence/architecture/sealed-s1-prototype.patch",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/omitted-marker.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-catalog.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/capability-provider.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/local-persistent.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/positive-spy.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/remote-authority.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/independent-parser-final.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/independent-parser.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/default.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/held-pipe-explicit.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/guard/recovery/npm-pack-explicit.stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/history/rescued-guard-red/full-guard-stdout.log",
+      ":(exclude,literal)research/implementation/p1c/evidence/regression/process-lib.stdout.log"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "raw_evidence_sha_preserved": true,
+  "no_default_pass_claim": true,
+  "reviewer_repo_or_configuration_mutations": [],
+  "limits": "Narrow data-format disposition only; no source/test/product-document exemption, no test or runtime security exception, no approval of uncreated Git SHA."
+}

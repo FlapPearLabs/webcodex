@@ -1,0 +1,30 @@
+{
+  "exit_code": 0,
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "--manifest-path",
+    "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/parser-audit/Cargo.toml",
+    "--lib",
+    "--",
+    "--nocapture"
+  ],
+  "elapsed_seconds": 10.796717375022126,
+  "platform": "Darwin-25.2.0-arm64-arm-64bit-Mach-O",
+  "cargo": "cargo 1.94.0 (Homebrew)",
+  "rustc": "rustc 1.94.0 (4a4ef493e 2026-03-02) (Homebrew)\nbinary: rustc\ncommit-hash: 4a4ef493e3a1488c6e321570238084b38948f6db\ncommit-date: 2026-03-02\nhost: aarch64-apple-darwin\nrelease: 1.94.0\nLLVM version: 21.1.8\n",
+  "source_manifest": {
+    "crates/webcodex-process/tests/p1c_c2_overlay.rs": "175f507f575ee3240da7c738c92d9584d854cbae44ed99172ab36fa7a742d6e7",
+    "research/implementation/p1b/launch-inventory.json": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+    "research/implementation/p1c/c2-guard-overlay.json": "4e0cddcb25c5bf93bb593517bbee89f318b97d8ddc1d4c0b29512156b53dd601"
+  },
+  "child_env_overrides": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "CARGO_TARGET_DIR": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/reviews/parser-audit/target"
+  },
+  "bootstrap_injected": false,
+  "scope": "exact copied C2 parser API only; not native production gate or Windows runtime"
+}

@@ -1,0 +1,18 @@
+--- source-before
++++ mutant
+@@ -258,15 +258,6 @@
+             Ok(summary) => summary,
+             Err(error) => return shell_error_result(operation, error),
+         };
+-        if summary.identity.executor == "ssh" {
+-            let _ = self.processes.close(
+-                &operation.shell_id,
+-                &operation.workflow_session_id,
+-                &operation.runtime_project_id,
+-                "remote_durable_authority_unavailable",
+-            );
+-            return remote_durable_authority_unavailable(operation);
+-        }
+         if let Err((code, message)) = validate_open_shell_boundary(policy, shell, project, &summary)
+         {
+             let _ = self.processes.close(

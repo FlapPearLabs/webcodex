@@ -1,0 +1,265 @@
+{
+  "axis": "STANDARDS",
+  "reviewer": "independent Sol Max",
+  "repo_mode": "READ_ONLY",
+  "verdict": "PASS_C2_SCOPED_MILESTONE_STANDARDS",
+  "full_p1c_verdict": "NO",
+  "blocking_findings_remaining": [],
+  "base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "observed_head": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "branch": "impl/webcodex-p1c-durable-execution",
+  "candidate_committed": false,
+  "delivery_manifest": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/evidence/final-candidate-files.json",
+  "delivery_manifest_sha256": "36e348ac5b5551626fc7fb22ffd21a7bf0476b789ea7e9f05497f10cf526f852",
+  "verified_frozen_entries": 163,
+  "current_source_binding": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/evidence/recovery-current-source.json",
+  "current_source_binding_sha256": "713cdfa7421f04dcba2619d1bcaa2b09f697f8388d8dae99241934f58a25de29",
+  "source_sha256": {
+    "Cargo.lock": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+    "Cargo.toml": "84dd798c53195d54f0127d058da3022aeb71004bb195ed90464829754a315c94",
+    "crates/webcodex-process/tests/p1b_guard.rs": "ca7a5adb18fe9c671d3a3475bf2f7738eacc61bd3286b277623ea2b3247e1a74",
+    "crates/webcodex-process/tests/p1c_c2_overlay.rs": "f72d6920e687eb906557473c8029dd1388e899aa7aa6fc0af3a23f05d816fb68",
+    "crates/webcodex-runner/src/main.rs": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+    "crates/webcodex-runner/src/main_tests/dispatch_file.rs": "cf560a9eba46533f72164b8cad01126fe78ced4e720a275fc88c42234601c06c",
+    "crates/webcodex-runner/src/main_tests/dispatch_shell.rs": "5f246b27503eeb1121a9d0be552865e762bd06f18b25f2ae6becb4b99519aa4a",
+    "crates/webcodex-runner/src/main_tests/registration.rs": "a658834640f03d3347302114fb7e83ad49caa29168802101695f35abdb2d8bb4",
+    "crates/webcodex-runner/src/main_tests/shell_profiles.rs": "b4a4282e2c6d0b2282392d6cf25c0d93576554792bb6f00c9938ee8ee423d8e5",
+    "crates/webcodex-runner/src/webcodex_runner/mod.rs": "2459ac8aff3265145f092aa769d76df2792eecc12047b5cb565bbd6d74c30d26",
+    "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+    "crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+    "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs": null,
+    "crates/webcodex-runner/src/webcodex_runner/ssh.rs": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+    "crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs": "e498ec1adaecec21ef76432b7d48feb5a57174e8f10f181e403136d21c26ce73",
+    "crates/webcodex-runner/src/webcodex_runner/transport.rs": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+    "research/implementation/p1b/launch-inventory.json": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+    "research/implementation/p1c/c2-guard-overlay.json": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f"
+  },
+  "WHY": [
+    "最小实现为 named resource 的前置固定拒绝、可信 stored ssh executor 的省略 resource 防绕过、exact owned identity cleanup 与原 status/close；没有新增 speculative durable backend 或通用 policy 抽象。",
+    "移除 C2 专用 remote transport/preparer/availability 及本次 orphan。共享 SSH/B22 生产函数体未扩改；被递归 formatter 改动的相邻文件恢复 exact base。",
+    "固定 parser 必須完整匹配五项 origin replacement、一项 origin removal、十个 raw row、零 reference removal；未知、重复、缺失、base/hash/targets 错误均拒绝，immutable P1B 原字节及其余 facts 保留。常量重复用于固定审核边界，不自动采纳工作树源。",
+    "普通 actual production guard 及两条既有 ignored 专用 lane 均实际执行成功。此前完整 guard 的真实 RED 找出了 obsolete handoff tuple；五行精确修复经 reverse-delta hash 证明，不放宽 scanner。",
+    "业务文档明确普通 native 与 DIAGNOSTIC/EXPECTED RED/NOT_RUN 的等级，保留 C9=0/2/7、B22 NOT_PROVEN 和原始逻辑 ID；十一 whole tests 与一个 partial retirement 分开，不把退休、忽略、ENV_BLOCKED 或 probes exit0 记成安全 PASS。"
+  ],
+  "resolved_findings": [
+    {
+      "id": "F-ST1",
+      "problem": "签署十一 whole-test retirement 以外的 Windows 混合测试被完整删除，丢失存活 local Bash refusal。",
+      "verified_fix": "保留 windows_local_bash_override_still_refused 的 actual handler、dialect_unsupported 和 active_count0，仅退休 obsolete remote half；当前 persistent a501。Windows native NOT_RUN。"
+    },
+    {
+      "id": "F-ST2",
+      "problem": "本次退休的 physical cwd test 留下 exclusive symlink import orphan。",
+      "verified_fix": "仅删除该 unused import 及 owned tail blank；ssh8257 与五项 frozen pins 同步。"
+    },
+    {
+      "id": "F-ST3",
+      "problem": "直接 edition2024 formatter 递归产生相邻 B22 child 纯格式污染；exact-base fmt0/current1 推翻 preexisting 推断。",
+      "verified_fix": "child 恢复 e498 exact baseline、diff为空；全库真实 fmt0/diff0，历史失败及 raw/summary 矛盾保留。"
+    },
+    {
+      "id": "F-ST4",
+      "problem": "完整默认 guard101 仍 hardcode retired exec_ssh method::exec tuple。",
+      "verified_fix": "只删除五行该 tuple，其余三项 literal expected 不变；当前ca7逆向补入该 tuple 后恰为旧bcf hash。默认18加两条显式1+1都实际0。"
+    }
+  ],
+  "run_matrix": [
+    {
+      "kind": "INDEPENDENT_NORMAL_ACTUAL_DEFAULT_GUARD",
+      "exit": 0,
+      "passed": 18,
+      "failed": 0,
+      "ignored": 2,
+      "artifact": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/default.json"
+    },
+    {
+      "kind": "INDEPENDENT_HELD_PIPE_EXPLICIT_LANE",
+      "exit": 0,
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "artifact": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/held-pipe-explicit.json"
+    },
+    {
+      "kind": "INDEPENDENT_NPM_PACK_EXPLICIT_LANE",
+      "exit": 0,
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "artifact": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/npm-pack-explicit.json"
+    },
+    {
+      "kind": "NORMAL_MACOS_NATIVE_RUNNER",
+      "build_exit": 0,
+      "runner_exit": 0,
+      "harness_exit": 0,
+      "requests": 2,
+      "model_ssh_markers": 0,
+      "binary_sha256": "40b7c376e9fe40c83e4e42b750eabc213eaad183536b6a0315e53145ebb6118e",
+      "artifact": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/evidence/native/final-source-native.json",
+      "binary_current_availability": "NOT_AVAILABLE_AFTER_USER_TARGET_CLEANUP",
+      "source_epoch": "production five origins unchanged; later deltas cfg(test) format restoration and guard literal tuple only"
+    },
+    {
+      "kind": "NORMAL_EXACT_BASE_NATIVE_OLD_ROUTE_EXPECTED_RED",
+      "runner_exit": 0,
+      "harness_exit": 1,
+      "requests": 2,
+      "model_ssh_markers": 1,
+      "binary_sha256": "0b4bea55069a73c32399bcb8774e5df844f8cab99abb85e0377899ebdf7e6150",
+      "artifact": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/evidence/native/old-route-native-result-final-source-20261004.json"
+    },
+    {
+      "kind": "ACTUAL_PRODUCTION_LAUNCHER_EXPECTED_RED",
+      "mutant_check_exit": 0,
+      "gate_exit": 101,
+      "actual_added_raw_primitives": [
+        "Command::new",
+        "method::spawn"
+      ],
+      "artifact": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/evidence/guard/launcher-nc-epoch1-final-mutated-production-gate.log",
+      "epoch": "explicit preserved earlier scratch; no source-epoch relabelling"
+    },
+    {
+      "kind": "DIAGNOSTIC_CURRENT_OMITTED_EXECUTOR_FENCE_EXPECTED_RED",
+      "exit": 101,
+      "actual_writes": 2,
+      "expected_writes": 1,
+      "mutant_source_sha256": "d8fb95a7ccf61252baa61aa150d82c5c0321d6923d79d59219dd4e269f8e8711",
+      "restored_positive_exit": 0,
+      "restored_source_sha256": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+      "artifact": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/negative-spy.stdout.log"
+    },
+    {
+      "kind": "DIAGNOSTIC_CURRENT_REMOTE_FIXTURE",
+      "exit": 0,
+      "passed": 5,
+      "local_policy_passed": 1,
+      "two_capability_tests_each_passed": 1,
+      "artifact": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/evidence/diagnostic/recovered-epoch/commands.txt"
+    },
+    {
+      "kind": "NORMAL_CURRENT_OVERLAY_PARSER",
+      "exit": 0,
+      "passed": 3,
+      "artifact": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/evidence/diagnostic/recovered-epoch/raw/overlay.stdout.log"
+    },
+    {
+      "kind": "INDEPENDENT_NORMAL_PARSER_API_AUDIT_PRESERVED_EPOCH",
+      "exit": 0,
+      "passed": 4,
+      "additional_reject_cases": 18,
+      "altered_base_bytes_rejected": true,
+      "artifact": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/evidence/guard/independent-parser-final.json",
+      "scope": "exact f72 copied parser API, not actual native runner"
+    },
+    {
+      "kind": "NORMAL_UNCHANGED_PROCESS_LIBRARY_REGRESSION_PRESERVED_EPOCH",
+      "passed": 38,
+      "artifact": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/evidence/regression/process-lib.json",
+      "scope": "ordinary unchanged process library only"
+    },
+    {
+      "kind": "REAL_GLOBAL_FORMAT_AND_WHITESPACE",
+      "fmt_exit": 0,
+      "diff_exit": 0,
+      "artifact": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/evidence/final-root-checks/checks.json"
+    }
+  ],
+  "commands": [
+    [
+      "cargo",
+      "test",
+      "--offline",
+      "--locked",
+      "-p",
+      "webcodex-process",
+      "--test",
+      "p1b_guard",
+      "--",
+      "--nocapture"
+    ],
+    [
+      "cargo",
+      "test",
+      "--offline",
+      "--locked",
+      "-p",
+      "webcodex-process",
+      "--test",
+      "p1b_guard",
+      "--",
+      "--ignored",
+      "--exact",
+      "p1b_metadata_deadline_returns_when_grandchild_holds_stdout_and_stderr",
+      "--test-threads=1",
+      "--nocapture"
+    ],
+    [
+      "cargo",
+      "test",
+      "--offline",
+      "--locked",
+      "-p",
+      "webcodex-process",
+      "--test",
+      "p1b_guard",
+      "--",
+      "--ignored",
+      "--exact",
+      "p1b_npm_pack_and_asset_compare_reject_all_regular_bin_overlay_files",
+      "--test-threads=1",
+      "--nocapture"
+    ]
+  ],
+  "command_raw_and_source_before_after": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/complete-guard.json",
+  "rustc": "1.94.0 Homebrew aarch64-apple-darwin",
+  "normal_guard_bootstrap_injected": false,
+  "diagnostic_runner_override": "child-local RUSTC_BOOTSTRAP=1 and -Zcrate-attr=feature(atomic_try_update); production coding_agent source unchanged",
+  "accounting": {
+    "class_c_total": 9,
+    "class_c_migrated": 0,
+    "class_c_deferred_fail_closed": 2,
+    "class_c_architecture_decision_pending": 7,
+    "class_c_unclassified": 0
+  },
+  "retirement": {
+    "whole_dedicated_tests": 11,
+    "mixed_partial_remote_retired_local_retained": 1,
+    "retired_tests_counted_pass": 0,
+    "baseline_history": "exact base Git retains original bodies; missing external archives are not claimed available"
+  },
+  "NOT_RUN": [
+    "Linux native",
+    "Windows native",
+    "real remote host",
+    "eight restart scenarios",
+    "PID reuse refusal",
+    "whole-family quiescence",
+    "output continuity",
+    "full P1C completion"
+  ],
+  "local_fallback_evidence": "SOURCE_DERIVED_ONLY",
+  "provenance": "External work/target reports, logs and binaries were deleted by user disk cleanup; 83 copied artifacts survived and are hash-checked. New713/current163 bindings are fresh records. Old5983 missing report is not reconstructed. Old full-guard RED stdout/stderr explicitly transcript/tool-output recovered. Historical native API contract binding mismatch and ineffective cached NC remain history.",
+  "metadata_transition_actor": "root after independent source approvals; reviewer did not mutate overlay or repository",
+  "read_depth": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/read-depth-and-standards.json",
+  "cleanroom": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/reviews/standards-cleanroom.md",
+  "SpecStandardsLinks": [
+    "/Users/songshiyao/Desktop/Projects/webcodex/AGENTS.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/CONTRIBUTING.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/docs/TESTING.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/reviews/c2-implementation-contract.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/reviews/c2-overlay-contract-v2.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/reviews/c2-retirement-addendum.md",
+    "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1c/reviews/c2-native-evidence-contract.md"
+  ],
+  "skills": [
+    "code-review",
+    "codebase-design",
+    "codegraph-integration"
+  ],
+  "subagents_spawned_by_this_reviewer": [],
+  "repo_mutations_by_reviewer": [],
+  "exact_commit_attestation": "PENDING_OWNER_COMMIT; this report binds current frozen source and delivery manifest, not an unknown future Git SHA",
+  "artifact": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/C2-STANDARDS-FINAL.json"
+}

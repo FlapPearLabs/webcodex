@@ -1,0 +1,284 @@
+{
+  "schema": "p1c-c2-final-source-native-evidence-v1",
+  "created_at_utc": "2026-10-04T12:56:44.631053+00:00",
+  "candidate_freeze": {
+    "path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/final-freeze/candidate-final-source-20261004.json",
+    "sha256": "5596d748764108112bb4428cc97c5c66d4f137d1418ab67a08fdaf9b7ef9c5d2",
+    "status": "SOURCE_FREEZE_NOT_SELF_APPROVAL",
+    "base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+    "branch": "impl/webcodex-p1c-durable-execution",
+    "tracked_diff_sha256": "e25f065051d28e625aa2bda81791d73f307be3fa435876c8c63b667c0deb30ea",
+    "declared_files": 51,
+    "final_hash_matches": 50,
+    "final_hash_mismatches": {
+      "research/implementation/p1c/evidence/copied-artifact-manifest.json": {
+        "expected_sha256": "f48f24ae433c6ad3ba529353f82a1f9a2b9fa030ef974ebea8445e7feed03512",
+        "actual_sha256": "94d32f96dd84c757319314b95ab3e24a17f6de8df0bd94dc425b0366e2c42252",
+        "match_at_final_check": false
+      }
+    },
+    "note": "Before build, an independent check observed 51/51 listed hashes matching. A final check now sees one concurrent drift in copied-artifact-manifest.json; this is outside Runner build inputs. This task used only read/build/run/--check commands and did not write repository sources."
+  },
+  "repo": {
+    "path": "/Users/songshiyao/Desktop/Projects/webcodex",
+    "head": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+    "branch": "impl/webcodex-p1c-durable-execution",
+    "source_files_bound_to_production_binary": {
+      "crates/webcodex-runner/src/main.rs": {
+        "expected_sha256": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5",
+        "actual_sha256": "1444b2012f7eaa311dd8d670b1b3e61556e3da7d0a0331da9b4d66359f7781a5"
+      },
+      "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": {
+        "expected_sha256": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff",
+        "actual_sha256": "a50183e0a5fe249aa968cbb0c4a095d887aff37daa7d5c65c8fb8305e34e98ff"
+      },
+      "crates/webcodex-runner/src/webcodex_runner/ssh.rs": {
+        "expected_sha256": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa",
+        "actual_sha256": "8257a75c1257f76c8f2afc956b3b00e6b4d2afeda0f0e53b9ce05b172828beaa"
+      },
+      "crates/webcodex-runner/src/webcodex_runner/transport.rs": {
+        "expected_sha256": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2",
+        "actual_sha256": "4967903f60727362bef9a7cbe855d4bede6f920b47d74d6248bfd6d2cc2477d2"
+      },
+      "crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs": {
+        "expected_sha256": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c",
+        "actual_sha256": "f65162a2ed08a3bf2f00b269d3b78e94ebd7b995009f73b3cdaffad65cc0c61c"
+      }
+    },
+    "all_runner_build_sources_match_candidate_freeze": true,
+    "cargo_lock_sha256": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+    "repo_source_modified_by_this_task": false
+  },
+  "toolchain_platform": {
+    "cargo": "cargo 1.94.0 (Homebrew)",
+    "rustc": "rustc 1.94.0 (4a4ef493e 2026-03-02) (Homebrew)",
+    "rustc_verbose": "rustc 1.94.0 (4a4ef493e 2026-03-02) (Homebrew)\nbinary: rustc\ncommit-hash: 4a4ef493e3a1488c6e321570238084b38948f6db\ncommit-date: 2026-03-02\nhost: aarch64-apple-darwin\nrelease: 1.94.0\nLLVM version: 21.1.8",
+    "platform": "Darwin-25.2.0-arm64-arm-64bit-Mach-O",
+    "uname": "Darwin mac-mini 25.2.0 Darwin Kernel Version 25.2.0: Tue Nov 18 21:08:48 PST 2025; root:xnu-12377.61.12~1/RELEASE_ARM64_T8132 arm64"
+  },
+  "production_build": {
+    "command": "CARGO_TARGET_DIR=/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/target-final-source-20261004 cargo build --offline --locked -p webcodex-runner",
+    "cwd": "/Users/songshiyao/Desktop/Projects/webcodex",
+    "exit_code": 0,
+    "stdout": "production-build-final-source-20261004.stdout.log",
+    "stderr": "production-build-final-source-20261004.stderr.log",
+    "binary": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/target-final-source-20261004/debug/webcodex-runner",
+    "binary_sha256": "40b7c376e9fe40c83e4e42b750eabc213eaad183536b6a0315e53145ebb6118e",
+    "bootstrap_or_feature_override": false
+  },
+  "accepted_base_negative_control": {
+    "source_copy": "accepted-base",
+    "build_record": "old-route-build-resume-20261004.*",
+    "build_exit_code": 0,
+    "binary": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/accepted-base-target/debug/webcodex-runner",
+    "binary_sha256": "0b4bea55069a73c32399bcb8774e5df844f8cab99abb85e0377899ebdf7e6150"
+  },
+  "fixture": {
+    "transport": "loopback synthetic HTTP register/poll/result",
+    "requests": [
+      "c2-open",
+      "c2-exec"
+    ],
+    "owned_project": "temporary valid git project and registry",
+    "resource": "synthetic named SSH resource",
+    "ssh": "isolated HOME/PATH/fake ssh + private config; fixed -V probe permitted/recorded separately; model prepare/connect/spawn records marker and refuses",
+    "real_remote_or_credentials": "none"
+  },
+  "native_runs": {
+    "production": {
+      "harness_command": "C2_RUNNER_BINARY=/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/target-final-source-20261004/debug/webcodex-runner C2_RESULT_SUFFIX=final-source-20261004 python3 c2_native_harness.py production",
+      "runner_argv": [
+        "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/target-final-source-20261004/debug/webcodex-runner",
+        "--config",
+        "/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/webcodex-c2-native-9kw6o8c2/runner.toml",
+        "--stop-on-stdin-eof"
+      ],
+      "runner_exit_code": 0,
+      "harness_exit_code": 0,
+      "binary_sha256": "40b7c376e9fe40c83e4e42b750eabc213eaad183536b6a0315e53145ebb6118e",
+      "result_count": 2,
+      "results": [
+        {
+          "request_id": "c2-open",
+          "error_code": "remote_durable_authority_unavailable",
+          "error": "remote durable authority backend unavailable",
+          "command_started": false,
+          "command_completed": false,
+          "shell_state": "unknown",
+          "execution_state": "rejected"
+        },
+        {
+          "request_id": "c2-exec",
+          "error_code": "remote_durable_authority_unavailable",
+          "error": "remote durable authority backend unavailable",
+          "command_started": false,
+          "command_completed": false,
+          "shell_state": "unknown",
+          "execution_state": "rejected"
+        }
+      ],
+      "no_effect_assertion": true,
+      "registration_capabilities": {
+        "ssh_persistent_shell": false,
+        "persistent_shell": true,
+        "ssh_shell": true
+      },
+      "model_ssh_marker_count": 0,
+      "ssh_markers": [
+        {
+          "kind": "fixed_probe",
+          "argv": [
+            "-V"
+          ]
+        }
+      ],
+      "raw_json": "production-native-result-final-source-20261004.json",
+      "harness_stdout": "production-harness-final-source-20261004.stdout.log",
+      "harness_stderr": "production-harness-final-source-20261004.stderr.log",
+      "harness_exit_file": "production-harness-final-source-20261004.exit-code"
+    },
+    "old-route": {
+      "harness_command": "C2_RUNNER_BINARY=/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/accepted-base-target/debug/webcodex-runner C2_RESULT_SUFFIX=final-source-20261004 python3 c2_native_harness.py old-route",
+      "runner_argv": [
+        "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/accepted-base-target/debug/webcodex-runner",
+        "--config",
+        "/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/webcodex-c2-native-5d2jo__s/runner.toml",
+        "--stop-on-stdin-eof"
+      ],
+      "runner_exit_code": 0,
+      "harness_exit_code": 1,
+      "binary_sha256": "0b4bea55069a73c32399bcb8774e5df844f8cab99abb85e0377899ebdf7e6150",
+      "result_count": 2,
+      "results": [
+        {
+          "request_id": "c2-open",
+          "error_code": "ssh_persistent_shell_spawn_failed",
+          "error": "ssh_connection_failed: resource 'synthetic-remote'; command was not started",
+          "command_started": false,
+          "command_completed": false,
+          "shell_state": "unknown",
+          "execution_state": "rejected"
+        },
+        {
+          "request_id": "c2-exec",
+          "error_code": "persistent_shell_not_found",
+          "error": "persistent shell was not found or belongs to another runtime",
+          "command_started": false,
+          "command_completed": false,
+          "shell_state": "unknown",
+          "execution_state": "rejected"
+        }
+      ],
+      "no_effect_assertion": false,
+      "registration_capabilities": {
+        "ssh_persistent_shell": true,
+        "persistent_shell": true,
+        "ssh_shell": true
+      },
+      "model_ssh_marker_count": 1,
+      "ssh_markers": [
+        {
+          "kind": "fixed_probe",
+          "argv": [
+            "-V"
+          ]
+        },
+        {
+          "kind": "fixed_probe",
+          "argv": [
+            "-V"
+          ]
+        },
+        {
+          "kind": "connect",
+          "argv": [
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "LogLevel=ERROR",
+            "-o",
+            "ConnectTimeout=10",
+            "-o",
+            "ControlMaster=yes",
+            "-o",
+            "ControlPersist=300",
+            "-o",
+            "ControlPath=/tmp/wc-ssh-39072-8bd81b21b9444cab90cce9a146c43077/c0000000000000001",
+            "-N",
+            "-f",
+            "synthetic.invalid"
+          ]
+        }
+      ],
+      "raw_json": "old-route-native-result-final-source-20261004.json",
+      "harness_stdout": "old-route-harness-final-source-20261004.stdout.log",
+      "harness_stderr": "old-route-harness-final-source-20261004.stderr.log",
+      "harness_exit_file": "old-route-harness-final-source-20261004.exit-code"
+    }
+  },
+  "format_checks": {
+    "production_cargo_fmt_all_check": {
+      "command": "cargo fmt --all --check",
+      "cwd": "/Users/songshiyao/Desktop/Projects/webcodex",
+      "exit_code": 1,
+      "stdout": "production-fmt-final-source-20261004.stdout.log",
+      "stderr": "production-fmt-final-source-20261004.stderr.log",
+      "result": "One diff block in ssh_macos_control_path_tests.rs; command was check-only; no file edited."
+    },
+    "accepted_base_cargo_fmt_all_check": {
+      "command": "cargo fmt --all --check",
+      "cwd": "accepted-base",
+      "exit_code": 0,
+      "stdout": "accepted-base-fmt-final-source-20261004.stdout.log",
+      "stderr": "accepted-base-fmt-final-source-20261004.stderr.log",
+      "target_file_base_sha256": "e498ec1adaecec21ef76432b7d48feb5a57174e8f10f181e403136d21c26ce73",
+      "target_file_current_sha256": "e47e8b34558e643138ac7965a83e06d983bea131aef0877087406b26af269cb4",
+      "result": "Accepted-base copy passes; its target file differs from current source. Cannot claim current rustfmt diff was pre-existing at base."
+    },
+    "owned_five_rustfmt": {
+      "command": "rustfmt --check --edition 2021 --config skip_children=true crates/webcodex-runner/src/main.rs crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs crates/webcodex-runner/src/webcodex_runner/ssh.rs crates/webcodex-runner/src/webcodex_runner/transport.rs crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs",
+      "cwd": "/Users/songshiyao/Desktop/Projects/webcodex",
+      "exit_code": 0,
+      "skip_children_supported": true,
+      "stdout": "owned-five-rustfmt-final-source-20261004.stdout.log",
+      "stderr": "owned-five-rustfmt-final-source-20261004.stderr.log"
+    }
+  },
+  "claim_boundaries": {
+    "native": "Final-freeze production Runner refuses remote durable shell open/exec on macOS arm64. Exact accepted-base old route emits a model SSH connect marker; same no-effect harness assertion exits nonzero only after collecting markers/results.",
+    "local_fallback": "SOURCE_DERIVED_ONLY: no local payload/profile-init marker positive control.",
+    "not_run": [
+      "real remote host",
+      "Windows native",
+      "Linux native",
+      "eight required restarts",
+      "whole detached process-family proof",
+      "restart recovery",
+      "C7/full-family completion",
+      "whole P1C PASS"
+    ]
+  },
+  "evidence_files_sha256": {
+    "accepted-base-fmt-final-source-20261004.exit-code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "accepted-base-fmt-final-source-20261004.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "accepted-base-fmt-final-source-20261004.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "old-route-harness-final-source-20261004.exit-code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "old-route-harness-final-source-20261004.stderr.log": "ea3262d72ce92720d658873154c072a884c4906e90406cc84bdc240b19a66aba",
+    "old-route-harness-final-source-20261004.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "old-route-native-result-final-source-20261004.json": "9b2ac5f0bec8742248889e933d5c6dccf0c484755f3677f52fbe1a8ef376d78d",
+    "owned-five-rustfmt-final-source-20261004.exit-code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "owned-five-rustfmt-final-source-20261004.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "owned-five-rustfmt-final-source-20261004.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "production-build-final-source-20261004.exit-code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "production-build-final-source-20261004.stderr.log": "401097959a33bed9710cbcfa3b7f3eafabf3e622f2f43409dd1e098e226eaa68",
+    "production-build-final-source-20261004.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "production-fmt-final-source-20261004.exit-code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "production-fmt-final-source-20261004.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "production-fmt-final-source-20261004.stdout.log": "ba60075a12ec5f5452550f2737db40a44d25e2edc2eae326769a1a978e93ccf6",
+    "production-harness-final-source-20261004.exit-code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "production-harness-final-source-20261004.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "production-harness-final-source-20261004.stdout.log": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+    "production-native-result-final-source-20261004.json": "81372b88216099f8aeb1824045cb6d6841241c4e37a6f28a4bc12aa7d0d36f5b",
+    "C2-NATIVE-FINAL-SOURCE-20261004.md": "005ee591a15571388db5ceff857e3304eddf6d16d7bde9889428a1e94a45e697"
+  }
+}

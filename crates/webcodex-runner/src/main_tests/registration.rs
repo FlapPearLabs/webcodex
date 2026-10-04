@@ -182,11 +182,7 @@ fn computer_register_request_announces_platform_capabilities_and_generation() {
         webcodex_persistent_shell::local_shell_supported(),
         "local persistent-shell capability must match the platform transport compiled into this Runner"
     );
-    assert_eq!(
-        caps.ssh_persistent_shell,
-        SshConnectionPool::persistent_shell_available(),
-        "SSH persistent-shell capability must match the platform backend and local OpenSSH availability"
-    );
+    assert!(!caps.ssh_persistent_shell);
     assert!(caps.structured_validation_argv);
     assert!(caps.structured_cargo_test_count_assertion);
     assert!(caps.structured_cargo_test_execution_policy);

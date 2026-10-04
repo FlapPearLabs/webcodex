@@ -1,0 +1,4 @@
+Darwin arm64 (mac-mini, Darwin 25.2.0)
+rustc 1.94.0 (4a4ef493e 2026-03-02) (Homebrew)
+cargo 1.94.0 (Homebrew)
+stable-aarch64-apple-darwin (default)

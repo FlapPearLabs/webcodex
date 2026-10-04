@@ -1,0 +1,28 @@
+{
+  "base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "source_binding_sha256": "713cdfa7421f04dcba2619d1bcaa2b09f697f8388d8dae99241934f58a25de29",
+  "checks": [
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "name": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "result": "PASS"
+    }
+  ],
+  "note": "Current source, ordinary child environment; check-only commands."
+}

@@ -1,0 +1,53 @@
+{
+  "reviewer": "independent Sol Spec/security context",
+  "base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "platform": "Darwin-25.2.0-arm64-arm-64bit-Mach-O",
+  "execution_context": "native macOS host through escalated exec_command; same fixed fixture; no repository edits; offline locked Cargo; fixture direct Child cleanup and owned group cleanup",
+  "command": [
+    "rustup",
+    "run",
+    "1.98.1",
+    "cargo",
+    "run",
+    "--offline",
+    "--locked",
+    "--manifest-path",
+    "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/Cargo.toml"
+  ],
+  "cargo_version": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "rustc_version": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "exit_code": 0,
+  "exit_source": "subprocess.run.returncode",
+  "seconds": 2.086,
+  "source_hashes_before": {
+    "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/Cargo.toml": "8d6f583627b578dbd13d64b6d82df4c97c3500a9fc84b1df10ad63d54685df70",
+    "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/Cargo.lock": "8a7a404aa56c4e7c72a7e0ed4e28b11b9a8afcef51e4dc1a8f8df5747bbdeab7",
+    "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/src/main.rs": "cf13d0f69455e4c309783bb71aabff663a3a25131b02f6b2bebb0d621ea48799",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/Cargo.toml": "cb3eb76c2b3e2f041ec5c40eb033a0bdca2bfe3d9e5e2dc14c9098026b02a02e",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/lib.rs": "322741b41bf273567020b6d9b5b9a551e7bde53c8438aff4c5f349fc9359c026",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/unix.rs": "a5d487a716a88183c6063d42f272879837c0ae1c29a6074277500dc3181c07eb",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/execution_broker/mod.rs": "974677710e5be5d534363fa1628c5d3c617b69e983539f664008a7ea5062fc12",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/execution_broker/compiler.rs": "126290bc083a5a39214bd86a184b54544ef018380649a6780503dd63fdf5221f",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/execution_broker/sbpl/codex_base_policy.sbpl": "24f492ec3881200c443950d65ece64e360f51c4ea941bd51ec33b903d2e585a0",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/execution_broker/sbpl/codex_read_only_platform_defaults.sbpl": "e45e848d6b77572ebe44c855b6588a9e121c8f052b9f6f6f9439fc3c5c7aeece"
+  },
+  "source_hashes_after": {
+    "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/Cargo.toml": "8d6f583627b578dbd13d64b6d82df4c97c3500a9fc84b1df10ad63d54685df70",
+    "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/Cargo.lock": "8a7a404aa56c4e7c72a7e0ed4e28b11b9a8afcef51e4dc1a8f8df5747bbdeab7",
+    "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/architecture/lifecycle-probe/src/main.rs": "cf13d0f69455e4c309783bb71aabff663a3a25131b02f6b2bebb0d621ea48799",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/Cargo.toml": "cb3eb76c2b3e2f041ec5c40eb033a0bdca2bfe3d9e5e2dc14c9098026b02a02e",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/lib.rs": "322741b41bf273567020b6d9b5b9a551e7bde53c8438aff4c5f349fc9359c026",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/unix.rs": "a5d487a716a88183c6063d42f272879837c0ae1c29a6074277500dc3181c07eb",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/execution_broker/mod.rs": "974677710e5be5d534363fa1628c5d3c617b69e983539f664008a7ea5062fc12",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/execution_broker/compiler.rs": "126290bc083a5a39214bd86a184b54544ef018380649a6780503dd63fdf5221f",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/execution_broker/sbpl/codex_base_policy.sbpl": "24f492ec3881200c443950d65ece64e360f51c4ea941bd51ec33b903d2e585a0",
+    "/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process/src/execution_broker/sbpl/codex_read_only_platform_defaults.sbpl": "e45e848d6b77572ebe44c855b6588a9e121c8f052b9f6f6f9439fc3c5c7aeece"
+  },
+  "source_unchanged": true,
+  "stdout_file": "independent-native-setsid.stdout.log",
+  "stdout_sha256": "7b9b029e96819f2488bcef0dde1365a992b1c220e1f59aac676ccc756da7481f",
+  "stderr_file": "independent-native-setsid.stderr.log",
+  "stderr_sha256": "c66962e806132932c18dab1bbe61e6bd8c51ed86739fede724d7a0c166dba863",
+  "stdout_text": "platform=macOS owner_group=39981 payload_pid=39982 payload_group_after=39982 payload_session_after=39982 observation=Ok(Ok(\"setsid_result=39982 errno=Undefined error: 0 (os error 0)\\n\"))\nstderr=(Ok(0), \"\")\n",
+  "meaning": "Exit zero is fixture completion, not P1C lifetime PASS. A positive setsid_result plus changed group/session refutes permanent membership in the owned group. This fixture does not assert escaped-child cancellation or full-family quiescence."
+}

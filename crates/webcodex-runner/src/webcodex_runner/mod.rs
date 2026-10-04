@@ -29,11 +29,6 @@ pub(crate) mod projects;
 pub(crate) mod runner_instructions;
 pub(crate) mod runner_skills;
 pub(crate) mod sandbox_authority;
-// Remote persistent shells always run POSIX sh/bash on the SSH target. Their
-// local child ownership is platform-specific: Unix uses a private process group,
-// while Windows owns ssh.exe through ManagedChild's Job Object.
-#[cfg(any(unix, windows))]
-pub(crate) mod remote_shell;
 pub(crate) mod shell;
 pub(crate) mod shutdown;
 pub(crate) mod skill_store;

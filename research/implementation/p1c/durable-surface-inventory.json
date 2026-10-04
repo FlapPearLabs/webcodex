@@ -1,0 +1,415 @@
+{
+  "schema_version": 1,
+  "status": "C2_SCOPED_MILESTONE_P1C_INCOMPLETE",
+  "base_sha": "f58e65c6d95bbd91165e97b4a98de694f97ae872",
+  "accepted_p1b_inventory_sha256": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+  "accounting": {
+    "class_c_total": 9,
+    "class_c_migrated": 0,
+    "class_c_deferred_fail_closed": 2,
+    "class_c_architecture_decision_pending": 7,
+    "class_c_unclassified": 0
+  },
+  "metric_note": "Accepted logical IDs remain a historical ledger. The sparse guard overlay removes ten raw AST rows and one retired origin; raw rows are not logical launch counts.",
+  "surfaces": [
+    {
+      "id": "shell.persistent-local.unix",
+      "accepted_baseline_row": {
+        "id": "shell.persistent-local.unix",
+        "class": "C",
+        "reason": "模型交互 shell 长期持有 session 和控制 FD，独立于单次 Runner action lifetime。",
+        "origin": [
+          "OpenSessionShell",
+          "SessionShellExec"
+        ],
+        "model_execution_authority": true,
+        "model_triggered": true,
+        "trigger_origin": [
+          "OpenSessionShell",
+          "SessionShellExec"
+        ],
+        "count_role": "logical_launch",
+        "operative_authority": "existing admitted durable/session execution authority; P1C supervisor/lifetime capability required",
+        "route": "ToolRuntime session tools → Runner PersistentShell → manager.open → spawn_shell_process",
+        "next_contract": "P1C 先设计 durable/session authority 与监督者 ownership：保持 accepted execution identity/reconciliation、Runner restart survival、FD7/8、process groups/breakaway、stdin/out/error completeness；先测 restart/orphan/cleanup/uncertain acceptance，再迁移。本轮不启动 P1C。",
+        "os": [
+          "unix"
+        ],
+        "backend_choices": [],
+        "source_refs": [
+          {
+            "file": "crates/webcodex-persistent-shell/src/lib.rs",
+            "symbol": "crate::spawn_shell_process"
+          }
+        ],
+        "source_sha256": {
+          "crates/webcodex-persistent-shell/src/lib.rs": "11213b504698812e266ce6f9051cb212d7d751863bec41b27dd565071a62ea84"
+        },
+        "evidence_scope": "source/callchain classification and precise next capability contract; production confinement NOT_PROVEN by P1B"
+      },
+      "status": "ARCHITECTURE_DECISION_PENDING",
+      "current_execution": "EXISTING_UNMIGRATED_PATH",
+      "next_contract": "Trusted control plane must be separated from arbitrary stateful interpreter capability."
+    },
+    {
+      "id": "job.detached-payload.unix",
+      "accepted_baseline_row": {
+        "id": "job.detached-payload.unix",
+        "class": "C",
+        "reason": "durable supervisor 创建已接受 model payload；survives-Runner 和 watchdog group 是执行合同。",
+        "origin": [
+          "RunDetachedProcess"
+        ],
+        "model_execution_authority": true,
+        "model_triggered": true,
+        "trigger_origin": [
+          "RunDetachedProcess"
+        ],
+        "count_role": "logical_launch",
+        "operative_authority": "existing admitted durable/session execution authority; P1C supervisor/lifetime capability required",
+        "route": "typed Runner Job(StartDetachedProcess) → durable handoff/supervisor → run_accepted_payload",
+        "next_contract": "P1C 先设计 durable/session authority 与监督者 ownership：保持 accepted execution identity/reconciliation、Runner restart survival、FD7/8、process groups/breakaway、stdin/out/error completeness；先测 restart/orphan/cleanup/uncertain acceptance，再迁移。本轮不启动 P1C。",
+        "os": [
+          "unix"
+        ],
+        "backend_choices": [],
+        "source_refs": [
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/detached_job.rs",
+            "symbol": "crate::webcodex_runner::detached_job::run_accepted_payload"
+          },
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/process_command.rs",
+            "symbol": "crate::webcodex_runner::shell::process_command::structured_process_command"
+          }
+        ],
+        "source_sha256": {
+          "crates/webcodex-runner/src/webcodex_runner/detached_job.rs": "c2a85f041ffafce868bf2ffc32c474d95a1a67038a07752ad59335dd72d5bb20",
+          "crates/webcodex-runner/src/webcodex_runner/process_command.rs": "7d6543027199284666cf4f224d8adaae6a16a509b81cafe63df133a23b9a3a42"
+        },
+        "evidence_scope": "source/callchain classification and precise next capability contract; production confinement NOT_PROVEN by P1B"
+      },
+      "status": "ARCHITECTURE_DECISION_PENDING",
+      "current_execution": "EXISTING_UNMIGRATED_PATH",
+      "next_contract": "Host-enforced job-family ownership, current-authority revalidation, exact process incarnation and honest restart/output outcomes."
+    },
+    {
+      "id": "job.detached-supervisor.unix",
+      "accepted_baseline_row": {
+        "id": "job.detached-supervisor.unix",
+        "class": "C",
+        "reason": "model detached start 创建持有 durable execution identity 的 supervisor；不是可删除的非模型 fixture。",
+        "origin": [
+          "RunDetachedProcess"
+        ],
+        "model_execution_authority": true,
+        "model_triggered": true,
+        "trigger_origin": [
+          "RunDetachedProcess"
+        ],
+        "count_role": "logical_launch",
+        "operative_authority": "existing admitted durable/session execution authority; P1C supervisor/lifetime capability required",
+        "route": "typed Runner detached job → handoff_first_platform → detached_supervisor_command → internal_mode_command → Command::spawn",
+        "next_contract": "P1C 先设计 durable/session authority 与监督者 ownership：保持 accepted execution identity/reconciliation、Runner restart survival、FD7/8、process groups/breakaway、stdin/out/error completeness；先测 restart/orphan/cleanup/uncertain acceptance，再迁移。本轮不启动 P1C。",
+        "os": [
+          "unix"
+        ],
+        "backend_choices": [],
+        "source_refs": [
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/detached_job.rs",
+            "symbol": "crate::webcodex_runner::detached_job::handoff_first_platform"
+          },
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/detached_job.rs",
+            "symbol": "crate::webcodex_runner::detached_job::internal_mode_command"
+          }
+        ],
+        "source_sha256": {
+          "crates/webcodex-runner/src/webcodex_runner/detached_job.rs": "c2a85f041ffafce868bf2ffc32c474d95a1a67038a07752ad59335dd72d5bb20"
+        },
+        "evidence_scope": "source/callchain classification and precise next capability contract; production confinement NOT_PROVEN by P1B"
+      },
+      "status": "ARCHITECTURE_DECISION_PENDING",
+      "current_execution": "EXISTING_UNMIGRATED_PATH",
+      "next_contract": "Host-enforced job-family ownership, current-authority revalidation, exact process incarnation and honest restart/output outcomes."
+    },
+    {
+      "id": "shell.persistent-remote.unix",
+      "accepted_baseline_row": {
+        "id": "shell.persistent-remote.unix",
+        "class": "C",
+        "reason": "模型远端交互 transport 持有 FD7/8/bootstrap 与长驻 SSH session，local broker 不能证明 remote confinement。",
+        "origin": [
+          "SessionShell SSH open/exec"
+        ],
+        "model_execution_authority": true,
+        "model_triggered": true,
+        "trigger_origin": [
+          "SessionShell SSH open/exec"
+        ],
+        "count_role": "logical_launch",
+        "operative_authority": "existing admitted durable/session execution authority; P1C supervisor/lifetime capability required",
+        "route": "Runner PersistentShell → SshConnectionPool::prepare_persistent_shell_command → RemoteShellTransport::spawn",
+        "next_contract": "P1C 先设计 durable/session authority 与监督者 ownership：保持 accepted execution identity/reconciliation、Runner restart survival、FD7/8、process groups/breakaway、stdin/out/error completeness；先测 restart/orphan/cleanup/uncertain acceptance，再迁移。本轮不启动 P1C。 同时需要 SSH 的 explicit local network/credential 与 remote host/path authority。",
+        "os": [
+          "unix"
+        ],
+        "backend_choices": [],
+        "source_refs": [
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs",
+            "symbol": "crate::webcodex_runner::remote_shell::RemoteShellTransport::spawn"
+          },
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/ssh.rs",
+            "symbol": "crate::webcodex_runner::ssh::SshConnectionPool::prepare_persistent_shell_command"
+          },
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/ssh.rs",
+            "symbol": "crate::webcodex_runner::ssh::ssh_command_with_config"
+          }
+        ],
+        "source_sha256": {
+          "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs": "29a06f8a347cd25e181d9a6a4218b685a01b6c18cde1993fc2c180c3117804b3",
+          "crates/webcodex-runner/src/webcodex_runner/ssh.rs": "74da296a366a98e27899259da40fd32cb4a06ec2b825bafa36849230df7a8053"
+        },
+        "evidence_scope": "source/callchain classification and precise next capability contract; production confinement NOT_PROVEN by P1B"
+      },
+      "status": "DEFERRED_FAIL_CLOSED",
+      "current_execution": "REFUSED_BEFORE_PREPARE_CONNECT_SPAWN",
+      "next_contract": "Remote host/path, credential audience, network authority, per-job confinement and uncertain channel outcome must be independently established before reopening."
+    },
+    {
+      "id": "shell.persistent-local.windows",
+      "accepted_baseline_row": {
+        "id": "shell.persistent-local.windows",
+        "class": "C",
+        "reason": "模型交互 shell 长期持有 session 和控制 FD，独立于单次 Runner action lifetime。",
+        "origin": [
+          "OpenSessionShell",
+          "SessionShellExec"
+        ],
+        "model_execution_authority": true,
+        "model_triggered": true,
+        "trigger_origin": [
+          "OpenSessionShell",
+          "SessionShellExec"
+        ],
+        "count_role": "logical_launch",
+        "operative_authority": "existing admitted durable/session execution authority; P1C supervisor/lifetime capability required",
+        "route": "ToolRuntime session tools → Runner PersistentShell → manager.open → spawn_shell_process",
+        "next_contract": "P1C 先设计 durable/session authority 与监督者 ownership：保持 accepted execution identity/reconciliation、Runner restart survival、FD7/8、process groups/breakaway、stdin/out/error completeness；先测 restart/orphan/cleanup/uncertain acceptance，再迁移。本轮不启动 P1C。",
+        "os": [
+          "windows"
+        ],
+        "backend_choices": [],
+        "source_refs": [
+          {
+            "file": "crates/webcodex-persistent-shell/src/windows.rs",
+            "symbol": "crate::windows::spawn_shell_process"
+          },
+          {
+            "file": "crates/webcodex-process/src/windows.rs",
+            "symbol": "crate::windows::ManagedChild::spawn_with_options"
+          }
+        ],
+        "source_sha256": {
+          "crates/webcodex-persistent-shell/src/windows.rs": "ed164ecc85bdb8d6472e41dc0bbb4b17fdd3de3398eb49f031544c1e4507db31",
+          "crates/webcodex-process/src/windows.rs": "d2164ed2db8453326522f3c20b17c1af099f0ae4d0078a4dd85d73304d399a7b"
+        },
+        "evidence_scope": "source/callchain classification and precise next capability contract; production confinement NOT_PROVEN by P1B"
+      },
+      "status": "ARCHITECTURE_DECISION_PENDING",
+      "current_execution": "EXISTING_UNMIGRATED_PATH",
+      "next_contract": "Trusted control plane must be separated from arbitrary stateful interpreter capability."
+    },
+    {
+      "id": "job.detached-payload.windows",
+      "accepted_baseline_row": {
+        "id": "job.detached-payload.windows",
+        "class": "C",
+        "reason": "durable supervisor 创建已接受 model payload；survives-Runner 和 watchdog group 是执行合同。",
+        "origin": [
+          "RunDetachedProcess"
+        ],
+        "model_execution_authority": true,
+        "model_triggered": true,
+        "trigger_origin": [
+          "RunDetachedProcess"
+        ],
+        "count_role": "logical_launch",
+        "operative_authority": "existing admitted durable/session execution authority; P1C supervisor/lifetime capability required",
+        "route": "typed Runner Job(StartDetachedProcess) → durable handoff/supervisor → run_accepted_payload",
+        "next_contract": "P1C 先设计 durable/session authority 与监督者 ownership：保持 accepted execution identity/reconciliation、Runner restart survival、FD7/8、process groups/breakaway、stdin/out/error completeness；先测 restart/orphan/cleanup/uncertain acceptance，再迁移。本轮不启动 P1C。",
+        "os": [
+          "windows"
+        ],
+        "backend_choices": [],
+        "source_refs": [
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/detached_job.rs",
+            "symbol": "crate::webcodex_runner::detached_job::run_accepted_payload"
+          },
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/process_command.rs",
+            "symbol": "crate::webcodex_runner::shell::process_command::structured_process_command"
+          },
+          {
+            "file": "crates/webcodex-process/src/windows.rs",
+            "symbol": "crate::windows::ManagedChild::spawn_with_options"
+          }
+        ],
+        "source_sha256": {
+          "crates/webcodex-runner/src/webcodex_runner/detached_job.rs": "c2a85f041ffafce868bf2ffc32c474d95a1a67038a07752ad59335dd72d5bb20",
+          "crates/webcodex-runner/src/webcodex_runner/process_command.rs": "7d6543027199284666cf4f224d8adaae6a16a509b81cafe63df133a23b9a3a42",
+          "crates/webcodex-process/src/windows.rs": "d2164ed2db8453326522f3c20b17c1af099f0ae4d0078a4dd85d73304d399a7b"
+        },
+        "evidence_scope": "source/callchain classification and precise next capability contract; production confinement NOT_PROVEN by P1B"
+      },
+      "status": "ARCHITECTURE_DECISION_PENDING",
+      "current_execution": "EXISTING_UNMIGRATED_PATH",
+      "next_contract": "Host-enforced job-family ownership, current-authority revalidation, exact process incarnation and honest restart/output outcomes."
+    },
+    {
+      "id": "job.detached-supervisor.windows",
+      "accepted_baseline_row": {
+        "id": "job.detached-supervisor.windows",
+        "class": "C",
+        "reason": "model detached start 创建持有 durable execution identity 的 supervisor；不是可删除的非模型 fixture。",
+        "origin": [
+          "RunDetachedProcess"
+        ],
+        "model_execution_authority": true,
+        "model_triggered": true,
+        "trigger_origin": [
+          "RunDetachedProcess"
+        ],
+        "count_role": "logical_launch",
+        "operative_authority": "existing admitted durable/session execution authority; P1C supervisor/lifetime capability required",
+        "route": "typed Runner detached job → handoff_first_platform → detached_supervisor_command → internal_mode_command → Command::spawn",
+        "next_contract": "P1C 先设计 durable/session authority 与监督者 ownership：保持 accepted execution identity/reconciliation、Runner restart survival、FD7/8、process groups/breakaway、stdin/out/error completeness；先测 restart/orphan/cleanup/uncertain acceptance，再迁移。本轮不启动 P1C。",
+        "os": [
+          "windows"
+        ],
+        "backend_choices": [
+          "breakaway, exact pre-start ACCESS_DENIED fallback without breakaway"
+        ],
+        "source_refs": [
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/detached_job.rs",
+            "symbol": "crate::webcodex_runner::detached_job::handoff_first_platform"
+          },
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/detached_job.rs",
+            "symbol": "crate::webcodex_runner::detached_job::internal_mode_command"
+          }
+        ],
+        "source_sha256": {
+          "crates/webcodex-runner/src/webcodex_runner/detached_job.rs": "c2a85f041ffafce868bf2ffc32c474d95a1a67038a07752ad59335dd72d5bb20"
+        },
+        "evidence_scope": "source/callchain classification and precise next capability contract; production confinement NOT_PROVEN by P1B"
+      },
+      "status": "ARCHITECTURE_DECISION_PENDING",
+      "current_execution": "EXISTING_UNMIGRATED_PATH",
+      "next_contract": "Host-enforced job-family ownership, current-authority revalidation, exact process incarnation and honest restart/output outcomes."
+    },
+    {
+      "id": "shell.persistent-remote.windows",
+      "accepted_baseline_row": {
+        "id": "shell.persistent-remote.windows",
+        "class": "C",
+        "reason": "模型远端交互 transport 持有 FD7/8/bootstrap 与长驻 SSH session，local broker 不能证明 remote confinement。",
+        "origin": [
+          "SessionShell SSH open/exec"
+        ],
+        "model_execution_authority": true,
+        "model_triggered": true,
+        "trigger_origin": [
+          "SessionShell SSH open/exec"
+        ],
+        "count_role": "logical_launch",
+        "operative_authority": "existing admitted durable/session execution authority; P1C supervisor/lifetime capability required",
+        "route": "Runner PersistentShell → SshConnectionPool::prepare_persistent_shell_command → RemoteShellTransport::spawn",
+        "next_contract": "P1C 先设计 durable/session authority 与监督者 ownership：保持 accepted execution identity/reconciliation、Runner restart survival、FD7/8、process groups/breakaway、stdin/out/error completeness；先测 restart/orphan/cleanup/uncertain acceptance，再迁移。本轮不启动 P1C。 同时需要 SSH 的 explicit local network/credential 与 remote host/path authority。",
+        "os": [
+          "windows"
+        ],
+        "backend_choices": [],
+        "source_refs": [
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs",
+            "symbol": "crate::webcodex_runner::remote_shell::RemoteShellTransport::spawn"
+          },
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/ssh.rs",
+            "symbol": "crate::webcodex_runner::ssh::SshConnectionPool::direct_ssh_command"
+          },
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/ssh.rs",
+            "symbol": "crate::webcodex_runner::ssh::SshConnectionPool::prepare_persistent_shell_command"
+          },
+          {
+            "file": "crates/webcodex-process/src/windows.rs",
+            "symbol": "crate::windows::ManagedChild::spawn_with_options"
+          }
+        ],
+        "source_sha256": {
+          "crates/webcodex-runner/src/webcodex_runner/remote_shell.rs": "29a06f8a347cd25e181d9a6a4218b685a01b6c18cde1993fc2c180c3117804b3",
+          "crates/webcodex-runner/src/webcodex_runner/ssh.rs": "74da296a366a98e27899259da40fd32cb4a06ec2b825bafa36849230df7a8053",
+          "crates/webcodex-process/src/windows.rs": "d2164ed2db8453326522f3c20b17c1af099f0ae4d0078a4dd85d73304d399a7b"
+        },
+        "evidence_scope": "source/callchain classification and precise next capability contract; production confinement NOT_PROVEN by P1B"
+      },
+      "status": "DEFERRED_FAIL_CLOSED",
+      "current_execution": "REFUSED_BEFORE_PREPARE_CONNECT_SPAWN",
+      "next_contract": "Remote host/path, credential audience, network authority, per-job confinement and uncertain channel outcome must be independently established before reopening."
+    },
+    {
+      "id": "job.detached-watchdog.unix",
+      "accepted_baseline_row": {
+        "id": "job.detached-watchdog.unix",
+        "class": "C",
+        "reason": "durable supervisor 创建 watchdog，约束 payload orphan/group lifetime，来源仍是 model accepted detached operation。",
+        "origin": [
+          "RunDetachedProcess → detached supervisor"
+        ],
+        "model_execution_authority": true,
+        "model_triggered": true,
+        "trigger_origin": [
+          "RunDetachedProcess → detached supervisor"
+        ],
+        "count_role": "logical_launch",
+        "operative_authority": "existing admitted durable/session execution authority; P1C supervisor/lifetime capability required",
+        "route": "internal durable supervisor → spawn_watchdog → internal_mode_command → ManagedChild",
+        "next_contract": "P1C 先设计 durable/session authority 与监督者 ownership：保持 accepted execution identity/reconciliation、Runner restart survival、FD7/8、process groups/breakaway、stdin/out/error completeness；先测 restart/orphan/cleanup/uncertain acceptance，再迁移。本轮不启动 P1C。",
+        "os": [
+          "unix"
+        ],
+        "backend_choices": [],
+        "source_refs": [
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/detached_job.rs",
+            "symbol": "crate::webcodex_runner::detached_job::spawn_watchdog"
+          },
+          {
+            "file": "crates/webcodex-runner/src/webcodex_runner/detached_job.rs",
+            "symbol": "crate::webcodex_runner::detached_job::internal_mode_command"
+          },
+          {
+            "file": "crates/webcodex-process/src/unix.rs",
+            "symbol": "crate::unix::ManagedChild::spawn_with_options"
+          }
+        ],
+        "source_sha256": {
+          "crates/webcodex-runner/src/webcodex_runner/detached_job.rs": "c2a85f041ffafce868bf2ffc32c474d95a1a67038a07752ad59335dd72d5bb20",
+          "crates/webcodex-process/src/unix.rs": "a5d487a716a88183c6063d42f272879837c0ae1c29a6074277500dc3181c07eb"
+        },
+        "evidence_scope": "source/callchain classification and precise next capability contract; production confinement NOT_PROVEN by P1B"
+      },
+      "status": "ARCHITECTURE_DECISION_PENDING",
+      "current_execution": "EXISTING_UNMIGRATED_PATH",
+      "next_contract": "Host-enforced job-family ownership, current-authority revalidation, exact process incarnation and honest restart/output outcomes."
+    }
+  ]
+}

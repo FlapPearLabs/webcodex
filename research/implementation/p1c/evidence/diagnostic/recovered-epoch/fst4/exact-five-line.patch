@@ -1,0 +1,14 @@
+--- externalvalidation-final-20261004-root-update/p1b_guard.before.rs	2026-10-04 22:02:00
++++ externalvalidation-final-20261004-root-update/p1b_guard.after.rs	2026-10-04 22:02:26
+@@ -1408,11 +1408,6 @@
+             ),
+             (
+                 "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs",
+-                "crate::webcodex_runner::persistent_shell::PersistentShellManager::exec_ssh",
+-                1
+-            ),
+-            (
+-                "crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs",
+                 "crate::webcodex_runner::persistent_shell::PersistentShellManager::handle_operation",
+                 1
+             ),

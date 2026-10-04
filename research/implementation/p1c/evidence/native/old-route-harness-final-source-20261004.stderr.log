@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/c2_native_harness.py", line 258, in <module>
+    print(json.dumps(exercise(sys.argv[1] if len(sys.argv)>1 else 'production'), indent=2))
+                     ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/c2_native_harness.py", line 249, in exercise
+    raise AssertionError(f'{label} gate failed; raw result at {out_path}')
+AssertionError: old-route gate failed; raw result at /Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1c/native-c2/old-route-native-result-final-source-20261004.json

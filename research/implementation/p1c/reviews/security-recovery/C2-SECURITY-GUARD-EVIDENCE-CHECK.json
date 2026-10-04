@@ -1,0 +1,262 @@
+{
+  "created_utc": "2026-10-04T14:13:17.472166+00:00",
+  "repo_read_only": true,
+  "review_type": "independent_actual_raw_and_source_inspection; no duplicate expensive run",
+  "checks": {
+    "complete_guard_actual_record_sha": {
+      "passed": true,
+      "detail": null
+    },
+    "source_before_after_equal": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:Cargo.lock": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:Cargo.toml": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-process/tests/p1b_guard.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-process/tests/p1c_c2_overlay.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/main.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/main_tests/dispatch_file.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/main_tests/dispatch_shell.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/main_tests/registration.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/main_tests/shell_profiles.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/webcodex_runner/mod.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/webcodex_runner/persistent_shell.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/webcodex_runner/remote_authority_tests.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/webcodex_runner/remote_shell.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/webcodex_runner/ssh.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/webcodex_runner/ssh_macos_control_path_tests.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:crates/webcodex-runner/src/webcodex_runner/transport.rs": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:research/implementation/p1b/launch-inventory.json": {
+      "passed": true,
+      "detail": null
+    },
+    "current_source_matches_gate:research/implementation/p1c/c2-guard-overlay.json": {
+      "passed": true,
+      "detail": null
+    },
+    "current_guard_expected": {
+      "passed": true,
+      "detail": null
+    },
+    "current_overlay_accepted": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_record_consistent:default": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_actual_exit0:default": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_actual_raw_counts:default": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_actual_compiled_guard_binary:default": {
+      "passed": true,
+      "detail": null
+    },
+    "ordinary_offline_locked_actual_command:default": {
+      "passed": true,
+      "detail": null
+    },
+    "actual_production_guard_row_pass": {
+      "passed": true,
+      "detail": null
+    },
+    "actual_platform_handoff_guard_pass": {
+      "passed": true,
+      "detail": null
+    },
+    "raw_delta_origin_closure_pass": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_record_consistent:held-pipe-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_actual_exit0:held-pipe-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_actual_raw_counts:held-pipe-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_actual_compiled_guard_binary:held-pipe-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "ordinary_offline_locked_actual_command:held-pipe-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "explicit_ignored_lane_selected:held-pipe-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_record_consistent:npm-pack-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_actual_exit0:npm-pack-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_actual_raw_counts:npm-pack-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "lane_actual_compiled_guard_binary:npm-pack-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "ordinary_offline_locked_actual_command:npm-pack-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "explicit_ignored_lane_selected:npm-pack-explicit": {
+      "passed": true,
+      "detail": null
+    },
+    "actual_local_npm_pack_red_restore": {
+      "passed": true,
+      "detail": null
+    },
+    "ordinary_toolchain_no_bootstrap_record": {
+      "passed": true,
+      "detail": null
+    },
+    "full_p1c_not_approved": {
+      "passed": true,
+      "detail": null
+    }
+  },
+  "errors": [],
+  "raw_sha256": {
+    "default.json": "6a0edab5c22a85b5d8ebd70a9f6233b7d0bf1a196214886050032bd1b81661aa",
+    "default.stdout.log": "4ed3170ebec6f222e53a6eb473c0fa153d577996049dadf45c88c0175b18f186",
+    "default.stderr.log": "5e00a6cb5fff032df3523ca470cf96a69d42422d558d613fa3bdec72ff3cdc67",
+    "held-pipe-explicit.json": "9140de26af3d637f2bf82565edcf3e210ec9da833d198e30a393fde02ecf64b4",
+    "held-pipe-explicit.stdout.log": "f770fb6226fc9dbebf28b02e516c789c06eefa255b7f7455f5e4231996d0dc03",
+    "held-pipe-explicit.stderr.log": "9a5bf9b0485b6cbb74fa37fa5cacfd55a308ac777d5b8332b9c349b77bcc8e7a",
+    "npm-pack-explicit.json": "c01cc775c5d56276cdd83d345f133614fba9d1f45a2c189f06ed276a922826e2",
+    "npm-pack-explicit.stdout.log": "bec4ad300dab6708fae837cb3478da200af600ae054f248c559d739c47e02193",
+    "npm-pack-explicit.stderr.log": "7c29f8260c114b7d6c8b47b9e2635caeca4c31c08b8b60216ab346368a2aa81a",
+    "complete-guard.json": "1c54cd8778d9958948e6a4f069b7ccfa3a79a26f888583b070e32cbc9a6a5c6d"
+  },
+  "commands": [
+    {
+      "label": "default",
+      "argv": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "webcodex-process",
+        "--test",
+        "p1b_guard",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "actual_counts": "18 passed; 0 failed; 2 ignored"
+    },
+    {
+      "label": "held-pipe-explicit",
+      "argv": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "webcodex-process",
+        "--test",
+        "p1b_guard",
+        "--",
+        "--ignored",
+        "--exact",
+        "p1b_metadata_deadline_returns_when_grandchild_holds_stdout_and_stderr",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "actual_counts": "1 passed; 0 failed; 0 ignored"
+    },
+    {
+      "label": "npm-pack-explicit",
+      "argv": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "webcodex-process",
+        "--test",
+        "p1b_guard",
+        "--",
+        "--ignored",
+        "--exact",
+        "p1b_npm_pack_and_asset_compare_reject_all_regular_bin_overlay_files",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "actual_counts": "1 passed; 0 failed; 0 ignored"
+    }
+  ],
+  "status": "ACTUAL_COMPLETE_GUARD_RAW_AND_CURRENT_SOURCE_PASS"
+}
