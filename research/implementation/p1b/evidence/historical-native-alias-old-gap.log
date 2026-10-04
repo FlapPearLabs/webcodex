@@ -1,0 +1,11 @@
+   Compiling p1b-sol-de-origin-probe v0.0.0 (/tmp/webcodex-p1b-sol-de-origin-probe)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.59s
+     Running unittests src/lib.rs (/tmp/webcodex-p1b-guard-rust194/debug/deps/p1b_sol_de_origin_probe-b3e1696505a6c7fc)
+
+running 1 test
+SOL_NATIVE_ALIAS_NEGATIVE_CONTROL compiled=true raw_compare=Ok(()) refs_unchanged=true refs_count=0
+SOL_NATIVE_ALIAS_POSITIVE_CONTROL literal_api_detected=true
+test sol_native_api_alias_new_compiled_module_is_invisible ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.04s
+

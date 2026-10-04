@@ -1,0 +1,13 @@
+command: RUSTC_WRAPPER= CARGO_TARGET_DIR=/private/tmp/p1b-standards-guard-probes-target cargo test --offline standards_published_mjs_asset_is_not_in_fingerprint_closure -- --exact --nocapture
+exit: 0
+snapshot_source_sha256: 9944898108caea45c561c639963ca276f9353fb68ebc3e52569edda529a79953
+interpretation: diagnostic success proves the old closure gap; this is NOT security PASS
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.30s
+     Running unittests src/lib.rs (/private/tmp/p1b-standards-guard-probes-target/debug/deps/p1b_standards_guard_probes-6a548d347ee0410e)
+
+running 1 test
+STANDARDS_MJS_CLOSURE_PROBE actual_npm_publishes=true guard_includes=false compare=Ok(())
+test standards_published_mjs_asset_is_not_in_fingerprint_closure ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.47s
+

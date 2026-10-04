@@ -1,0 +1,58 @@
+   Compiling webcodex-lsp v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-lsp)
+    Finished `test` profile [unoptimized] target(s) in 1.36s
+     Running unittests src/lib.rs (/private/tmp/wc_p1b_slice2a_tests/target/debug/deps/webcodex_lsp-893b3cb9c6b1ac39)
+
+running 37 tests
+test supervisor::tests::runner_real_process_lsp_background_reaper_reclaims_idle_capacity_without_explicit_cleanup ... ok
+test supervisor::tests::runner_real_process_lsp_command_resolution_uses_explicit_env_then_path_without_shell ... ok
+test supervisor::tests::runner_real_process_lsp_concurrent_document_refresh_uses_one_monotonic_version ... ok
+test supervisor::tests::runner_real_process_lsp_crashed_connection_reaps_immediately_without_full_shutdown_deadline ... ok
+test supervisor::tests::runner_real_process_lsp_diagnostics_cache_is_cleared_with_server_instance_restart ... ok
+test supervisor::tests::runner_real_process_lsp_exit_immediately_after_initialize_is_detected_and_bounded ... ok
+test supervisor::tests::runner_real_process_lsp_gopls_process_environment_overrides_ambient_network_settings ... ok
+test supervisor::tests::runner_real_process_lsp_graceful_leader_exit_still_reaps_surviving_descendant ... ok
+test supervisor::tests::runner_real_process_lsp_idle_cleanup_is_explicit_and_bounded ... ok
+test supervisor::tests::runner_real_process_lsp_idle_cleanup_reaps_crashed_alive_server_immediately ... ok
+test supervisor::tests::runner_real_process_lsp_idle_cleanup_skips_active_pending_requests ... ok
+test supervisor::tests::runner_real_process_lsp_initialize_failure_consumes_the_single_restart_budget ... ok
+test supervisor::tests::runner_real_process_lsp_initialize_pre_exit_with_stderr_surfaces_component_missing_diagnostic ... ok
+test supervisor::tests::runner_real_process_lsp_initialize_timeout_cleanup_uses_configured_shutdown_budget ... ok
+test supervisor::tests::runner_real_process_lsp_initialize_uses_constrained_gopls_profile ... ok
+test supervisor::tests::runner_real_process_lsp_initialize_uses_constrained_pyright_profile ... ok
+test supervisor::tests::runner_real_process_lsp_initialize_uses_constrained_rust_analyzer_profile ... ok
+test supervisor::tests::runner_real_process_lsp_initialize_uses_constrained_typescript_profile ... ok
+test supervisor::tests::runner_real_process_lsp_jsonrpc_handles_interleaved_notifications_and_multiple_request_ids ... ok
+test supervisor::tests::runner_real_process_lsp_jsonrpc_replies_method_not_found_to_server_requests ... ok
+test supervisor::tests::runner_real_process_lsp_jsonrpc_surfaces_errors_and_ignores_unknown_response_ids ... ok
+test supervisor::tests::runner_real_process_lsp_malformed_json_and_invalid_content_length_are_distinct ... ok
+test supervisor::tests::runner_real_process_lsp_multiple_hanging_servers_share_one_supervisor_deadline ... FAILED
+test supervisor::tests::runner_real_process_lsp_pending_request_receives_server_exit_error ... ok
+test supervisor::tests::runner_real_process_lsp_position_encoding_uses_server_capability_or_utf16_default ... ok
+test supervisor::tests::runner_real_process_lsp_project_root_is_canonical_and_external_uris_are_not_trusted ... ok
+test supervisor::tests::runner_real_process_lsp_request_timeout_sends_cancel_request ... ok
+test supervisor::tests::runner_real_process_lsp_shutdown_and_drop_reap_the_child_process ... ok
+test supervisor::tests::runner_real_process_lsp_shutdown_uses_single_deadline_against_hanging_server ... ok
+test supervisor::tests::runner_real_process_lsp_stderr_capture_is_bounded ... ok
+test supervisor::tests::runner_real_process_lsp_supervisor_enforces_runner_capacity ... ok
+test supervisor::tests::runner_real_process_lsp_supervisor_is_lazy_and_reuses_one_process_for_concurrent_project_calls ... ok
+test supervisor::tests::runner_real_process_lsp_supervisor_malformed_alive_exhausts_restart_without_timeout ... ok
+test supervisor::tests::runner_real_process_lsp_supervisor_never_restarts_more_than_once_per_call ... ok
+test supervisor::tests::runner_real_process_lsp_supervisor_restarts_malformed_alive_process_once_then_succeeds ... ok
+test supervisor::tests::runner_real_process_lsp_supervisor_restarts_once_then_succeeds ... ok
+test supervisor::tests::runner_real_process_lsp_supervisor_uses_distinct_processes_for_distinct_projects ... ok
+
+failures:
+
+---- supervisor::tests::runner_real_process_lsp_multiple_hanging_servers_share_one_supervisor_deadline stdout ----
+
+thread 'supervisor::tests::runner_real_process_lsp_multiple_hanging_servers_share_one_supervisor_deadline' (9965464) panicked at crates/webcodex-lsp/src/tests.rs:1766:18:
+called `Result::unwrap()` on an `Err` value: SpawnFailed("language-server executable /private/var/folders/v4/2c25b0317cx9kjszdjm1f5yw0000gn/T/.tmp46F1vb/project-two/./webcodex-lsp-fake could not be resolved: No such file or directory (os error 2)")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    supervisor::tests::runner_real_process_lsp_multiple_hanging_servers_share_one_supervisor_deadline
+
+test result: FAILED. 36 passed; 1 failed; 0 ignored; 0 measured; 40 filtered out; finished in 19.57s
+
+error: test failed, to rerun pass `-p webcodex-lsp --lib`

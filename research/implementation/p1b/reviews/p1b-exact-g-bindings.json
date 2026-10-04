@@ -1,0 +1,1054 @@
+{
+  "schema_version": 1,
+  "reviewed_G": "8c84dee28d297c4a40d7269fe35531c56fa2eef7",
+  "implementation_S": "5ae81148f3943982dfcd1814e1083f947b00a323",
+  "START": "36ed7dafad62dc05f79a32f236d395df2ab64be7",
+  "native_build_head": "54fcc318ea0ef44bac75590f95b0aae14b133414",
+  "parent_actual": "5ae81148f3943982dfcd1814e1083f947b00a323",
+  "HEAD_observed": "8c84dee28d297c4a40d7269fe35531c56fa2eef7",
+  "branch_observed": "impl/webcodex-p1b-normalization-slice1",
+  "status_porcelain_observed": "",
+  "START_is_ancestor": true,
+  "G_changed_paths": [
+    ".gitattributes",
+    "Cargo.lock",
+    "P1B_SLICE2_PLAN.md",
+    "SPAWN_SURFACE_INVENTORY.md",
+    "crates/webcodex-process/Cargo.toml",
+    "crates/webcodex-process/tests/execution_broker.rs",
+    "crates/webcodex-process/tests/p1b_guard.rs",
+    "crates/webcodex-runner/src/webcodex_runner/normalization_p1_tests.rs",
+    "research/implementation/NORMALIZATION_P1B_SLICE1_REPORT.md",
+    "research/implementation/p1b/evidence/boundary-caller-negative-control.log",
+    "research/implementation/p1b/evidence/catalog-accounting-classifier.log",
+    "research/implementation/p1b/evidence/checkout-autocrlf-matrix.json",
+    "research/implementation/p1b/evidence/compiled-origin-reuse-corrected.log",
+    "research/implementation/p1b/evidence/execution-broker-native-five.log",
+    "research/implementation/p1b/evidence/held-grandchild-deadline-current.log",
+    "research/implementation/p1b/evidence/held-grandchild-deadline.log",
+    "research/implementation/p1b/evidence/manifest.json",
+    "research/implementation/p1b/evidence/native-api-alias-negative-control.log",
+    "research/implementation/p1b/evidence/npm-pack-closure-corrected.log",
+    "research/implementation/p1b/evidence/npm-pack-closure-explicit.log",
+    "research/implementation/p1b/evidence/p1b-guard-default.log",
+    "research/implementation/p1b/evidence/runner-catalog-native.log",
+    "research/implementation/p1b/evidence/shell-accounting-classifier.log",
+    "research/implementation/p1b/evidence/shell-profile-native.log",
+    "research/implementation/p1b/evidence/workspace-boundary-gate-current.log",
+    "research/implementation/p1b/evidence/workspace-boundary-selftest-current.log",
+    "research/implementation/p1b/evidence/workspace-boundary-start-baseline.log",
+    "research/implementation/p1b/evidence/workspace-policy-narrow-probe.log",
+    "research/implementation/p1b/harness/profile_prepare_native_harness.py",
+    "research/implementation/p1b/harness/runner-catalog-accounting-probe.py",
+    "research/implementation/p1b/harness/runner_catalog_native_harness.py",
+    "research/implementation/p1b/harness/shell-final-accounting-probe.py",
+    "research/implementation/p1b/launch-inventory.json",
+    "research/implementation/p1b/launch-inventory.md",
+    "workspace-boundaries.toml"
+  ],
+  "G_changed_path_count": 35,
+  "frozen_path_set_equal": true,
+  "frozen_bytes_mismatches": [],
+  "frozen_pathmap_sha256": "f3af51939d15edcdbb92a363c250899d15a7229393a131643bd8247639937f7a",
+  "expected_frozen_pathmap_sha256": "f3af51939d15edcdbb92a363c250899d15a7229393a131643bd8247639937f7a",
+  "G_path_sha256": {
+    ".gitattributes": "d7c188a57a3a656febba7ef7d3879c8f30b50932ebf5fd5c77c4e61c3ba93cae",
+    "Cargo.lock": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+    "P1B_SLICE2_PLAN.md": "feb68c0e67ce9a6e6d2c10953c5b4c90bfe5812e36e5f805419e2e04f41a187e",
+    "SPAWN_SURFACE_INVENTORY.md": "1c4a05a9a416761252e315d61f7ebd33944ccacbcc4da9d7616d72cdf1e6858f",
+    "crates/webcodex-process/Cargo.toml": "cb3eb76c2b3e2f041ec5c40eb033a0bdca2bfe3d9e5e2dc14c9098026b02a02e",
+    "crates/webcodex-process/tests/execution_broker.rs": "62daf28b734cf6e635beeee38416816529f7c8da6a03a8794b34ae3379c17e3d",
+    "crates/webcodex-process/tests/p1b_guard.rs": "47c8456b7822d6ceeefcea7e21e8caf4157b58e8c7ab6501a96eaf3f37b580cc",
+    "crates/webcodex-runner/src/webcodex_runner/normalization_p1_tests.rs": "fedc4187632ee917d355b129582333ab29f22eda8c8e7de7529b46b863287fa4",
+    "research/implementation/NORMALIZATION_P1B_SLICE1_REPORT.md": "99c6d1de967f13fb923f22453c1b998ff68f77f6ab9dfee46e267c3e76a19c43",
+    "research/implementation/p1b/evidence/boundary-caller-negative-control.log": "96861b71a29090d2acdfd741c209ef22d7804020322bd09bf7433e40493c5689",
+    "research/implementation/p1b/evidence/catalog-accounting-classifier.log": "a1acb794eebaba66f285ee4a83d1259b1dddf36adb7d5339f6514c6fd307045b",
+    "research/implementation/p1b/evidence/checkout-autocrlf-matrix.json": "baa3b9f012fa12fe79ed0420c5a78a08d31bd14e00e82a54f1b48f37465c6e32",
+    "research/implementation/p1b/evidence/compiled-origin-reuse-corrected.log": "b1bc8357d6b456973348dfaf759f98df96d5923007d979099fe5f659408423c5",
+    "research/implementation/p1b/evidence/execution-broker-native-five.log": "f01ce9eddc04baf3d7f4d43019c8de29e624961af24f21bac383f33532ccd01b",
+    "research/implementation/p1b/evidence/held-grandchild-deadline-current.log": "7bbc591525187ab8f4fb1d860ec75486a2a752bef57565c9e10b8b8846173d10",
+    "research/implementation/p1b/evidence/held-grandchild-deadline.log": "4777f471d0124332fae93d9d7a9e4c4a39ec0a179d3723eaf25d9415e1458e21",
+    "research/implementation/p1b/evidence/manifest.json": "242e92bf0b3fb23c21292f52c1aeddd85c4e05e2a633b3cfcefb58eec826ac2c",
+    "research/implementation/p1b/evidence/native-api-alias-negative-control.log": "a19470ed800d4a1b9330957d39a53885c1e24d986619213003fea0c1f26b3cfa",
+    "research/implementation/p1b/evidence/npm-pack-closure-corrected.log": "76fa4df6c8c4aa36db20d89bd6646b0a7704f520741bbb39b6161f7b371156f1",
+    "research/implementation/p1b/evidence/npm-pack-closure-explicit.log": "c5a16104d370d18bcc16d7f909a514e74f8ee2fbb13f0a82421461f4c493b212",
+    "research/implementation/p1b/evidence/p1b-guard-default.log": "59159034b655c14072de3c12c743441ae664b083127c16b1ee3246189a458e4b",
+    "research/implementation/p1b/evidence/runner-catalog-native.log": "07084472b11dedfb9eaf54f265663e3f0f61a949e02062d373de27b4cac6da71",
+    "research/implementation/p1b/evidence/shell-accounting-classifier.log": "be597c66d3aba7fabfaebbdbf824b1e9833f5621bd2a6d228dd6a9302c934569",
+    "research/implementation/p1b/evidence/shell-profile-native.log": "5910b7fb00c0be54ae19dcc163ea9403f379e84b8098e3eb2ac90ed12919ccea",
+    "research/implementation/p1b/evidence/workspace-boundary-gate-current.log": "691466c45dcc7239d3eed398a5f541a7cabec8ef8575114280d8cb942b4e10cb",
+    "research/implementation/p1b/evidence/workspace-boundary-selftest-current.log": "ad39657e9a93015fea4ac1851d18700cb486bc60497c740c21a23113b02c3119",
+    "research/implementation/p1b/evidence/workspace-boundary-start-baseline.log": "2992e458639859306997567a1d3190a6e94daafa9b957739cbf9b8dce05bb354",
+    "research/implementation/p1b/evidence/workspace-policy-narrow-probe.log": "d7fd5a43c659a7c4573a5593d9f5b4c90a757e753c42b83fc79b83b20376526a",
+    "research/implementation/p1b/harness/profile_prepare_native_harness.py": "4be4e692ddcf610fc68ea4c9c52cb6e7176ebda132dd084d64ef34c47c7b0a64",
+    "research/implementation/p1b/harness/runner-catalog-accounting-probe.py": "640e73f795738ca19d430c211d8d4482a2ae408ac885c83197e50c4a2493dc5c",
+    "research/implementation/p1b/harness/runner_catalog_native_harness.py": "1a88b4a71e8ac1eb36167dc06a366bcaa7b28db5d58d1ba81db0b96f9aaab9fe",
+    "research/implementation/p1b/harness/shell-final-accounting-probe.py": "c85826f24d466cc21e2128792479bcca5e3d454525a5095d2f8001bed8b2d0b8",
+    "research/implementation/p1b/launch-inventory.json": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+    "research/implementation/p1b/launch-inventory.md": "7a3f677f3436aaadb3577102276ce7a20fa1587a6e5e2040ef199cd85771c659",
+    "workspace-boundaries.toml": "5583f87a2b61a939ef7cc8d0e615b5dd8d202b7c614498750bb2750d9ca07f00"
+  },
+  "inventory_sha256": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee",
+  "manifest_sha256": "242e92bf0b3fb23c21292f52c1aeddd85c4e05e2a633b3cfcefb58eec826ac2c",
+  "guard_sha256": "47c8456b7822d6ceeefcea7e21e8caf4157b58e8c7ab6501a96eaf3f37b580cc",
+  "counts_recomputed": {
+    "classes": {
+      "A": 4,
+      "B": 22,
+      "C": 9,
+      "D": 75,
+      "E": 13
+    },
+    "logical": 123,
+    "model_authority": 35,
+    "model_triggered_fixed": 4,
+    "model_triggered": 39,
+    "operator_build": 84,
+    "anchors_by_role": {
+      "logical_launch": 123,
+      "forwarding_anchor": 20,
+      "non_process_exception": 89
+    },
+    "targets": 28,
+    "raw_rows": 260,
+    "raw_occurrences": 290,
+    "references": 30,
+    "reference_occurrences": 30,
+    "bodies": 10,
+    "origins": 626,
+    "assets": 128
+  },
+  "counts_expected_equal": true,
+  "fixed_model_triggered_D_ids": [
+    "runner.fixed-node-probe",
+    "runner.fixed-python-module-probe",
+    "workspace.fixed-developer-dir-probe",
+    "workspace.fixed-git-candidate-probe"
+  ],
+  "hash_checks": {
+    "production_origin_sources": {
+      "rows": 626,
+      "mismatches": []
+    },
+    "nonrust_assets": {
+      "rows": 128,
+      "mismatches": []
+    },
+    "production_source_snapshot": {
+      "rows": 96,
+      "mismatches": []
+    },
+    "inventory_row_source_hashes": {
+      "files": 97,
+      "mismatches": []
+    },
+    "manifest_source_hashes": {
+      "files": 16,
+      "mismatches": []
+    },
+    "manifest_evidence_hashes": {
+      "files": 18,
+      "mismatches": []
+    },
+    "manifest_harness_target_hashes": {
+      "files": 4,
+      "mismatches": []
+    }
+  },
+  "source_equality": {
+    "crates/webcodex-runner/src/main.rs": {
+      "sha256_by_commit": {
+        "36ed7dafad62dc05f79a32f236d395df2ab64be7": "46b18c9b772f9773075c210e3aa58f9eb8fd9864bd61896e0771662212f58136",
+        "54fcc318ea0ef44bac75590f95b0aae14b133414": "46b18c9b772f9773075c210e3aa58f9eb8fd9864bd61896e0771662212f58136",
+        "5ae81148f3943982dfcd1814e1083f947b00a323": "46b18c9b772f9773075c210e3aa58f9eb8fd9864bd61896e0771662212f58136",
+        "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "46b18c9b772f9773075c210e3aa58f9eb8fd9864bd61896e0771662212f58136"
+      },
+      "S_equals_G": true,
+      "START_equals_G": true,
+      "BUILD_equals_G": true
+    },
+    "crates/webcodex-runner/src/webcodex_runner/shell.rs": {
+      "sha256_by_commit": {
+        "36ed7dafad62dc05f79a32f236d395df2ab64be7": "0433da9a48d977bd49ff45a019418fa24c6cff4cbffb9589aa582710895959ee",
+        "54fcc318ea0ef44bac75590f95b0aae14b133414": "3136cf0efadeca94161c46a69130dc60a50d6513d8c7ab60b96c6dd27a6dbe39",
+        "5ae81148f3943982dfcd1814e1083f947b00a323": "3136cf0efadeca94161c46a69130dc60a50d6513d8c7ab60b96c6dd27a6dbe39",
+        "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "3136cf0efadeca94161c46a69130dc60a50d6513d8c7ab60b96c6dd27a6dbe39"
+      },
+      "S_equals_G": true,
+      "START_equals_G": false,
+      "BUILD_equals_G": true
+    },
+    "crates/webcodex-runner/src/webcodex_runner/local_execution.rs": {
+      "sha256_by_commit": {
+        "36ed7dafad62dc05f79a32f236d395df2ab64be7": "52f866a98ea991e7b24e3e6f35c5e0cd1330a8cd3bd64140cc3cfac49b209065",
+        "54fcc318ea0ef44bac75590f95b0aae14b133414": "52f866a98ea991e7b24e3e6f35c5e0cd1330a8cd3bd64140cc3cfac49b209065",
+        "5ae81148f3943982dfcd1814e1083f947b00a323": "52f866a98ea991e7b24e3e6f35c5e0cd1330a8cd3bd64140cc3cfac49b209065",
+        "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "52f866a98ea991e7b24e3e6f35c5e0cd1330a8cd3bd64140cc3cfac49b209065"
+      },
+      "S_equals_G": true,
+      "START_equals_G": true,
+      "BUILD_equals_G": true
+    },
+    "crates/webcodex-runner/src/webcodex_runner/projects/catalog.rs": {
+      "sha256_by_commit": {
+        "36ed7dafad62dc05f79a32f236d395df2ab64be7": "bd87760480d62288a19dbba48ecdb3cb20710b76b79d6064016a08dc274e0737",
+        "54fcc318ea0ef44bac75590f95b0aae14b133414": "bd87760480d62288a19dbba48ecdb3cb20710b76b79d6064016a08dc274e0737",
+        "5ae81148f3943982dfcd1814e1083f947b00a323": "bd87760480d62288a19dbba48ecdb3cb20710b76b79d6064016a08dc274e0737",
+        "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "bd87760480d62288a19dbba48ecdb3cb20710b76b79d6064016a08dc274e0737"
+      },
+      "S_equals_G": true,
+      "START_equals_G": true,
+      "BUILD_equals_G": true
+    },
+    "crates/webcodex-runner/src/webcodex_runner/coding_agent.rs": {
+      "sha256_by_commit": {
+        "36ed7dafad62dc05f79a32f236d395df2ab64be7": "bd4f2096143a344dd0ce1b10fb033f04876759f9781440b026886de963c566fa",
+        "54fcc318ea0ef44bac75590f95b0aae14b133414": "bd4f2096143a344dd0ce1b10fb033f04876759f9781440b026886de963c566fa",
+        "5ae81148f3943982dfcd1814e1083f947b00a323": "bd4f2096143a344dd0ce1b10fb033f04876759f9781440b026886de963c566fa",
+        "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "bd4f2096143a344dd0ce1b10fb033f04876759f9781440b026886de963c566fa"
+      },
+      "S_equals_G": true,
+      "START_equals_G": true,
+      "BUILD_equals_G": true
+    },
+    "crates/webcodex-lsp/src/supervisor.rs": {
+      "sha256_by_commit": {
+        "36ed7dafad62dc05f79a32f236d395df2ab64be7": "ea762e35ec114231b0fb182047aeb90be97be3569d6d73effd7df36e272176e8",
+        "54fcc318ea0ef44bac75590f95b0aae14b133414": "bd231209b32d4ada52c6d089de72f2f87d916a62ac5e9143f6a6fdaa0f820ea9",
+        "5ae81148f3943982dfcd1814e1083f947b00a323": "bd231209b32d4ada52c6d089de72f2f87d916a62ac5e9143f6a6fdaa0f820ea9",
+        "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "bd231209b32d4ada52c6d089de72f2f87d916a62ac5e9143f6a6fdaa0f820ea9"
+      },
+      "S_equals_G": true,
+      "START_equals_G": false,
+      "BUILD_equals_G": true
+    },
+    "crates/webcodex-workspace/src/git_broker.rs": {
+      "sha256_by_commit": {
+        "36ed7dafad62dc05f79a32f236d395df2ab64be7": "d99612053ff983707ee8fd3084e432448e2a6cc9a4081fadd734c9562efb7ac1",
+        "54fcc318ea0ef44bac75590f95b0aae14b133414": "d99612053ff983707ee8fd3084e432448e2a6cc9a4081fadd734c9562efb7ac1",
+        "5ae81148f3943982dfcd1814e1083f947b00a323": "d99612053ff983707ee8fd3084e432448e2a6cc9a4081fadd734c9562efb7ac1",
+        "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "d99612053ff983707ee8fd3084e432448e2a6cc9a4081fadd734c9562efb7ac1"
+      },
+      "S_equals_G": true,
+      "START_equals_G": true,
+      "BUILD_equals_G": true
+    },
+    "crates/webcodex-process/src/execution_broker/mod.rs": {
+      "sha256_by_commit": {
+        "36ed7dafad62dc05f79a32f236d395df2ab64be7": "2894a0e771e6245ae27b03a507ca524eeb8d1ce079e8610ec1cfc81b4129978e",
+        "54fcc318ea0ef44bac75590f95b0aae14b133414": "2894a0e771e6245ae27b03a507ca524eeb8d1ce079e8610ec1cfc81b4129978e",
+        "5ae81148f3943982dfcd1814e1083f947b00a323": "2894a0e771e6245ae27b03a507ca524eeb8d1ce079e8610ec1cfc81b4129978e",
+        "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "2894a0e771e6245ae27b03a507ca524eeb8d1ce079e8610ec1cfc81b4129978e"
+      },
+      "S_equals_G": true,
+      "START_equals_G": true,
+      "BUILD_equals_G": true
+    },
+    "crates/webcodex-workspace/src/workspace_checkpoint.rs": {
+      "sha256_by_commit": {
+        "36ed7dafad62dc05f79a32f236d395df2ab64be7": "242d26dd46be0d17cb6ca183b5545e955a323cf4e3db57da500bf63df985c653",
+        "54fcc318ea0ef44bac75590f95b0aae14b133414": "242d26dd46be0d17cb6ca183b5545e955a323cf4e3db57da500bf63df985c653",
+        "5ae81148f3943982dfcd1814e1083f947b00a323": "adc6f3082f65a88be2833f3ddfb5d038a7a68d81de750bd1e0881736114cee94",
+        "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "adc6f3082f65a88be2833f3ddfb5d038a7a68d81de750bd1e0881736114cee94"
+      },
+      "S_equals_G": true,
+      "START_equals_G": false,
+      "BUILD_equals_G": false
+    },
+    "scripts/workspace_boundary_check.py": {
+      "sha256_by_commit": {
+        "36ed7dafad62dc05f79a32f236d395df2ab64be7": "e789fbfd6e08f7668069eeec950aac941e03ae60c8bfd6187166cdbafb1f5ec9",
+        "54fcc318ea0ef44bac75590f95b0aae14b133414": "e789fbfd6e08f7668069eeec950aac941e03ae60c8bfd6187166cdbafb1f5ec9",
+        "5ae81148f3943982dfcd1814e1083f947b00a323": "e789fbfd6e08f7668069eeec950aac941e03ae60c8bfd6187166cdbafb1f5ec9",
+        "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "e789fbfd6e08f7668069eeec950aac941e03ae60c8bfd6187166cdbafb1f5ec9"
+      },
+      "S_equals_G": true,
+      "START_equals_G": true,
+      "BUILD_equals_G": true
+    },
+    "scripts/workspace_boundary_check.sh": {
+      "sha256_by_commit": {
+        "36ed7dafad62dc05f79a32f236d395df2ab64be7": "38a5c16a598521bc680758562e110d4751d6fc9808ee4a08567e8cfa6964ae5c",
+        "54fcc318ea0ef44bac75590f95b0aae14b133414": "38a5c16a598521bc680758562e110d4751d6fc9808ee4a08567e8cfa6964ae5c",
+        "5ae81148f3943982dfcd1814e1083f947b00a323": "38a5c16a598521bc680758562e110d4751d6fc9808ee4a08567e8cfa6964ae5c",
+        "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "38a5c16a598521bc680758562e110d4751d6fc9808ee4a08567e8cfa6964ae5c"
+      },
+      "S_equals_G": true,
+      "START_equals_G": true,
+      "BUILD_equals_G": true
+    }
+  },
+  "checkpoint_production_prefix": {
+    "bytes": 28395,
+    "sha256_by_commit": {
+      "36ed7dafad62dc05f79a32f236d395df2ab64be7": "cae15803832ace75047a902167cd2676e78ed81925c93676de3c82e4ca1502e5",
+      "54fcc318ea0ef44bac75590f95b0aae14b133414": "cae15803832ace75047a902167cd2676e78ed81925c93676de3c82e4ca1502e5",
+      "5ae81148f3943982dfcd1814e1083f947b00a323": "cae15803832ace75047a902167cd2676e78ed81925c93676de3c82e4ca1502e5",
+      "8c84dee28d297c4a40d7269fe35531c56fa2eef7": "cae15803832ace75047a902167cd2676e78ed81925c93676de3c82e4ca1502e5"
+    },
+    "all_equal": true
+  },
+  "native_build_manifest_working_source": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1b-completion/guard-slice/integrated-head-evidence.manifest.json",
+  "native_build_manifest_sha256": "6a6fd3057ae18d9b4335cc265027b4bafa0f8994b646aa7b813265f2449e432b",
+  "native_build_manifest_source_equality": {
+    "crates/webcodex-runner/src/main.rs": {
+      "recorded": "46b18c9b772f9773075c210e3aa58f9eb8fd9864bd61896e0771662212f58136",
+      "G_actual": "46b18c9b772f9773075c210e3aa58f9eb8fd9864bd61896e0771662212f58136",
+      "BUILD_actual": "46b18c9b772f9773075c210e3aa58f9eb8fd9864bd61896e0771662212f58136",
+      "G_equal": true,
+      "BUILD_commit_equal": true
+    },
+    "crates/webcodex-runner/src/webcodex_runner/shell.rs": {
+      "recorded": "3136cf0efadeca94161c46a69130dc60a50d6513d8c7ab60b96c6dd27a6dbe39",
+      "G_actual": "3136cf0efadeca94161c46a69130dc60a50d6513d8c7ab60b96c6dd27a6dbe39",
+      "BUILD_actual": "3136cf0efadeca94161c46a69130dc60a50d6513d8c7ab60b96c6dd27a6dbe39",
+      "G_equal": true,
+      "BUILD_commit_equal": true
+    },
+    "crates/webcodex-runner/src/webcodex_runner/local_execution.rs": {
+      "recorded": "52f866a98ea991e7b24e3e6f35c5e0cd1330a8cd3bd64140cc3cfac49b209065",
+      "G_actual": "52f866a98ea991e7b24e3e6f35c5e0cd1330a8cd3bd64140cc3cfac49b209065",
+      "BUILD_actual": "52f866a98ea991e7b24e3e6f35c5e0cd1330a8cd3bd64140cc3cfac49b209065",
+      "G_equal": true,
+      "BUILD_commit_equal": true
+    },
+    "crates/webcodex-runner/src/webcodex_runner/projects/catalog.rs": {
+      "recorded": "bd87760480d62288a19dbba48ecdb3cb20710b76b79d6064016a08dc274e0737",
+      "G_actual": "bd87760480d62288a19dbba48ecdb3cb20710b76b79d6064016a08dc274e0737",
+      "BUILD_actual": "bd87760480d62288a19dbba48ecdb3cb20710b76b79d6064016a08dc274e0737",
+      "G_equal": true,
+      "BUILD_commit_equal": true
+    },
+    "crates/webcodex-lsp/src/supervisor.rs": {
+      "recorded": "bd231209b32d4ada52c6d089de72f2f87d916a62ac5e9143f6a6fdaa0f820ea9",
+      "G_actual": "bd231209b32d4ada52c6d089de72f2f87d916a62ac5e9143f6a6fdaa0f820ea9",
+      "BUILD_actual": "bd231209b32d4ada52c6d089de72f2f87d916a62ac5e9143f6a6fdaa0f820ea9",
+      "G_equal": true,
+      "BUILD_commit_equal": true
+    },
+    "crates/webcodex-workspace/src/git_broker.rs": {
+      "recorded": "d99612053ff983707ee8fd3084e432448e2a6cc9a4081fadd734c9562efb7ac1",
+      "G_actual": "d99612053ff983707ee8fd3084e432448e2a6cc9a4081fadd734c9562efb7ac1",
+      "BUILD_actual": "d99612053ff983707ee8fd3084e432448e2a6cc9a4081fadd734c9562efb7ac1",
+      "G_equal": true,
+      "BUILD_commit_equal": true
+    },
+    "Cargo.lock": {
+      "recorded": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+      "G_actual": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb",
+      "BUILD_actual": "d1632dafa76e96358e625dfab7f75389be333b8c614454997b66af801e21c08b",
+      "G_equal": true,
+      "BUILD_commit_equal": false
+    }
+  },
+  "native_binary_checks": [
+    {
+      "path": "/tmp/webcodex-p1b-final-1.98.1/dogfood/webcodex-runner",
+      "exists": true,
+      "expected": "d8350ab9c390843d82f902a1308b2f90e6372a17297bba09e2919be4a00710eb",
+      "actual": "d8350ab9c390843d82f902a1308b2f90e6372a17297bba09e2919be4a00710eb"
+    },
+    {
+      "path": "/tmp/webcodex-p1b-catalog-target-1.98.1/debug/webcodex-runner",
+      "exists": true,
+      "expected": "d88cbfc6da56e2c8eca0333e785b880797b15e8f93e8af9c8cb5bb6155713044",
+      "actual": "d88cbfc6da56e2c8eca0333e785b880797b15e8f93e8af9c8cb5bb6155713044"
+    }
+  ],
+  "native_build_manifest_raw_hashes": {
+    "shell-profile-slice/classifier-fix/native-profile-prepare-final.log": {
+      "recorded": "60bf09e0398cf92484f62d70442546c8e6eb2ac4d63b854ef2045b14622962a0",
+      "actual": "60bf09e0398cf92484f62d70442546c8e6eb2ac4d63b854ef2045b14622962a0"
+    },
+    "guard-slice/runner-catalog-final.log": {
+      "recorded": "9cc1293802c1ab88eb7f666539522cb827793f769d0b789c4e337f4f87a8b9d0",
+      "actual": "9cc1293802c1ab88eb7f666539522cb827793f769d0b789c4e337f4f87a8b9d0"
+    }
+  },
+  "limitations": [
+    "Read-only identity and byte checks; not a native rerun.",
+    "Native build recorded clean production source plus pending guard/dev-dependency dirt; its Cargo.lock hash is the tested working bytes later in G, not the BUILD committed lock.",
+    "B confinement NOT_PROVEN; C durable/session migration reserved for P1C.",
+    "Phase 8 docs/evidence C archive remains to be reviewed separately."
+  ],
+  "mechanical_bindings_pass": true,
+  "G_tree": "3417c108c41509d67f74442097cecead3ce807a6",
+  "S_to_G_binary_diff_sha256": "8620849ac1316962a537637988f63def48621317e39e4fd1326ce03b99773547",
+  "checkout_matrix_actual_clone_index_checks": [
+    {
+      "clone": "/tmp/webcodex-p1b-eof-autocrlf-false",
+      "exists": true,
+      "recorded_autocrlf": "false",
+      "mismatches": [],
+      "HEAD_actual": "5ae81148f3943982dfcd1814e1083f947b00a323",
+      "core_autocrlf_actual": "false",
+      "origin_hashes_checked": 626,
+      "asset_hashes_checked": 128,
+      "auxiliary_hashes_checked": 23
+    },
+    {
+      "clone": "/tmp/webcodex-p1b-eof-autocrlf-true",
+      "exists": true,
+      "recorded_autocrlf": "true",
+      "mismatches": [],
+      "HEAD_actual": "5ae81148f3943982dfcd1814e1083f947b00a323",
+      "core_autocrlf_actual": "true",
+      "origin_hashes_checked": 626,
+      "asset_hashes_checked": 128,
+      "auxiliary_hashes_checked": 23
+    }
+  ],
+  "phase8_raw_copy_checks": [
+    {
+      "source_relative": "lsp-slice/review-fix/rawlogs/macos-cargo-test-lib-default-final.log",
+      "destination_relative": "research/implementation/p1b/evidence/lsp-default-final.log",
+      "sha256": "66f2cf558539a7ed8f016dab1ffaebbc914091faaf35128649b9dae2d80a0d88",
+      "bytes": 3938,
+      "source_actual_sha256": "66f2cf558539a7ed8f016dab1ffaebbc914091faaf35128649b9dae2d80a0d88",
+      "source_actual_bytes": 3938,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "lsp-slice/review-fix/rawlogs/macos-cargo-test-lib-real-process-final.log",
+      "destination_relative": "research/implementation/p1b/evidence/lsp-native-real-process-final.log",
+      "sha256": "ee7b3986a3f29c04ec6cb985c15f8f87c395a2baea1909a1874b4278c56e956a",
+      "bytes": 4389,
+      "source_actual_sha256": "ee7b3986a3f29c04ec6cb985c15f8f87c395a2baea1909a1874b4278c56e956a",
+      "source_actual_bytes": 4389,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "lsp-slice/review-fix/rawlogs/lc-policy-positive-final-source.log",
+      "destination_relative": "research/implementation/p1b/evidence/lsp-lc-policy-positive.log",
+      "sha256": "550ff9e8f48819eb60d8d9a41c1cd35cc1183c645d4bb8a5e766332d7d47a729",
+      "bytes": 392,
+      "source_actual_sha256": "550ff9e8f48819eb60d8d9a41c1cd35cc1183c645d4bb8a5e766332d7d47a729",
+      "source_actual_bytes": 392,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "lsp-slice/review-fix/rawlogs/negative-control-old-lc-prefix.log",
+      "destination_relative": "research/implementation/p1b/evidence/historical-lsp-old-lc-prefix-red.log",
+      "sha256": "dfd9cb11c69cb82a6889c28775d2d91e179519d3be952d570a159cdb9737dce3",
+      "bytes": 1353,
+      "source_actual_sha256": "dfd9cb11c69cb82a6889c28775d2d91e179519d3be952d570a159cdb9737dce3",
+      "source_actual_bytes": 1353,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "lsp-slice/review-fix/rawlogs/negative-control-old-lc-prefix-source.sha256",
+      "destination_relative": "research/implementation/p1b/evidence/historical-lsp-old-lc-prefix-source-hashes.log",
+      "sha256": "e86f23496d40fb5fc5902586d16cc43d5a059194937ae527b2b96bbf7e18cfb7",
+      "bytes": 104,
+      "source_actual_sha256": "e86f23496d40fb5fc5902586d16cc43d5a059194937ae527b2b96bbf7e18cfb7",
+      "source_actual_bytes": 104,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "lsp-slice/review-fix/sourcehash.sha256",
+      "destination_relative": "research/implementation/p1b/evidence/lsp-final-source-hashes.log",
+      "sha256": "1c782b14359828e7ca52394c19a33fdf2922beffedcdc54dc52a101772f6339b",
+      "bytes": 406,
+      "source_actual_sha256": "1c782b14359828e7ca52394c19a33fdf2922beffedcdc54dc52a101772f6339b",
+      "source_actual_bytes": 406,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "lsp-slice/review-fix/rawlogs/macos-cargo-test-lib-real-process-initial-36-1.log",
+      "destination_relative": "research/implementation/p1b/evidence/historical-lsp-native-initial-36-1.log",
+      "sha256": "a3d146d217945d577842d74a0e4972c8ea556c740e2e423e183d9af0ec96a647",
+      "bytes": 5195,
+      "source_actual_sha256": "a3d146d217945d577842d74a0e4972c8ea556c740e2e423e183d9af0ec96a647",
+      "source_actual_bytes": 5195,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "newcheckpoint-gate-slice/native-positive.log",
+      "destination_relative": "research/implementation/p1b/evidence/checkpoint-native-positive.log",
+      "sha256": "47a7579d71ee7b26c47e7dcab44c3648608d25cd90bf9d3e0509a9b2b3c884ff",
+      "bytes": 700,
+      "source_actual_sha256": "47a7579d71ee7b26c47e7dcab44c3648608d25cd90bf9d3e0509a9b2b3c884ff",
+      "source_actual_bytes": 700,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "newcheckpoint-gate-slice/old-nested.log",
+      "destination_relative": "research/implementation/p1b/evidence/historical-checkpoint-old-nested-green.log",
+      "sha256": "c35588bd5bf5eeab51683c826881e15cedb5f88b1a639d07ba0fd5d2237b3905",
+      "bytes": 696,
+      "source_actual_sha256": "c35588bd5bf5eeab51683c826881e15cedb5f88b1a639d07ba0fd5d2237b3905",
+      "source_actual_bytes": 696,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "newcheckpoint-gate-slice/new-nested.log",
+      "destination_relative": "research/implementation/p1b/evidence/checkpoint-new-nested-red.log",
+      "sha256": "729e4d9ba59bd3546f5a02b6c1f11ab1c0f3b7e626e8423e1a7405868e0bb030",
+      "bytes": 1012,
+      "source_actual_sha256": "729e4d9ba59bd3546f5a02b6c1f11ab1c0f3b7e626e8423e1a7405868e0bb030",
+      "source_actual_bytes": 1012,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "newcheckpoint-gate-slice/source-hashes.txt",
+      "destination_relative": "research/implementation/p1b/evidence/checkpoint-source-hashes.log",
+      "sha256": "6764fa0962fbf8a4996f1cbf9963b61c57c1ec477f19f1a7f4ec0f3bf5f096f3",
+      "bytes": 563,
+      "source_actual_sha256": "6764fa0962fbf8a4996f1cbf9963b61c57c1ec477f19f1a7f4ec0f3bf5f096f3",
+      "source_actual_bytes": 563,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "guard-slice/old-native-gate-overlay.log",
+      "destination_relative": "research/implementation/p1b/evidence/historical-execution-broker-old-native-gate-green.log",
+      "sha256": "98713036ce936e572ec96c83b55a5f39d18b45bbf58e2213d05a2ec2e7f1b3ba",
+      "bytes": 900,
+      "source_actual_sha256": "98713036ce936e572ec96c83b55a5f39d18b45bbf58e2213d05a2ec2e7f1b3ba",
+      "source_actual_bytes": 900,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "guard-slice/new-native-gate.log",
+      "destination_relative": "research/implementation/p1b/evidence/execution-broker-new-native-gate-red.log",
+      "sha256": "607eadb77114a81dc3a09779c2781abeea6817ad991877b8977ec4af58d00ee2",
+      "bytes": 944,
+      "source_actual_sha256": "607eadb77114a81dc3a09779c2781abeea6817ad991877b8977ec4af58d00ee2",
+      "source_actual_bytes": 944,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "architecture/reviews/de-origin-reuse-probe.log",
+      "destination_relative": "research/implementation/p1b/evidence/historical-de-origin-reuse-old-gap.log",
+      "sha256": "ef7a7b8b96763d850d71934379c471e488a8ddd15bad256502fd65ed9589dcd3",
+      "bytes": 1484,
+      "source_actual_sha256": "ef7a7b8b96763d850d71934379c471e488a8ddd15bad256502fd65ed9589dcd3",
+      "source_actual_bytes": 1484,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "architecture/reviews/native-alias-reuse-probe.log",
+      "destination_relative": "research/implementation/p1b/evidence/historical-native-alias-old-gap.log",
+      "sha256": "b12379cde5a3f18d53d5a786c16aa21e771b62638bec7bb3c766c83d5d066cd3",
+      "bytes": 616,
+      "source_actual_sha256": "b12379cde5a3f18d53d5a786c16aa21e771b62638bec7bb3c766c83d5d066cd3",
+      "source_actual_bytes": 616,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "architecture/reviews/standards-npm-mjs-closure-probe.log",
+      "destination_relative": "research/implementation/p1b/evidence/historical-npm-mjs-old-gap.log",
+      "sha256": "372981253ba144d8226c728ac15f74f3717519d798ef0b8ab75c59f1d6112d6c",
+      "bytes": 864,
+      "source_actual_sha256": "372981253ba144d8226c728ac15f74f3717519d798ef0b8ab75c59f1d6112d6c",
+      "source_actual_bytes": 864,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "catalog-evidence/catalog-test-1.98.1-no-wrapper.log",
+      "destination_relative": "research/implementation/p1b/evidence/runner-test-target-e0658.log",
+      "sha256": "065682f7d071ae450be47dc932b1e854a5416081a3b97f258b052727a8934e73",
+      "bytes": 14738,
+      "source_actual_sha256": "065682f7d071ae450be47dc932b1e854a5416081a3b97f258b052727a8934e73",
+      "source_actual_bytes": 14738,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "architecture/reviews/raw-evidence-eof-whitespace-probe.json",
+      "destination_relative": "research/implementation/p1b/evidence/raw-evidence-eof-whitespace-probe.log",
+      "sha256": "19170596e7b6a57452ca05e230714f0a3389b66be436552f324980e01122ba06",
+      "bytes": 4923,
+      "source_actual_sha256": "19170596e7b6a57452ca05e230714f0a3389b66be436552f324980e01122ba06",
+      "source_actual_bytes": 4923,
+      "matches": true,
+      "destination_exists_at_G": false
+    },
+    {
+      "source_relative": "guard-slice/integrated-head-evidence.manifest.json",
+      "destination_relative": "research/implementation/p1b/evidence/runner-production-build-manifest.log",
+      "sha256": "6a6fd3057ae18d9b4335cc265027b4bafa0f8994b646aa7b813265f2449e432b",
+      "bytes": 3941,
+      "source_actual_sha256": "6a6fd3057ae18d9b4335cc265027b4bafa0f8994b646aa7b813265f2449e432b",
+      "source_actual_bytes": 3941,
+      "matches": true,
+      "destination_exists_at_G": false
+    }
+  ],
+  "lsp_final_source_checks": [
+    {
+      "path": "crates/webcodex-lsp/src/lib.rs",
+      "recorded": "5d45ac0c2972d4d16c52981086fa7f6c2e6c3d3d1df381566992ba42befed4b2",
+      "actual": "5d45ac0c2972d4d16c52981086fa7f6c2e6c3d3d1df381566992ba42befed4b2",
+      "equal": true
+    },
+    {
+      "path": "crates/webcodex-lsp/src/supervisor.rs",
+      "recorded": "bd231209b32d4ada52c6d089de72f2f87d916a62ac5e9143f6a6fdaa0f820ea9",
+      "actual": "bd231209b32d4ada52c6d089de72f2f87d916a62ac5e9143f6a6fdaa0f820ea9",
+      "equal": true
+    },
+    {
+      "path": "crates/webcodex-lsp/src/test_support.rs",
+      "recorded": "a976d5482a71782c2878a5c2f7a5f0c6b57d1abef5ed22b840fc11922d7c1f0c",
+      "actual": "a976d5482a71782c2878a5c2f7a5f0c6b57d1abef5ed22b840fc11922d7c1f0c",
+      "equal": true
+    },
+    {
+      "path": "crates/webcodex-lsp/src/tests.rs",
+      "recorded": "d6723d9da8f4e06613468eb0c9137de1f6e04a40355cec4269f7543c8733833b",
+      "actual": "d6723d9da8f4e06613468eb0c9137de1f6e04a40355cec4269f7543c8733833b",
+      "equal": true
+    }
+  ],
+  "raw_eof_controls": [
+    {
+      "working_source": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1b-completion/architecture/reviews/raw-evidence-eof-whitespace-probe.json",
+      "sha256": "19170596e7b6a57452ca05e230714f0a3389b66be436552f324980e01122ba06",
+      "cases": [
+        {
+          "case": "baseline-nine-actual-raw-logs",
+          "exit_code": 2,
+          "expected": 2
+        },
+        {
+          "case": "candidate-nine-actual-raw-logs",
+          "exit_code": 0,
+          "expected": 0
+        },
+        {
+          "case": "retained-blank-at-eol",
+          "exit_code": 2,
+          "expected": 2
+        },
+        {
+          "case": "retained-space-before-tab",
+          "exit_code": 2,
+          "expected": 2
+        },
+        {
+          "case": "outside-evidence-log-eof",
+          "exit_code": 2,
+          "expected": 2
+        },
+        {
+          "case": "evidence-markdown-eof",
+          "exit_code": 2,
+          "expected": 2
+        },
+        {
+          "case": "nested-evidence-log-eof",
+          "exit_code": 2,
+          "expected": 2
+        }
+      ]
+    },
+    {
+      "working_source": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1b-completion/architecture/reviews/p1b-staged-log-whitespace-standards-probe.json",
+      "sha256": "24dc304f624b4d4eb2faafe0bd926b3ecc468275902a90ca65e9e6059a8e16d8",
+      "cases": [
+        {
+          "case": "old-evidence-blank-eof",
+          "exit_code": 2,
+          "expected": 2
+        },
+        {
+          "case": "candidate-evidence-blank-eof",
+          "exit_code": 0,
+          "expected": 0
+        },
+        {
+          "case": "candidate-evidence-trailing-space",
+          "exit_code": 2,
+          "expected": 2
+        },
+        {
+          "case": "candidate-evidence-space-before-tab",
+          "exit_code": 2,
+          "expected": 2
+        },
+        {
+          "case": "candidate-rust-blank-eof",
+          "exit_code": 2,
+          "expected": 2
+        },
+        {
+          "case": "candidate-outside-log-blank-eof",
+          "exit_code": 2,
+          "expected": 2
+        },
+        {
+          "case": "candidate-nested-log-blank-eof",
+          "exit_code": 2,
+          "expected": 2
+        },
+        {
+          "case": "candidate-evidence-txt-blank-eof",
+          "exit_code": 2,
+          "expected": 2
+        }
+      ]
+    }
+  ],
+  "fresh_accounting_probes": [
+    {
+      "working_log": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1b-completion/architecture/reviews/p1b-exact-g-catalog-accounting.log",
+      "sha256": "a1acb794eebaba66f285ee4a83d1259b1dddf36adb7d5339f6514c6fd307045b",
+      "exit_code": 0,
+      "observations": {
+        "probe": "actual catalog main classifier; not native proof",
+        "cases": [
+          {
+            "input": "PASS",
+            "status": "PASS",
+            "exit_code": 0,
+            "diagnostic_retained": false
+          },
+          {
+            "input": "HOST_UNAVAILABLE",
+            "status": "HOST_UNAVAILABLE",
+            "exit_code": 1,
+            "diagnostic_retained": true
+          },
+          {
+            "input": "ENV_BLOCKED",
+            "status": "ENV_BLOCKED",
+            "exit_code": 1,
+            "diagnostic_retained": true
+          },
+          {
+            "input": "FAIL",
+            "status": "FAIL",
+            "exit_code": 1,
+            "diagnostic_retained": true
+          },
+          {
+            "input": "ASSERTION",
+            "status": "FAIL",
+            "exit_code": 1,
+            "diagnostic_retained": true
+          },
+          {
+            "input": "TIMEOUT",
+            "status": "FAIL",
+            "exit_code": 1,
+            "diagnostic_retained": true
+          },
+          {
+            "input": "UNKNOWN_PERMISSION",
+            "status": "FAIL",
+            "exit_code": 1,
+            "diagnostic_retained": true
+          }
+        ]
+      },
+      "native_proof": false
+    },
+    {
+      "working_log": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/work/p1b-completion/architecture/reviews/p1b-exact-g-shell-accounting.log",
+      "sha256": "be597c66d3aba7fabfaebbdbf824b1e9833f5621bd2a6d228dd6a9302c934569",
+      "exit_code": 0,
+      "observations": {
+        "harness": "/Users/songshiyao/Desktop/Projects/webcodex/research/implementation/p1b/harness/profile_prepare_native_harness.py",
+        "actual_main": [
+          {
+            "candidate": "PASS",
+            "exit_code": 0,
+            "expected_exit_code": 0,
+            "json_retained": true
+          },
+          {
+            "candidate": "ENV_BLOCKED",
+            "exit_code": 1,
+            "expected_exit_code": 1,
+            "json_retained": true
+          },
+          {
+            "candidate": "HOST_UNAVAILABLE",
+            "exit_code": 1,
+            "expected_exit_code": 1,
+            "json_retained": true
+          },
+          {
+            "candidate": "FAIL",
+            "exit_code": 1,
+            "expected_exit_code": 1,
+            "json_retained": true
+          },
+          {
+            "candidate": "RED",
+            "exit_code": 1,
+            "expected_exit_code": 1,
+            "json_retained": true
+          }
+        ],
+        "actual_verdict_branch": [
+          {
+            "scenario": "valid_observations",
+            "actual": "PASS",
+            "expected": "PASS"
+          },
+          {
+            "scenario": "runner_nonzero_without_host_diagnostic",
+            "actual": "FAIL",
+            "expected": "FAIL"
+          },
+          {
+            "scenario": "first_operation_failed_without_host_diagnostic",
+            "actual": "FAIL",
+            "expected": "FAIL"
+          },
+          {
+            "scenario": "stdout_fidelity_mismatch",
+            "actual": "FAIL",
+            "expected": "FAIL"
+          },
+          {
+            "scenario": "stderr_fidelity_mismatch",
+            "actual": "FAIL",
+            "expected": "FAIL"
+          }
+        ]
+      },
+      "native_proof": false
+    }
+  ],
+  "fresh_diff_check_START_to_G_exit_code": 0,
+  "additional_evidence_bindings_pass": true,
+  "G_ACCEPTANCE": "PASS_SCOPED",
+  "findings": {
+    "open_G_blockers": 0,
+    "new_production_or_guard_repairs_required": 0,
+    "items": []
+  },
+  "PERMIT_C": {
+    "verdict": "DOCS_EVIDENCE_ONLY",
+    "preconditions": [
+      "Independent exact-G Spec/security/architecture PASS_SCOPED",
+      "Separate independent exact-G Standards acceptance"
+    ],
+    "allowed": [
+      "Mechanical byte-identical copy of the 19 verified Phase8 raw source files",
+      "Mechanical copy of this accepted-G review and its machine bindings",
+      "P1B current completion/acceptance Markdown and necessary evidence provenance using known S/G identity"
+    ],
+    "forbidden": [
+      "Production source changes",
+      "Guard, harness, or test changes",
+      "Cargo or Cargo.lock changes",
+      "Attributes or workspace policy changes",
+      "Unique inventory SHA d5 changes",
+      "Self-referential C commit SHA in files contained by C",
+      "Toolchain install or global default change",
+      "P1C implementation"
+    ],
+    "postcondition": "Same independent context must fresh-review exact C docs/provenance/bytes/links/whitelist before P1B final YES"
+  },
+  "twelve_questions": [
+    {
+      "id": 1,
+      "question": "Any model-triggered broker bypass?",
+      "answer": "GLOBAL_YES_SCOPED_A_ROUTING_PASS",
+      "boundary": "A4 brokered; B22 confinement NOT_PROVEN; C9 P1C; fixed-D4 constrained argv without arbitrary model payload."
+    },
+    {
+      "id": 2,
+      "question": "HOME or wider-root fallback?",
+      "answer": "NO_IN_REVIEWED_A",
+      "boundary": "Canonical registered authority required; missing or invalid authority fails closed; B scope remains named."
+    },
+    {
+      "id": 3,
+      "question": "Arbitrary host environment secret inheritance?",
+      "answer": "BLOCKED_IN_MIGRATED_A",
+      "boundary": "Minimal snapshot and exact locale allowlist; explicit profile/configuration and B credential audience are separate."
+    },
+    {
+      "id": 4,
+      "question": "Network under deny profile?",
+      "answer": "MACOS_NAMED_NATIVE_DENY_PASS",
+      "boundary": "Actual unsandboxed positive and started broker-child denied control; Linux/Windows NOT_RUN; B legal network purpose remains."
+    },
+    {
+      "id": 5,
+      "question": "Deadline extension?",
+      "answer": "NO_IN_REVIEWED_BUDGET_PATHS",
+      "boundary": "Absolute probe/spawn/wait/tail budget and internal min; guard metadata deadline/caps; no invented caller budget."
+    },
+    {
+      "id": 6,
+      "question": "Descendants exceed claimed lifecycle?",
+      "answer": "NAMED_A_OWNERSHIP_PASS",
+      "boundary": "Shell owned descendant gone while Runner still alive; LSP native lifecycle; no arbitrary escaped/external/remote/durable tree promise."
+    },
+    {
+      "id": 7,
+      "question": "Incomplete accepted as complete?",
+      "answer": "NO_IN_REVIEWED_CONSUMERS",
+      "boundary": "Git metadata incomplete rejected; inventory page complete is separate; checkpoint actual feature-on disk mutation required."
+    },
+    {
+      "id": 8,
+      "question": "ENV_BLOCKED turns green?",
+      "answer": "REVIEWED_GATE_ACCOUNTING_PASS",
+      "boundary": "Native gate old exit0/new exit101; permanent actual main non-PASS nonzero; unrelated unexecuted probes not counted."
+    },
+    {
+      "id": 9,
+      "question": "Trivial structural guard bypass?",
+      "answer": "CURRENT_EXACT_INVENTORY_GATE_PASS",
+      "boundary": "Actual alias/origin/boundary/npm controls; conservative all-origin gate is not a semantic graph or resistance to coordinated guard+inventory edits."
+    },
+    {
+      "id": 10,
+      "question": "P1C misnormalized into ordinary ManagedChild?",
+      "answer": "NO",
+      "boundary": "C9 production durability/session contracts retained; P1C not started."
+    },
+    {
+      "id": 11,
+      "question": "Business semantics changed?",
+      "answer": "AUTHORIZED_SECURITY_MIGRATION_PASS_SCOPED",
+      "boundary": "LSP argv0/env precedence/stdio and shell actual output/EOF/cache authority preserved; B unchanged; Runner unit NOT_RUN."
+    },
+    {
+      "id": 12,
+      "question": "Unrelated change?",
+      "answer": "NONE_FOUND_IN_REVIEWED_DIFF",
+      "boundary": "G exact 35 path set; checkpoint production prefix and preexisting core/checker sources unchanged."
+    }
+  ],
+  "explicit_remaining_limits": [
+    "B22 confinement NOT_PROVEN",
+    "C9 durable/session work reserved for P1C",
+    "Linux native runtime NOT_RUN",
+    "Windows native runtime NOT_RUN",
+    "Stable Runner unit/bin-test target NOT_RUN due to existing E0658 atomic_try_update",
+    "Full CI/integration not claimed",
+    "Phase8 permanent archive missing at G; exact-C completion pending"
+  ],
+  "final_identity_observed": {
+    "HEAD": "8c84dee28d297c4a40d7269fe35531c56fa2eef7",
+    "tree": "3417c108c41509d67f74442097cecead3ce807a6",
+    "branch": "impl/webcodex-p1b-normalization-slice1",
+    "status_porcelain": "",
+    "observed_utc": "2026-10-04T01:07:41.877783+00:00"
+  },
+  "formal_report": {
+    "file": "p1b-exact-g-spec-security-acceptance.md",
+    "sha256": "e6eb040f587731dcbbb4b126b3553acc41819c623c74776d5e385f2a96de0040",
+    "permanent_destination": "research/implementation/p1b/reviews/p1b-exact-g-spec-security-acceptance.md"
+  },
+  "formal_report_links_at_G": [
+    {
+      "link": "p1b-exact-g-bindings.json",
+      "permanent_target": "research/implementation/p1b/reviews/p1b-exact-g-bindings.json",
+      "state": "APPROVED_WORKING_BINDING_TO_COPY"
+    },
+    {
+      "link": "../launch-inventory.json",
+      "permanent_target": "research/implementation/p1b/launch-inventory.json",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee"
+    },
+    {
+      "link": "../evidence/p1b-guard-default.log",
+      "permanent_target": "research/implementation/p1b/evidence/p1b-guard-default.log",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "59159034b655c14072de3c12c743441ae664b083127c16b1ee3246189a458e4b"
+    },
+    {
+      "link": "../evidence/npm-pack-closure-explicit.log",
+      "permanent_target": "research/implementation/p1b/evidence/npm-pack-closure-explicit.log",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "c5a16104d370d18bcc16d7f909a514e74f8ee2fbb13f0a82421461f4c493b212"
+    },
+    {
+      "link": "../evidence/held-grandchild-deadline-current.log",
+      "permanent_target": "research/implementation/p1b/evidence/held-grandchild-deadline-current.log",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "7bbc591525187ab8f4fb1d860ec75486a2a752bef57565c9e10b8b8846173d10"
+    },
+    {
+      "link": "../evidence/compiled-origin-reuse-corrected.log",
+      "permanent_target": "research/implementation/p1b/evidence/compiled-origin-reuse-corrected.log",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "b1bc8357d6b456973348dfaf759f98df96d5923007d979099fe5f659408423c5"
+    },
+    {
+      "link": "../evidence/native-api-alias-negative-control.log",
+      "permanent_target": "research/implementation/p1b/evidence/native-api-alias-negative-control.log",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "a19470ed800d4a1b9330957d39a53885c1e24d986619213003fea0c1f26b3cfa"
+    },
+    {
+      "link": "../evidence/boundary-caller-negative-control.log",
+      "permanent_target": "research/implementation/p1b/evidence/boundary-caller-negative-control.log",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "96861b71a29090d2acdfd741c209ef22d7804020322bd09bf7433e40493c5689"
+    },
+    {
+      "link": "../evidence/execution-broker-native-five.log",
+      "permanent_target": "research/implementation/p1b/evidence/execution-broker-native-five.log",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "f01ce9eddc04baf3d7f4d43019c8de29e624961af24f21bac383f33532ccd01b"
+    },
+    {
+      "link": "../evidence/runner-catalog-native.log",
+      "permanent_target": "research/implementation/p1b/evidence/runner-catalog-native.log",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "07084472b11dedfb9eaf54f265663e3f0f61a949e02062d373de27b4cac6da71"
+    },
+    {
+      "link": "../evidence/shell-profile-native.log",
+      "permanent_target": "research/implementation/p1b/evidence/shell-profile-native.log",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "5910b7fb00c0be54ae19dcc163ea9403f379e84b8098e3eb2ac90ed12919ccea"
+    },
+    {
+      "link": "../evidence/workspace-boundary-gate-current.log",
+      "permanent_target": "research/implementation/p1b/evidence/workspace-boundary-gate-current.log",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "691466c45dcc7239d3eed398a5f541a7cabec8ef8575114280d8cb942b4e10cb"
+    },
+    {
+      "link": "../evidence/workspace-policy-narrow-probe.log",
+      "permanent_target": "research/implementation/p1b/evidence/workspace-policy-narrow-probe.log",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "d7fd5a43c659a7c4573a5593d9f5b4c90a757e753c42b83fc79b83b20376526a"
+    },
+    {
+      "link": "../evidence/checkout-autocrlf-matrix.json",
+      "permanent_target": "research/implementation/p1b/evidence/checkout-autocrlf-matrix.json",
+      "state": "EXISTS_IN_G",
+      "G_sha256": "baa3b9f012fa12fe79ed0420c5a78a08d31bd14e00e82a54f1b48f37465c6e32"
+    }
+  ],
+  "skills_actually_used": [
+    "code-review",
+    "specialized-domain-audit"
+  ],
+  "reviewer_mutations": {
+    "repo": false,
+    "index": false,
+    "commit_or_push": false,
+    "codegraph_index": false,
+    "working_review_artifacts_only": true,
+    "new_subagents": 0
+  }
+}

@@ -1,0 +1,26 @@
+   Compiling webcodex-core v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-core)
+   Compiling webcodex-runner-config v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-runner-config)
+   Compiling webcodex-lsp v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-lsp)
+    Finished `test` profile [unoptimized] target(s) in 4.03s
+     Running unittests src/lib.rs (/private/tmp/wc_p1b_slice2a_tests/target/debug/deps/webcodex_lsp-e6a2a17a0cf1856a)
+
+running 1 test
+test supervisor::tests::lsp_host_env_policy_routes_only_approved_locale_keys_into_spawn_spec ... FAILED
+
+failures:
+
+---- supervisor::tests::lsp_host_env_policy_routes_only_approved_locale_keys_into_spawn_spec stdout ----
+
+thread 'supervisor::tests::lsp_host_env_policy_routes_only_approved_locale_keys_into_spawn_spec' (9993178) panicked at crates/webcodex-lsp/src/tests.rs:142:5:
+assertion failed: !spec.env_vars.contains_key("LC_P1B_UNKNOWN_SECRET")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    supervisor::tests::lsp_host_env_policy_routes_only_approved_locale_keys_into_spawn_spec
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 39 filtered out; finished in 0.21s
+
+error: test failed, to rerun pass `-p webcodex-lsp --lib`
+
+NEGATIVE_CONTROL_EXIT=101 (nonzero expected)

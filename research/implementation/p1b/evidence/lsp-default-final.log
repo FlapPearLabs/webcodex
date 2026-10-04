@@ -1,0 +1,50 @@
+   Compiling webcodex-core v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-core)
+   Compiling webcodex-runner-config v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-runner-config)
+   Compiling webcodex-lsp v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-lsp)
+    Finished `test` profile [unoptimized] target(s) in 4.40s
+     Running unittests src/lib.rs (/private/tmp/wc_p1b_slice2a_tests/target/debug/deps/webcodex_lsp-e6a2a17a0cf1856a)
+
+running 40 tests
+test language::tests::extension_routing_selects_the_right_server_kind ... ok
+test language::tests::extension_routing_is_case_insensitive_and_closed ... ok
+test language::tests::every_server_kind_has_exactly_one_profile ... ok
+test language::tests::supported_extensions_label_lists_all_registered_extensions ... ok
+test language::tests::profiles_are_internally_consistent ... ok
+test position::tests::crlf_and_empty_line ... ok
+test position::tests::chinese_and_emoji_encodings ... ok
+test language::tests::rust_analyzer_classifier_flags_missing_component_else_defers ... ok
+test position::tests::illegal_lsp_positions_return_none ... ok
+test position::tests::public_to_lsp_ascii_and_end_of_line ... ok
+test protocol::tests::lsp_framing_accepts_lf_only_headers ... ok
+test protocol::tests::lsp_framing_accepts_header_line_at_max_length ... ok
+test protocol::tests::lsp_framing_encodes_content_length_and_utf8_byte_length ... ok
+test protocol::tests::lsp_framing_reads_consecutive_messages_case_insensitively ... ok
+test protocol::tests::lsp_framing_reads_partial_headers_and_bodies ... ok
+test protocol::tests::lsp_framing_rejects_invalid_and_oversized_content_length ... ok
+test protocol::tests::lsp_framing_rejects_malformed_or_missing_headers ... ok
+test protocol::tests::lsp_framing_rejects_non_utf8_header ... ok
+test protocol::tests::lsp_framing_rejects_too_many_header_lines ... ok
+test protocol::tests::lsp_framing_rejects_header_block_over_total_byte_limit ... ok
+test protocol::tests::lsp_framing_rejects_oversized_header_line_without_buffering_unbounded ... ok
+test language::tests::manifest_detection_is_per_language ... ok
+test supervisor::tests::diagnostics_cache_wait_has_version_generation_and_timeout_semantics ... ok
+test supervisor::tests::document_version_overflow_is_safe_and_state_is_fingerprint_only ... ok
+test supervisor::tests::failed_did_change_does_not_advance_document_state ... ok
+test supervisor::tests::generic_startup_stderr_summary_compacts_bounds_or_none ... ok
+test supervisor::tests::lsp_command_spawn_routes_through_execution_broker ... ok
+test supervisor::tests::lsp_default_args_apply_to_env_and_path_but_not_configured ... ok
+test language::tests::go_module_and_workspace_markers_detect_gopls_without_changing_existing_priority ... ok
+test supervisor::tests::server_status_cache_malformed_notification_clears_stale_readiness ... ok
+test supervisor::tests::workspace_symbol_timeout_uses_operation_budget_only_for_rust ... ok
+test supervisor::tests::diagnostics_cache_is_latest_value_bounded_and_counts_malformed_notifications ... ok
+test supervisor::tests::lsp_rustup_proxy_without_component_is_not_available ... ok
+test supervisor::tests::lsp_spawn_spec_is_workspace_only_minimal_and_preserves_command_fidelity ... ok
+test supervisor::tests::lsp_host_env_policy_routes_only_approved_locale_keys_into_spawn_spec ... ok
+test supervisor::tests::lsp_bare_program_resolves_relative_path_entries_from_project_cwd ... ok
+test supervisor::tests::lsp_spawn_spec_preserves_executable_symlink_argv0_path ... ok
+test supervisor::tests::lsp_rejects_missing_or_non_directory_project_roots_before_spawn ... ok
+test supervisor::tests::lsp_spawn_spec_canonicalizes_alias_and_refuses_invalid_authority_roots ... ok
+test supervisor::tests::lsp_reaper_timeout_does_not_rearm_supervisor_drop_budget ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+

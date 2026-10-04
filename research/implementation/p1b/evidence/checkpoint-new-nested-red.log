@@ -1,0 +1,11 @@
+command: RUSTC_WRAPPER= CARGO_TARGET_DIR=/private/tmp/p1b-checkpoint-old-target cargo test --locked -p webcodex-workspace --features workspace-checkpoints --lib checkpoint_git_apply_applies_a_real_patch_through_the_broker -- --nocapture
+exit: 101
+running 1 test
+P1_GIT_APPLY_REASON=sandbox_profile_refused
+P1_NATIVE_GIT_APPLY=ENV_BLOCKED workspace_checkpoint::git_apply could not run git under the broker (git apply  failed: sandbox-exec: sandbox_apply: Operation not permitted
+); this is NOT a pass
+thread 'workspace_checkpoint::tests::checkpoint_git_apply_applies_a_real_patch_through_the_broker' panicked at crates/webcodex-workspace/src/workspace_checkpoint.rs:1075:21:
+P1-G checkpoint git apply could not run: broker environment blocked
+test workspace_checkpoint::tests::checkpoint_git_apply_applies_a_real_patch_through_the_broker ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 104 filtered out; finished in 0.14s
+error: test failed, to rerun pass `-p webcodex-workspace --lib`

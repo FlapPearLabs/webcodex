@@ -1,0 +1,7 @@
+repo: /Users/songshiyao/Desktop/Projects/webcodex
+branch: impl/webcodex-p1b-normalization-slice1
+HEAD: 54fcc318ea0ef44bac75590f95b0aae14b133414
+old target source SHA-256: 242d26dd46be0d17cb6ca183b5545e955a323cf4e3db57da500bf63df985c653
+final target source SHA-256: adc6f3082f65a88be2833f3ddfb5d038a7a68d81de750bd1e0881736114cee94
+HEAD production prefix SHA-256 (before cfg(test)): cae15803832ace75047a902167cd2676e78ed81925c93676de3c82e4ca1502e5
+final production prefix SHA-256 (before cfg(test)): cae15803832ace75047a902167cd2676e78ed81925c93676de3c82e4ca1502e5

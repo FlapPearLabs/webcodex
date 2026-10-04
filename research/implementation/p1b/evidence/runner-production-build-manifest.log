@@ -1,0 +1,66 @@
+{
+  "status": "PASS",
+  "repository": "/Users/songshiyao/Desktop/Projects/webcodex",
+  "branch": "impl/webcodex-p1b-normalization-slice1",
+  "head": "54fcc318ea0ef44bac75590f95b0aae14b133414",
+  "production_worktree": "clean at tested HEAD; remaining dirt was limited to guard/test/dev-dependency files",
+  "build": {
+    "command": "env CARGO_TARGET_DIR=/tmp/webcodex-p1b-final-1.98.1 rustup run 1.98.1 cargo --config 'build.rustc-wrapper=\"\"' build --locked --profile dogfood -p webcodex-runner --bin webcodex-runner",
+    "exit_code": 0,
+    "toolchain": "rustc 1.98.1",
+    "binary": "/tmp/webcodex-p1b-final-1.98.1/dogfood/webcodex-runner",
+    "binary_sha256": "d8350ab9c390843d82f902a1308b2f90e6372a17297bba09e2919be4a00710eb",
+    "target_isolated": true,
+    "historical_runner_binaries_overwritten": false
+  },
+  "shell_profile_native_harness": {
+    "command": "python3 shell-profile-slice/classifier-fix/profile_prepare_native_harness.py --baseline /tmp/webcodex-p1b-catalog-target-1.98.1/debug/webcodex-runner --candidate /tmp/webcodex-p1b-final-1.98.1/dogfood/webcodex-runner",
+    "exit_code": 0,
+    "baseline": {
+      "sha256": "d88cbfc6da56e2c8eca0333e785b880797b15e8f93e8af9c8cb5bb6155713044",
+      "verdict": "RED",
+      "raw_launch_effects": "OBSERVED"
+    },
+    "candidate": {
+      "sha256": "d8350ab9c390843d82f902a1308b2f90e6372a17297bba09e2919be4a00710eb",
+      "verdict": "PASS",
+      "raw_launch_effects": "ABSENT",
+      "outside_write_denied": true,
+      "host_canary_absent": true,
+      "prepare_stdin_eof": true,
+      "after_unregister_payload_not_started": true,
+      "owned_descendant_gone_at_operation_return": true,
+      "run_shell_stdout_bytes": 39,
+      "run_shell_stderr_bytes": 17
+    },
+    "raw_log": "shell-profile-slice/classifier-fix/native-profile-prepare-final.log"
+  },
+  "catalog_native_harness": {
+    "command": "python3 guard-slice/runner_catalog_native_harness_final.py",
+    "harness_change": "copied catalog harness; only RUNNER path changed to the new dogfood binary",
+    "exit_code": 0,
+    "runner_sha256": "d8350ab9c390843d82f902a1308b2f90e6372a17297bba09e2919be4a00710eb",
+    "clean_case": "PASS: branch/head/path correct, git_dirty=false",
+    "dirty_case": "PASS: branch/head/path correct, git_dirty=true",
+    "timeout_negative_control": "PASS: fsmonitor hook observed, incomplete capture warning, git_dirty=null, bounded elapsed 2.256s",
+    "raw_log": "guard-slice/runner-catalog-final.log"
+  },
+  "source_sha256": {
+    "crates/webcodex-runner/src/main.rs": "46b18c9b772f9773075c210e3aa58f9eb8fd9864bd61896e0771662212f58136",
+    "crates/webcodex-runner/src/webcodex_runner/shell.rs": "3136cf0efadeca94161c46a69130dc60a50d6513d8c7ab60b96c6dd27a6dbe39",
+    "crates/webcodex-runner/src/webcodex_runner/local_execution.rs": "52f866a98ea991e7b24e3e6f35c5e0cd1330a8cd3bd64140cc3cfac49b209065",
+    "crates/webcodex-runner/src/webcodex_runner/projects/catalog.rs": "bd87760480d62288a19dbba48ecdb3cb20710b76b79d6064016a08dc274e0737",
+    "crates/webcodex-lsp/src/supervisor.rs": "bd231209b32d4ada52c6d089de72f2f87d916a62ac5e9143f6a6fdaa0f820ea9",
+    "crates/webcodex-workspace/src/git_broker.rs": "d99612053ff983707ee8fd3084e432448e2a6cc9a4081fadd734c9562efb7ac1",
+    "Cargo.lock": "79352012151f17583d2d1338c046a70120cd476ffe1eb77725d62b5da3f383fb"
+  },
+  "raw_log_sha256": {
+    "shell-profile-slice/classifier-fix/native-profile-prepare-final.log": "60bf09e0398cf92484f62d70442546c8e6eb2ac4d63b854ef2045b14622962a0",
+    "guard-slice/runner-catalog-final.log": "9cc1293802c1ab88eb7f666539522cb827793f769d0b789c4e337f4f87a8b9d0"
+  },
+  "evidence_limits": [
+    "Native Seatbelt operations ran only against temporary projects and synthetic loopback services.",
+    "This is current integrated Runner evidence for shell-profile and catalog behavior; it does not classify the full P1B launch inventory.",
+    "No external production host or service was used."
+  ]
+}

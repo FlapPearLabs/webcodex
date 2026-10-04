@@ -1,0 +1,68 @@
+{
+  "result": "PASS",
+  "cases": [
+    {
+      "case": "baseline-nine-actual-raw-logs",
+      "exit_code": 2,
+      "expected_exit_code": 2,
+      "diagnostic": "research/implementation/p1b/evidence/boundary-caller-negative-control.log:12: new blank line at EOF.\nresearch/implementation/p1b/evidence/compiled-origin-reuse-corrected.log:14: new blank line at EOF.\nresearch/implementation/p1b/evidence/execution-broker-native-five.log:13: new blank line at EOF.\nresearch/implementation/p1b/evidence/held-grandchild-deadline-current.log:8: new blank line at EOF.\nresearch/implementation/p1b/evidence/held-grandchild-deadline.log:8: new blank line at EOF.\nresearch/implementation/p1b/evidence/native-api-alias-negative-control.log:10: new blank line at EOF.\nresearch/implementation/p1b/evidence/npm-pack-closure-corrected.log:17: new blank line at EOF.\nresearch/implementation/p1b/evidence/npm-pack-closure-explicit.log:17: new blank line at EOF.\nresearch/implementation/p1b/evidence/p1b-guard-default.log:35: new blank line at EOF.\n",
+      "actual_cached_attr": "research/implementation/p1b/evidence/execution-broker-native-five.log: whitespace: unspecified\nresearch/implementation/p1b/evidence/held-grandchild-deadline.log: whitespace: unspecified\nresearch/implementation/p1b/evidence/compiled-origin-reuse-corrected.log: whitespace: unspecified\nresearch/implementation/p1b/evidence/npm-pack-closure-corrected.log: whitespace: unspecified\nresearch/implementation/p1b/evidence/npm-pack-closure-explicit.log: whitespace: unspecified\nresearch/implementation/p1b/evidence/p1b-guard-default.log: whitespace: unspecified\nresearch/implementation/p1b/evidence/boundary-caller-negative-control.log: whitespace: unspecified\nresearch/implementation/p1b/evidence/held-grandchild-deadline-current.log: whitespace: unspecified\nresearch/implementation/p1b/evidence/native-api-alias-negative-control.log: whitespace: unspecified",
+      "staged_bytes_exact": true,
+      "file_count": 9
+    },
+    {
+      "case": "candidate-nine-actual-raw-logs",
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "diagnostic": "",
+      "actual_cached_attr": "research/implementation/p1b/evidence/execution-broker-native-five.log: whitespace: -blank-at-eof\nresearch/implementation/p1b/evidence/held-grandchild-deadline.log: whitespace: -blank-at-eof\nresearch/implementation/p1b/evidence/compiled-origin-reuse-corrected.log: whitespace: -blank-at-eof\nresearch/implementation/p1b/evidence/npm-pack-closure-corrected.log: whitespace: -blank-at-eof\nresearch/implementation/p1b/evidence/npm-pack-closure-explicit.log: whitespace: -blank-at-eof\nresearch/implementation/p1b/evidence/p1b-guard-default.log: whitespace: -blank-at-eof\nresearch/implementation/p1b/evidence/boundary-caller-negative-control.log: whitespace: -blank-at-eof\nresearch/implementation/p1b/evidence/held-grandchild-deadline-current.log: whitespace: -blank-at-eof\nresearch/implementation/p1b/evidence/native-api-alias-negative-control.log: whitespace: -blank-at-eof",
+      "staged_bytes_exact": true,
+      "file_count": 9
+    },
+    {
+      "case": "retained-blank-at-eol",
+      "exit_code": 2,
+      "expected_exit_code": 2,
+      "diagnostic": "research/implementation/p1b/evidence/probe.log:1: trailing whitespace.\n+line with trailing space \n",
+      "actual_cached_attr": "research/implementation/p1b/evidence/probe.log: whitespace: -blank-at-eof",
+      "staged_bytes_exact": true,
+      "file_count": 1
+    },
+    {
+      "case": "retained-space-before-tab",
+      "exit_code": 2,
+      "expected_exit_code": 2,
+      "diagnostic": "research/implementation/p1b/evidence/probe.log:1: space before tab in indent.\n+ \tindented\n",
+      "actual_cached_attr": "research/implementation/p1b/evidence/probe.log: whitespace: -blank-at-eof",
+      "staged_bytes_exact": true,
+      "file_count": 1
+    },
+    {
+      "case": "outside-evidence-log-eof",
+      "exit_code": 2,
+      "expected_exit_code": 2,
+      "diagnostic": "outside/probe.log:2: new blank line at EOF.\n",
+      "actual_cached_attr": "outside/probe.log: whitespace: unspecified",
+      "staged_bytes_exact": true,
+      "file_count": 1
+    },
+    {
+      "case": "evidence-markdown-eof",
+      "exit_code": 2,
+      "expected_exit_code": 2,
+      "diagnostic": "research/implementation/p1b/evidence/probe.md:2: new blank line at EOF.\n",
+      "actual_cached_attr": "research/implementation/p1b/evidence/probe.md: whitespace: unspecified",
+      "staged_bytes_exact": true,
+      "file_count": 1
+    },
+    {
+      "case": "nested-evidence-log-eof",
+      "exit_code": 2,
+      "expected_exit_code": 2,
+      "diagnostic": "research/implementation/p1b/evidence/nested/probe.log:2: new blank line at EOF.\n",
+      "actual_cached_attr": "research/implementation/p1b/evidence/nested/probe.log: whitespace: unspecified",
+      "staged_bytes_exact": true,
+      "file_count": 1
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized] target(s) in 0.45s
+     Running unittests src/lib.rs (/private/tmp/wc_p1b_slice2a_tests/target/debug/deps/webcodex_lsp-e6a2a17a0cf1856a)
+
+running 1 test
+test supervisor::tests::lsp_host_env_policy_routes_only_approved_locale_keys_into_spawn_spec ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 0.61s
+

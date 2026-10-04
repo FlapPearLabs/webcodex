@@ -1,0 +1,19 @@
+    Finished `test` profile [unoptimized] target(s) in 0.30s
+     Running tests/execution_broker.rs (/private/tmp/webcodex-p1b-target/debug/deps/execution_broker-e93be684550ec139)
+
+running 1 test
+ENV_BLOCKED[A]: this host refuses restrictive Seatbelt profiles at sandbox_apply, so enforcement is unmeasurable here. NOT a pass. Run research/spikes/native-seatbelt-ae.sh from an ordinary Terminal.
+
+thread 'test_a_workspace_read_write' (9844893) panicked at crates/webcodex-process/tests/execution_broker.rs:156:5:
+ENV_BLOCKED[A]: refusing to treat an unenforceable host as a passing test
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test test_a_workspace_read_write ... FAILED
+
+failures:
+
+failures:
+    test_a_workspace_read_write
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p webcodex-process --test execution_broker`

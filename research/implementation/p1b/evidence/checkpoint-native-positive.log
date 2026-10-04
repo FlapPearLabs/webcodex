@@ -1,0 +1,8 @@
+command: RUSTC_WRAPPER= CARGO_TARGET_DIR=/private/tmp/p1b-checkpoint-native-target cargo test --locked -p webcodex-workspace --features workspace-checkpoints --lib checkpoint_git_apply_applies_a_real_patch_through_the_broker -- --nocapture
+execution: require_escalated host Seatbelt-enabled context; separate /private/tmp target
+exit: 0
+running 1 test
+P1_GIT_APPLY_REASON=patch_applied
+P1_NATIVE_GIT_APPLY=PASS workspace_checkpoint::git_apply applied a real patch through the broker (bytes_on_disk=35)
+test workspace_checkpoint::tests::checkpoint_git_apply_applies_a_real_patch_through_the_broker ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 104 filtered out; finished in 0.16s

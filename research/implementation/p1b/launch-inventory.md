@@ -24,4 +24,6 @@ The classification status `SOL_REVIEWED_CLASSIFICATION_ACCEPTED` and implementat
 
 The checkout evidence records actual Git index checkouts with `core.autocrlf=false` and `true`: both matched all 626 production origins and all 128 non-Rust assets. The approved `.gitattributes` and checkout matrix are hash-bound in `evidence/manifest.json`. This is Git checkout reproducibility evidence, not a Windows native runtime result. The workspace dependency gate also records the exact-START pre-existing allowlist failure and the Sol-approved single normal-dependency allowlist repair that now passes the official gate.
 
-Final exact-SHA independent review remains a separate closeout gate; this page does not claim approval beyond the classification decision and listed evidence.
+G current acceptance: [P1B acceptance and evidence index](acceptance.md) records the exact G identities, scoped results, and limitations. The independent Spec/security/architecture review is `PASS_SCOPED`; independent Standards review is `PASS`.
+
+C closeout contract: raw evidence and exact-G reviews are archived byte-for-byte with provenance in [evidence/manifest.json](evidence/manifest.json). The exact-C decision, verified path set, and C SHA belong in the external exact-SHA closeout record; this navigation page does not claim a C signature.

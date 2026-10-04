@@ -1,0 +1,4 @@
+5d45ac0c2972d4d16c52981086fa7f6c2e6c3d3d1df381566992ba42befed4b2  crates/webcodex-lsp/src/lib.rs
+bd231209b32d4ada52c6d089de72f2f87d916a62ac5e9143f6a6fdaa0f820ea9  crates/webcodex-lsp/src/supervisor.rs
+a976d5482a71782c2878a5c2f7a5f0c6b57d1abef5ed22b840fc11922d7c1f0c  crates/webcodex-lsp/src/test_support.rs
+d6723d9da8f4e06613468eb0c9137de1f6e04a40355cec4269f7543c8733833b  crates/webcodex-lsp/src/tests.rs
