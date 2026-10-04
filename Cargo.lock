@@ -5448,6 +5448,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "webcodex-chatgpt-safe"
+version = "0.4.3"
+dependencies = [
+ "libc",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "webcodex-process",
+ "webcodex-workspace",
+]
+
+[[package]]
 name = "webcodex-cli"
 version = "0.4.3"
 dependencies = [

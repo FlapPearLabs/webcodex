@@ -1,0 +1,198 @@
+{
+  "review_axis": "standards",
+  "verdict": "ACCEPT_LOCAL_ENGINEERING_MILESTONE",
+  "blocking_findings": 0,
+  "repo": "/Users/songshiyao/Desktop/Projects/webcodex",
+  "base_head": "d8edf498a063200e0ad87723ff63df2b54d3f612",
+  "branch": "impl/webcodex-p1c-durable-execution",
+  "created_utc": "2026-10-04T19:32:22.588987+00:00",
+  "production_source_sha256": "8160f4e2a13755a1a3a9ef9c9787a5f466ce9ba398510a4cb9d0a85e4bacf557",
+  "binary": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/target/dogfood/webcodex-chatgpt-safe",
+  "binary_sha256": "7aae451460f9f720b47db2b3a2aea71f24d99ec5877c166bfa3ce8da4c7d5ac4",
+  "tracked_changed_count": 4,
+  "untracked_count": 27,
+  "reviewed_paths": [
+    {
+      "path": "Cargo.lock",
+      "sha256": "1a941fef91487e87ec08fa1f4e7764dc7d5f543aeb282a3ffaae1c0c30a4878d",
+      "bytes": 160617
+    },
+    {
+      "path": "Cargo.toml",
+      "sha256": "2b638693962f06d967b8e22f434fdb62f370673955baf0c779cafba521cfc7bf",
+      "bytes": 6190
+    },
+    {
+      "path": "crates/webcodex-process/tests/p1b_guard.rs",
+      "sha256": "d1e4f646f0cf773da5dbeef429d13fb48f77644d073d7dea4bddd7f67bfdfaf2",
+      "bytes": 104871
+    },
+    {
+      "path": "workspace-boundaries.toml",
+      "sha256": "8beeb170cf838b17be7fb3c61e73835fa279873911f9b4b521db3623e1419ad3",
+      "bytes": 5646
+    },
+    {
+      "path": "crates/webcodex-chatgpt-safe/Cargo.toml",
+      "sha256": "6b1699fb6f7550c83e72321ef23f496123d76bad87fe3e1a625aba0702b980c8",
+      "bytes": 415
+    },
+    {
+      "path": "crates/webcodex-chatgpt-safe/src/main.rs",
+      "sha256": "8160f4e2a13755a1a3a9ef9c9787a5f466ce9ba398510a4cb9d0a85e4bacf557",
+      "bytes": 39986
+    },
+    {
+      "path": "crates/webcodex-chatgpt-safe/tests/protocol.rs",
+      "sha256": "41a773f85502d2d0e2d88c4e847d15611be08f2905cd51dc7fa4284962c29f5b",
+      "bytes": 11609
+    },
+    {
+      "path": "crates/webcodex-chatgpt-safe/tests/unsupported_platform.rs",
+      "sha256": "52aec28c8d329c31c942c433f17f1e272b0f33d303152a6c5ceec1d02a5b5270",
+      "bytes": 1088
+    },
+    {
+      "path": "crates/webcodex-process/tests/p1b_profile_overlay.rs",
+      "sha256": "690abb5a54f2b32d69c3bc84f17b6711aa8bed9e73724fe3bf5528e99d4ca731",
+      "bytes": 12851
+    },
+    {
+      "path": "research/implementation/dogfood/EVIDENCE.md",
+      "sha256": "3f419675ab6cfa3d3c24be9276d9b73ae0cf7c744069673f69df01bc7f67fec3",
+      "bytes": 8485
+    },
+    {
+      "path": "research/implementation/dogfood/OPERATIONS.md",
+      "sha256": "f7cb90a4207c8a71beb78ece377974e40c115574256002c06288495685debcdb",
+      "bytes": 6519
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/adaptive-coding-accepted-source.jsonl",
+      "sha256": "d782d4b3b382a4919dbbf121cbb3e528812a6c54e2177baee51ada4310f07923",
+      "bytes": 14137
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/checker-final.txt",
+      "sha256": "a9252bdd73d605de2431d46c5678ad81bd1a074bca2bf83bd8d1d40ce511ec22",
+      "bytes": 57
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/checker-negative-control.txt",
+      "sha256": "5e36f3be4afa55b55e79f679bfe51bc4247eb70018f89e47192993e736372a97",
+      "bytes": 92
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/close-pipe-counterexample.jsonl",
+      "sha256": "b1913a3c2f4077fc94a08a56a1533be2e387395cba97df3d365f1cd676061b6b",
+      "bytes": 1474
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/directory-search-diagnostic-negative-control.jsonl",
+      "sha256": "742b728a8d89fb77a6f397a36a3b8282c3d3cee889f6f2caa87548ef3db8576c",
+      "bytes": 1310
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/directory-search-independent-native.jsonl",
+      "sha256": "f7576951befac7b36b62b18876783bc1b265d773d6ff03f8700a9a4e2db05a37",
+      "bytes": 1848
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/directory-search-independent-sandboxed.jsonl",
+      "sha256": "304766478f4ce327e2bf8179e79d710baec12322fd5adc2a957ac20a4809424f",
+      "bytes": 1241
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/native-boundaries-accepted-source.jsonl",
+      "sha256": "ef891f11e4849573811c0757ddeb6a26d1c4abc1178217d5c6ba51cde7a37b95",
+      "bytes": 31988
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/old-source-alias-search-negative.jsonl",
+      "sha256": "db90813933e2100ba8a8da0b8c20043ca3481464c44b070c85f8d0a7bf3e846b",
+      "bytes": 4574
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/protocol-final.txt",
+      "sha256": "92172816771b91f3d7cb6501417e84adeeb9cf7d772a7ea49fbca11ed7bc9e75",
+      "bytes": 2264
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/service-doctor-default.txt",
+      "sha256": "50fb883baad2adf26730aaaafcca5e86e0608a3e74c81da8c5d08b38f08be20b",
+      "bytes": 70
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/service-doctor-native.txt",
+      "sha256": "6b3ee1c8f852a1a100d1e0c11174b5659135bfb09411d7dd3b0467e9d290269f",
+      "bytes": 75
+    },
+    {
+      "path": "research/implementation/dogfood/evidence/tunnel-doctor.txt",
+      "sha256": "9d8309c3f31229c87f45cc8d0260fae346d71bbb077e0c238f14b128882208a8",
+      "bytes": 3169
+    },
+    {
+      "path": "research/implementation/dogfood/harness/adaptive_session.py",
+      "sha256": "d6b8fd52cdc16412ea4ad360de6b4a41f53f1e3a49491cea80fb7cfa71081556",
+      "bytes": 1404
+    },
+    {
+      "path": "research/implementation/dogfood/harness/check_evidence.py",
+      "sha256": "25e8951938e7a0ac5555ce8c1d411c08f9c80a55b53cc1ab83d40c242d11389d",
+      "bytes": 11716
+    },
+    {
+      "path": "research/implementation/dogfood/harness/directory-search-negative-control.py",
+      "sha256": "96490fc5fe230d5f39827896d8a51ec3f0558970b815931b4fa78aa1e3e22f32",
+      "bytes": 3350
+    },
+    {
+      "path": "research/implementation/dogfood/harness/evidence_contract.md",
+      "sha256": "1fdb5a4ee2b18b5309556a368d7cfac4f8c715cb89f5f59f3fc5b178d0dec006",
+      "bytes": 7952
+    },
+    {
+      "path": "research/implementation/dogfood/harness/mcp_dogfood_driver.py",
+      "sha256": "18ef7180139a585f24caccc8282ee95cad2bad0342ff468b076ba4b71c43afc2",
+      "bytes": 31715
+    },
+    {
+      "path": "research/implementation/dogfood/harness/prepare_fixture.py",
+      "sha256": "2237d4ec170b2f594d9870b321a6b3c5ecd74cea5a5bbda8616f15a6fcaa8691",
+      "bytes": 5725
+    },
+    {
+      "path": "research/implementation/dogfood/profile-launch-overlay.json",
+      "sha256": "377025a09e34d60f0f63153a6b4a25ec46732d43253f603c10a8b8a0955c2bb4",
+      "bytes": 1461
+    }
+  ],
+  "immutable_base_files": [
+    {
+      "path": "research/implementation/p1b/launch-inventory.json",
+      "unchanged_from_base": true,
+      "sha256": "d5d9956f78e8c724e2f1136a9071ba337bb52f031f88de7fd92b5150cc8ee1ee"
+    },
+    {
+      "path": "research/implementation/p1c/c2-guard-overlay.json",
+      "unchanged_from_base": true,
+      "sha256": "a12cecad9a99029bf33ccd0aa815748a18159afbf5a70341b527e7b05c6a1b9f"
+    },
+    {
+      "path": "crates/webcodex-process/src/execution_broker/mod.rs",
+      "unchanged_from_base": true,
+      "sha256": "2894a0e771e6245ae27b03a507ca524eeb8d1ce079e8610ec1cfc81b4129978e"
+    },
+    {
+      "path": "crates/webcodex-workspace/src/git_broker.rs",
+      "unchanged_from_base": true,
+      "sha256": "d99612053ff983707ee8fd3084e432448e2a6cc9a4081fadd734c9562efb7ac1"
+    }
+  ],
+  "profile_status_at_review": "UNREVIEWED_CANDIDATE",
+  "handoff_gate": "After dual acceptance update review metadata and rerun full p1b_guard: require 20 passed / 0 failed / 2 ignored before commit. This snapshot binds the pre-acceptance candidate.",
+  "tonight_dogfood_ready": false,
+  "chatgpt_web_read_write": "NOT_RUN",
+  "reviewer_repo_mutations": false
+}

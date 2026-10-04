@@ -1,0 +1,73 @@
+command: /Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/outputs/dogfood-transport/tunnel-client doctor --json
+exit_code: 2
+classification: NOT_RUN_DIRECT_MCP; failed_checks=[tunnel_id]
+
+{
+  "result": "fail",
+  "failed_checks": [
+    "tunnel_id"
+  ],
+  "checks": [
+    {
+      "id": "config_source",
+      "status": "PASS",
+      "summary": "flags/environment only"
+    },
+    {
+      "id": "profile_load",
+      "status": "PASS",
+      "summary": "flags/environment only"
+    },
+    {
+      "id": "tunnel_id",
+      "status": "FAIL",
+      "summary": "tunnel ID is required; set --control-plane.tunnel-id or CONTROL_PLANE_TUNNEL_ID",
+      "why": "tunnel-client cannot register or poll the control plane without a valid tunnel id.",
+      "evidence": [
+        "tunnel ID is required; set --control-plane.tunnel-id or CONTROL_PLANE_TUNNEL_ID"
+      ],
+      "next": [
+        "create or inspect the tunnel in https://platform.openai.com/settings/organization/tunnels",
+        "run `tunnel-client admin tunnels get \u003ctunnel_id\u003e` if you already know the tunnel id; this read-only lookup works with the runtime key",
+        "if you need admin CRUD or discovery, create or inspect an admin key in https://platform.openai.com/settings/organization/admin-keys and then run `tunnel-client admin tunnels create --help` or `tunnel-client admin tunnels list --help`",
+        "once you have a tunnel id, create a first profile with `tunnel-client init --sample sample_mcp_with_dcr --profile sample_mcp_with_dcr --tunnel-id tunnel_... --mcp-server-url http://127.0.0.1:3001/mcp`",
+        "or set --control-plane.tunnel-id or CONTROL_PLANE_TUNNEL_ID to a tunnel_\u003c32 lowercase hex\u003e value",
+        "Create or verify the connector in https://chatgpt.com/#settings/Connectors only while `tunnel-client run` is running. Keep the daemon up for connector discovery and every MCP call from ChatGPT.",
+        "for the full first-use flow run `tunnel-client help quickstart`"
+      ]
+    },
+    {
+      "id": "tunnels_management_url",
+      "status": "PASS",
+      "summary": "https://platform.openai.com/settings/organization/tunnels"
+    },
+    {
+      "id": "runtime_api_keys_url",
+      "status": "PASS",
+      "summary": "https://platform.openai.com/settings/organization/api-keys"
+    },
+    {
+      "id": "admin_api_keys_url",
+      "status": "PASS",
+      "summary": "https://platform.openai.com/settings/organization/admin-keys"
+    },
+    {
+      "id": "chatgpt_connector_settings_url",
+      "status": "PASS",
+      "summary": "https://chatgpt.com/#settings/Connectors"
+    },
+    {
+      "id": "codex_plugin",
+      "status": "SKIP",
+      "summary": "Codex detected; Tunnel MCP plugin not installed (run `tunnel-client codex plugin install`)",
+      "why": "the optional Codex plugin gives tunnel-client a more discoverable Codex-native control surface.",
+      "evidence": [
+        "CODEX_HOME: /Users/songshiyao/.codex",
+        "expected plugin dir: /Users/songshiyao/.codex/plugins/cache/debug/tunnel-mcp/local"
+      ],
+      "next": [
+        "tunnel-client codex plugin install"
+      ]
+    }
+  ]
+}

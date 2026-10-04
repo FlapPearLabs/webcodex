@@ -1,0 +1,53 @@
+warning: struct `GitOutput` is never constructed
+  --> crates/webcodex-workspace/src/git_broker.rs:52:19
+   |
+52 | pub(crate) struct GitOutput {
+   |                   ^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `run_git` is never used
+   --> crates/webcodex-workspace/src/git_broker.rs:221:15
+    |
+221 | pub(crate) fn run_git(
+    |               ^^^^^^^
+
+warning: variant `BothPiped` is never constructed
+   --> crates/webcodex-workspace/src/git_broker.rs:308:5
+    |
+306 | enum GitStreams {
+    |      ---------- variant in this enum
+307 |     /// Capture all of stdout and all of stderr.
+308 |     BothPiped,
+    |     ^^^^^^^^^
+    |
+    = note: `GitStreams` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: methods `finish` and `wait_for` are never used
+   --> crates/webcodex-workspace/src/git_broker.rs:643:8
+    |
+556 | impl BrokeredGit {
+    | ---------------- methods in this implementation
+...
+643 |     fn finish(mut self, timeout: Option<std::time::Duration>) -> Result<GitOutput, GitRefusal> {
+    |        ^^^^^^
+...
+783 |     fn wait_for(&mut self, timeout: Option<std::time::Duration>) -> Result<ExitStatus, GitRefusal> {
+    |        ^^^^^^^^
+
+warning: `webcodex-workspace` (lib) generated 4 warnings
+   Compiling webcodex-chatgpt-safe v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-chatgpt-safe)
+    Finished `test` profile [unoptimized] target(s) in 1.81s
+     Running tests/protocol.rs (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/target/debug/deps/protocol-2d0a6693b6322ff3)
+
+running 6 tests
+test project_selection_and_tool_gateway_reject_unknown_authority ... ok
+test rpc_version_and_unknown_methods_fail_closed ... ok
+test tools_list_is_the_exact_closed_safe_surface ... ok
+test brokered_search_reports_unreadable_paths_as_partial ... ok
+test brokered_file_gate_rejects_git_and_external_paths_and_stale_edits ... ok
+test brokered_file_gate_rechecks_resolved_sensitive_paths_and_keeps_safe_links ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.72s
+
+# Capture exit_code=0; stdout/stderr above preserved verbatim.

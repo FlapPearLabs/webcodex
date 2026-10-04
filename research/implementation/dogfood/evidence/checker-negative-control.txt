@@ -1,0 +1,1 @@
+PASS: checker rejected ENV_BLOCKED, OUTCOME_UNKNOWN, and success=false false-green controls

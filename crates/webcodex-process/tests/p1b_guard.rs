@@ -15,6 +15,8 @@ use syn::spanned::Spanned;
 use syn::visit::Visit;
 use syn::{Attribute, Expr, Item, Meta};
 
+#[path = "p1b_profile_overlay.rs"]
+mod p1b_profile_overlay;
 #[path = "p1c_c2_overlay.rs"]
 mod p1c_c2_overlay;
 
@@ -1155,7 +1157,7 @@ fn p1b_all_production_targets_are_discoverable() {
         !scan.sites.is_empty(),
         "production targets must yield launch candidates"
     );
-    let (inventory, overlay_status) = candidate_inventory();
+    let (inventory, overlay_status, profile_status) = candidate_inventory();
     require_accepted_inventory(&inventory);
     let raw_expected = accepted_raw_sites(&inventory);
     compare_raw(
@@ -1175,6 +1177,10 @@ fn p1b_all_production_targets_are_discoverable() {
     assert_eq!(
         overlay_status, "SOL_REVIEWED_C2_OVERLAY_ACCEPTED",
         "NOT_RUN_PENDING_REVIEW: C2 candidate overlay has not received independent review"
+    );
+    assert_eq!(
+        profile_status, "SOL_REVIEWED_CHATGPT_SAFE_PROFILE",
+        "NOT_RUN_PENDING_REVIEW: ChatGPT-safe profile overlay has not received independent review"
     );
     let expected_targets: BTreeSet<_> = inventory["rust_targets"]
         .as_array()
@@ -1446,6 +1452,11 @@ fn p1b_platform_handoff_sites_are_exact_and_named() {
             (
                 "crates/webcodex-workspace/src/git_broker.rs",
                 "crate::git_broker::BrokeredGit::spawn",
+                1
+            ),
+            (
+                "crates/webcodex-chatgpt-safe/src/main.rs",
+                "crate::spawn_broker",
                 1
             ),
         ]),
@@ -1854,21 +1865,38 @@ fn non_rust_fingerprints(root: &Path) -> Result<BTreeMap<String, String>, String
 }
 
 fn accepted_inventory() -> serde_json::Value {
-    let (inventory, status) = candidate_inventory();
+    let (inventory, status, profile_status) = candidate_inventory();
     assert_eq!(
         status, "SOL_REVIEWED_C2_OVERLAY_ACCEPTED",
         "NOT_RUN_PENDING_REVIEW: C2 candidate overlay has not received independent review"
     );
+    assert_eq!(
+        profile_status, "SOL_REVIEWED_CHATGPT_SAFE_PROFILE",
+        "NOT_RUN_PENDING_REVIEW: ChatGPT-safe profile overlay has not received independent review"
+    );
     inventory
 }
 
-fn candidate_inventory() -> (serde_json::Value, String) {
+fn candidate_inventory() -> (serde_json::Value, String, String) {
     let application = p1c_c2_overlay::apply_sparse_overlay(
         include_str!("../../../research/implementation/p1b/launch-inventory.json"),
         include_str!("../../../research/implementation/p1c/c2-guard-overlay.json"),
     )
     .expect("C2 overlay must be structurally bound to accepted P1B inventory");
-    (application.inventory, application.status)
+    let overlay =
+        include_str!("../../../research/implementation/dogfood/profile-launch-overlay.json");
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    let mut inventory = application.inventory;
+    let profile = p1b_profile_overlay::apply(&mut inventory, overlay)
+        .expect("ChatGPT-safe profile overlay must be exact and additive");
+    p1b_profile_overlay::assert_source_allowlist(&root, overlay)
+        .expect("profile source hash and tool allowlist must agree with source");
+    (inventory, application.status, profile.status)
 }
 
 fn string_field<'a>(row: &'a serde_json::Value, key: &str) -> &'a str {

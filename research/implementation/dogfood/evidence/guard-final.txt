@@ -1,0 +1,44 @@
+   Compiling webcodex-process v0.4.3 (/Users/songshiyao/Desktop/Projects/webcodex/crates/webcodex-process)
+    Finished `test` profile [unoptimized] target(s) in 1.87s
+     Running tests/p1b_guard.rs (/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/target/debug/deps/p1b_guard-46dab2047050aca6)
+
+running 22 tests
+test p1b_metadata_deadline_returns_when_grandchild_holds_stdout_and_stderr ... ignored, timing-sensitive held-pipe deadline negative control; run explicitly with --ignored --exact --test-threads=1
+test p1b_npm_pack_and_asset_compare_reject_all_regular_bin_overlay_files ... ignored, requires the external npm publication tool; run the explicit npm pack lane
+test p1b_pipe_holder_child_fixture ... ok
+EXPECTED_NEW_BOUNDARY_CALLER_RED	Err("boundary reference drift; missing=[]; added=[\"crates/webcodex-runner/src/webcodex_runner/shell.rs::newly_added_caller -> native_command\"]; changed=[]")
+test p1b_exact_inventory_compare_rejects_count_and_symbol_drift ... ok
+test p1b_pipe_holder_grandchild_fixture ... ok
+EXPECTED_RENAMED_BOUNDARY_CALLER_RED	Err("boundary reference drift; missing=[\"crates/webcodex-runner/src/webcodex_runner/shell.rs::existing_caller -> prepare\"]; added=[\"crates/webcodex-runner/src/webcodex_runner/shell.rs::renamed_caller -> prepare\"]; changed=[]")
+RESTORED_BOUNDARY_REFERENCE_BASELINE_PASS
+test p1b_boundary_reference_compare_rejects_new_and_renamed_callers ... ok
+test p1b_profile_overlay::tests::profile_overlay_is_additive_and_rejects_unaccepted_launches ... ok
+test p1b_parser_follows_real_imports_and_production_cfg ... ok
+test p1b_configured_node_probe_keeps_fixed_version_payload ... ok
+NATIVE_ALIAS_DETECTED	{"crate::fake_native_launcher::aliased_call", "crate::fake_native_launcher::block_alias_call", "crate::fake_native_launcher::literal_call", "crate::fake_native_launcher::production_only::included"}
+NATIVE_MACRO_FAIL_CLOSED	{"src/lib.rs::crate::fake_native_launcher has unresolved enumerated native API macro tokens requiring exact review: () => { unsafe { Launch () } }"}
+test p1b_trusted_profile_prepare_dispatch_keeps_exact_branch_fingerprints ... ok
+test p1b_profile_overlay::tests::profile_source_mutation_rejects_unregistered_launcher ... ok
+test p1b_non_rust_release_asset_closure_matches_fingerprints ... ok
+test p1b_compiled_native_api_aliases_are_detected_and_macro_aliases_fail_closed ... ok
+test p1c_c2_overlay::p1c_c2_accepted_status_requires_all_frozen_source_hashes ... ok
+test p1c_c2_overlay::p1c_c2_candidate_overlay_is_sparse_and_fully_bound_to_signed_rows ... ok
+test p1b_required_boundary_bodies_and_direct_callers_are_discoverable ... ok
+test p1b_non_rust_overlay_rejects_new_production_asset_but_ignores_test_only_file ... ok
+test p1c_c2_overlay::p1c_c2_overlay_rejects_unknown_missing_duplicate_and_unbound_inputs ... ok
+test p1b_profile_prepare_symbols_have_fixed_production_origins ... ok
+test p1b_platform_handoff_sites_are_exact_and_named ... ok
+P1C_C2_PRODUCTION_SCANNER_RAW_DELTA=10_REFERENCE_DELTA=0
+P1C_C2_FROZEN_PRODUCTION_ORIGIN_CLOSURE_MATCH=PASS
+P1B_RUST_RAW_SITE_COUNT=251
+test p1b_all_production_targets_are_discoverable ... ok
+BASELINE_FIXTURE_RAW_REFERENCE_COMPARE_PASS
+NEW_CALLER_RAW_REFERENCE_GATE_STILL_PASS
+EXPECTED_COMPILED_HELPER_REUSE_RED	Err("production source origin drift; missing=[]; added=[\"src/added_caller.rs\"]; changed=[(\"src/lib.rs\", ProductionOriginSource { sha256: \"d908d1d0d450f13cb3807fe65315f51dad2a6859c37fe20c7d58a1b2926911c8\", targets: {\"fixture:lib\"} }, ProductionOriginSource { sha256: \"7b2e400ebd0b415361e76a8fc359b21dc8bbceb1d50beeb95324fb3efb6f977a\", targets: {\"fixture:lib\"} })]")
+EXPECTED_SOURCE_CONTENT_CHANGE_RED	Err("production source origin drift; missing=[]; added=[]; changed=[(\"src/lib.rs\", ProductionOriginSource { sha256: \"d908d1d0d450f13cb3807fe65315f51dad2a6859c37fe20c7d58a1b2926911c8\", targets: {\"fixture:lib\"} }, ProductionOriginSource { sha256: \"a141ab06c561642a171106eb1995b48296ef631d5c953131606e39f289ec32b4\", targets: {\"fixture:lib\"} })]")
+RESTORED_JSON_ORIGIN_BASELINE_PASS
+test p1b_compiled_existing_helper_reuse_is_red_by_production_origin_json_gate ... ok
+
+test result: ok. 20 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 10.59s
+
+# Capture exit_code=0; stdout/stderr above preserved verbatim.

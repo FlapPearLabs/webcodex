@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "status": "SOL_REVIEWED_CHATGPT_SAFE_PROFILE",
+  "rust_target": {
+    "package": "webcodex-chatgpt-safe",
+    "target": "webcodex-chatgpt-safe",
+    "file": "crates/webcodex-chatgpt-safe/src/main.rs"
+  },
+  "production_origin_sources": [
+    {
+      "path": "crates/webcodex-chatgpt-safe/src/main.rs",
+      "sha256": "8160f4e2a13755a1a3a9ef9c9787a5f466ce9ba398510a4cb9d0a85e4bacf557",
+      "targets": [
+        "webcodex-chatgpt-safe:webcodex-chatgpt-safe"
+      ]
+    }
+  ],
+  "raw_sites": [
+    {
+      "file": "crates/webcodex-chatgpt-safe/src/main.rs",
+      "symbol": "crate::spawn_broker",
+      "primitive": "method::spawn_with_toolchain",
+      "count": 1,
+      "targets": [
+        "webcodex-chatgpt-safe:webcodex-chatgpt-safe"
+      ]
+    }
+  ],
+  "nonrust_assets": [],
+  "tool_allowlist": [
+    "project_list",
+    "project_select",
+    "files_search",
+    "files_read",
+    "files_apply_patch",
+    "shell_run",
+    "git_status",
+    "git_diff"
+  ],
+  "profile_facts": [
+    {
+      "class": "A",
+      "caller": "crate::shell",
+      "fact": "shell_run is a Class A logical caller routed through the shared spawn_broker",
+      "source": "crates/webcodex-chatgpt-safe/src/main.rs"
+    },
+    {
+      "class": "A",
+      "caller": "crate::spawn_python",
+      "fact": "the Python file helper is a Class A logical caller routed through the shared spawn_broker",
+      "source": "crates/webcodex-chatgpt-safe/src/main.rs"
+    }
+  ]
+}

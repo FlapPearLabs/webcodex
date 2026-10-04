@@ -1,0 +1,38 @@
+{
+  "source_acceptance": "dual independent Sol max; no blocking findings",
+  "base_head": "d8edf498a063200e0ad87723ff63df2b54d3f612",
+  "source_sha256": "8160f4e2a13755a1a3a9ef9c9787a5f466ce9ba398510a4cb9d0a85e4bacf557",
+  "binary_sha256": "7aae451460f9f720b47db2b3a2aea71f24d99ec5877c166bfa3ce8da4c7d5ac4",
+  "protocol_sha256": "41a773f85502d2d0e2d88c4e847d15611be08f2905cd51dc7fa4284962c29f5b",
+  "reviewed_file_changes_after_review": [
+    "research/implementation/dogfood/EVIDENCE.md",
+    "research/implementation/dogfood/profile-launch-overlay.json",
+    "research/implementation/dogfood/evidence/protocol-final.txt"
+  ],
+  "change_reason": "review status, factual gate completion, and raw-preserving log footer only",
+  "protocol": {
+    "passed": 6,
+    "failed": 0
+  },
+  "full_guard": {
+    "exit_code": 0,
+    "passed": 20,
+    "failed": 0,
+    "ignored_not_run": 2
+  },
+  "guard_rust_raw_site_rows": 251,
+  "workspace_boundary_exit_code": 0,
+  "format_exit_code": 0,
+  "git_diff_check_exit_code": 0,
+  "tonight_dogfood_ready": "NO",
+  "chatgpt_web_read_write": "NOT_RUN",
+  "whole_family_supervision": "NOT_PROVEN",
+  "archived_log_footers": {
+    "purpose": "retain raw capture bytes and append explicit exit metadata; no result content rewritten",
+    "original_capture_sha256": {
+      "protocol-final.txt": "92172816771b91f3d7cb6501417e84adeeb9cf7d772a7ea49fbca11ed7bc9e75",
+      "guard-final.txt": "a5c2fd1cd512bac68e62be19c358d8869300d406d4926ba39dc6f2e1125f8a36"
+    },
+    "footer": "# Capture exit_code=0; stdout/stderr above preserved verbatim.\n"
+  }
+}

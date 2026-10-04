@@ -83,6 +83,14 @@ dev = []
 build = []
 test_support = []
 
+[packages.webcodex-chatgpt-safe]
+layer = "entrypoint"
+role = "Narrow stdio MCP CLI for one operator-registered project."
+normal = ["webcodex-process", "webcodex-workspace"]
+dev = []
+build = []
+test_support = []
+
 [packages.webcodex-code-mode]
 layer = "runtime"
 role = "Experimental transport-neutral Code Mode frontend/runtime and bounded V8 orchestration."
