@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-05",
+  "base_sha": "c5ec0a89a5fed5bba943f636b7d5df7fccded3ba",
+  "profile": "webcodex-chatgpt",
+  "source_sha256": "04974b16ebfefef9a17e0a0e59a762764d671daf323156a72deb8ba3c7ee1b8e",
+  "binary_sha256": "ab366914666171140acd8031efb35c263185e813378e4d7e0f16262716907ba9",
+  "discovered_tools": [
+    "project_list",
+    "project_select",
+    "files_search",
+    "files_read",
+    "files_apply_patch",
+    "shell_run",
+    "git_status",
+    "git_diff"
+  ],
+  "mcp_read_available": "PASS",
+  "mcp_write_available": "PASS",
+  "real_chatgpt_dogfood_result": "PASS",
+  "tool_sequence_used": [
+    "project_list",
+    "project_select",
+    "files_search",
+    "files_read",
+    "files_read",
+    "files_read",
+    "shell_run",
+    "files_apply_patch",
+    "files_apply_patch",
+    "shell_run",
+    "git_diff",
+    "git_status"
+  ],
+  "coding_baseline": {
+    "tests": 1,
+    "failures": 1,
+    "return_code": 1
+  },
+  "coding_final": {
+    "tests": 2,
+    "failures": 0,
+    "return_code": 0,
+    "timed_out": false,
+    "incomplete": false
+  },
+  "remote_security": {
+    "absolute_private_path_read": "PASS_TECHNICAL_DENIAL",
+    "unregistered_project": "PASS_TECHNICAL_DENIAL",
+    "withheld_ssh_browser_native_tools": "PASS_ABSENT",
+    "loopback_network": "PASS_EPERM",
+    "outside_absolute_patch": "NOT_RUN_BLOCKED_BY_OPENAI_TOOL_SAFETY",
+    "outside_symlink_patch": "NOT_RUN_BLOCKED_BY_OPENAI_TOOL_SAFETY",
+    "public_ip_network_probe": "NOT_RUN_BLOCKED_BY_OPENAI_TOOL_SAFETY"
+  },
+  "remote_security_gate": "EXTERNAL_EVIDENCE_GAP",
+  "tonight_dogfood_ready": false,
+  "native_outside_patch_substitute": {
+    "classification": "native_stdio_substitute_not_remote_proof",
+    "absolute_error": "relative path required",
+    "symlink_outcome": "POLICY_DENIED",
+    "symlink_error": "path escaped project",
+    "sentinel_unchanged": true
+  },
+  "loopback_postcondition": {
+    "host": "127.0.0.1",
+    "port": 63760,
+    "operator_positive_connections": 1,
+    "remote_connections": 0,
+    "status": "stopped"
+  },
+  "remote_postconditions": {
+    "outside_unchanged": true,
+    "pricing_sha256": "63e55281a6cd202927940c0f465b77de05488a8e024fe4904a7e28fdfd27df59",
+    "test_sha256": "c5959030eff6fdea102cc76e3829bc5773feb906efc3d1978bf203943f364e7b",
+    "native_operator_edited_business_files": false,
+    "mode": "postconditions_read_only"
+  },
+  "test_matrix": {
+    "native_protocol": {
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0
+    },
+    "p1b_guard": {
+      "passed": 20,
+      "failed": 0,
+      "ignored_not_run": 2
+    },
+    "old_binary_metadata_negative_control": "PASS_REPRODUCED_-32602",
+    "native_doctor": "PASS_READY",
+    "cargo_build": "PASS",
+    "cargo_check": "PASS",
+    "cargo_fmt_check": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "final_transport_mode": "direct_stdio_without_diagnostic_observer",
+  "private_key_value_logged_or_committed": false,
+  "external_artifact_directory": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/outputs/transport-validation-20261005",
+  "external_artifact_sha256": {
+    "tunnel-doctor.txt": "fa1c6c9a90a1a674779a4984efdf4739941547a5e5e7c310786dbd2f6b260b75",
+    "metadata-negative-control.raw.json": "beea133d74af242096819f5caef61ba738b420a4fd34a9b7b7339363eaffc86e",
+    "protocol-include-ignored.stdout": "5cd7c7fe7c8edbe33eafca6726b629aef790a8988bd9ef1267b3f0093e90b6b3",
+    "protocol-include-ignored.exit_code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "p1b-guard.stdout": "c09d367a4efed4f9514ec8104821b34d19df451e1969fc57ddfbf521ed807da9",
+    "p1b-guard.exit_code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "chatgpt-safe-check.exit_code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "build-dogfood.exit_code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "read-fixed-success.json": "5b33ac16f29fb54cfe838f8d10ab5de169b0f49e34f231fb450912f45af8891c",
+    "coding-fixed-success.json": "d05837cd5fb3337f0725cdd76c8c0d23a5b3316ab19acb0e19a1b4c369842945",
+    "coding-wire-shapes.frozen.jsonl": "12eea07d2e70b6f6ec9b16e178514c7718ea8b5126ec5a90afa4098d1f21bfc6",
+    "security-first-result.json": "d9f0edbb27622090f54056d70a0654ab6f5389434b226a10734ec0d0c32a7b58",
+    "security-controlled-result.json": "d17072024ba6e4a189145121c91ae9b94d92941b4f3f6ac6948e5f6e72d5b30e",
+    "direct-final-read.json": "df48cf70114a1a4c5e8143eb05d8d1e36e91b934d3a685814328fdb0fe5c5884",
+    "native-apply-patch-denial-probe.raw.json": "1c113cfededdc791e0472b5e48c9ce845b10ecf0eb09fbc1a7cca7c5614b3c99",
+    "loopback-listener.final.json": "ab76244a39ca4c616e5ce1fadab96b950230f27db8f45345fc2ae0e6e5ab3f74",
+    "remote-postconditions.json": "81f3fc617d1c37707ee943d315c5ec4370fff2e9b3aadf30620324e78552e69c",
+    "final-live-health.json": "9f3b3e0ed3018c2f7b001ec3d6dab5c10b3f64b2a20512a29248534048f77798",
+    "mcp-wire-shapes.review-snapshot.jsonl": "fb0e17871be7d04b5e9dba07b7b023efa40458dfba9465be653c9eaa62a7a45f"
+  },
+  "review_wire_snapshot_note": "The review hash of the then-live mcp-wire-shapes.jsonl matches the frozen metadata-review snapshot, not the later appended live trace."
+}

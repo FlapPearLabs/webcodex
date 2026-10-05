@@ -335,7 +335,15 @@ fn tool_call(app: &App, params: &Value) -> Result<Value, (i64, &'static str)> {
         .and_then(Value::as_str)
         .filter(|n| SAFE_TOOLS.contains(n))
         .ok_or((-32602, "unknown tool"))?;
-    exact_keys(params, &["name", "arguments"])?;
+    if let Some(meta) = params.get("_meta") {
+        if !meta.is_object() {
+            return Err((-32602, "_meta must be an object"));
+        }
+        // MCP metadata is protocol-only; it never enters tool arguments or authority.
+        exact_keys(params, &["name", "arguments", "_meta"])?;
+    } else {
+        exact_keys(params, &["name", "arguments"])?;
+    }
     let args = params
         .get("arguments")
         .cloned()

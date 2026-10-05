@@ -1,0 +1,129 @@
+{
+  "classification": "native_stdio_substitute_not_remote_proof",
+  "binary_path": "/Users/songshiyao/Documents/Codex/2026-10-02/role-webcodex-security-architect-reviewer-mode-5/standards-recovery-20261004/target/dogfood/webcodex-chatgpt-safe",
+  "binary_sha256": "ab366914666171140acd8031efb35c263185e813378e4d7e0f16262716907ba9",
+  "registry_path": "/private/tmp/webcodex-chatgpt-remote-20261005/operator-registry.json",
+  "project_id": "dogfood-project",
+  "absolute_fixture_path": "/private/tmp/webcodex-chatgpt-remote-20261005-external",
+  "outside_symlink_path": "outside-symlink",
+  "outside_symlink_target": "/private/tmp/webcodex-chatgpt-remote-20261005-external",
+  "sentinel_sha256_before": "64d9dabe3a975fccff66c3e657f52ad032cff24c63c74f78854f7014b50e5d19",
+  "sentinel_sha256_after": "64d9dabe3a975fccff66c3e657f52ad032cff24c63c74f78854f7014b50e5d19",
+  "request_shape": [
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/call",
+      "params_keys": [
+        "arguments",
+        "name"
+      ],
+      "tool": "files_apply_patch",
+      "argument_types": {
+        "project_id": "string",
+        "path": "string",
+        "revision": "string",
+        "old_text": "string",
+        "new_text": "string"
+      },
+      "path": "/private/tmp/webcodex-chatgpt-remote-20261005-external",
+      "revision_sha256": "64d9dabe3a975fccff66c3e657f52ad032cff24c63c74f78854f7014b50e5d19",
+      "new_text": "NATIVE_DENIAL_PROBE",
+      "old_text_logged": false
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call",
+      "params_keys": [
+        "arguments",
+        "name"
+      ],
+      "tool": "files_apply_patch",
+      "argument_types": {
+        "project_id": "string",
+        "path": "string",
+        "revision": "string",
+        "old_text": "string",
+        "new_text": "string"
+      },
+      "path": "outside-symlink",
+      "revision_sha256": "64d9dabe3a975fccff66c3e657f52ad032cff24c63c74f78854f7014b50e5d19",
+      "new_text": "NATIVE_DENIAL_PROBE",
+      "old_text_logged": false
+    }
+  ],
+  "responses": [
+    {
+      "id": 1,
+      "jsonrpc": "2.0",
+      "result": {
+        "capabilities": {
+          "tools": {
+            "listChanged": false
+          }
+        },
+        "protocolVersion": "2025-03-26",
+        "serverInfo": {
+          "name": "webcodex-chatgpt-safe",
+          "version": "0.1.0"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "jsonrpc": "2.0",
+      "result": {
+        "content": [
+          {
+            "text": "{\"error\":\"relative path required\",\"incomplete\":false,\"outcome\":\"OPERATION_FAILED\",\"return_code\":2,\"stderr_truncated\":false,\"stdout_truncated\":false,\"success\":false,\"timed_out\":false}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "error": "relative path required",
+          "incomplete": false,
+          "outcome": "OPERATION_FAILED",
+          "return_code": 2,
+          "stderr_truncated": false,
+          "stdout_truncated": false,
+          "success": false,
+          "timed_out": false
+        }
+      }
+    },
+    {
+      "id": 3,
+      "jsonrpc": "2.0",
+      "result": {
+        "content": [
+          {
+            "text": "{\"error\":\"path escaped project\",\"incomplete\":false,\"outcome\":\"POLICY_DENIED\",\"return_code\":2,\"stderr_truncated\":false,\"stdout_truncated\":false,\"success\":false,\"timed_out\":false}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "error": "path escaped project",
+          "incomplete": false,
+          "outcome": "POLICY_DENIED",
+          "return_code": 2,
+          "stderr_truncated": false,
+          "stdout_truncated": false,
+          "success": false,
+          "timed_out": false
+        }
+      }
+    }
+  ],
+  "server_stderr": "",
+  "server_exit_code": 0,
+  "assertions": {
+    "binary_hash_matches": true,
+    "absolute_path_denied_as_relative_path_required": true,
+    "outside_symlink_denied_as_policy_path_escape": true,
+    "sentinel_hash_unchanged": true,
+    "server_exit_zero": true
+  }
+}

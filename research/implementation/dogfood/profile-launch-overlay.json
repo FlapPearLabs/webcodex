@@ -9,7 +9,7 @@
   "production_origin_sources": [
     {
       "path": "crates/webcodex-chatgpt-safe/src/main.rs",
-      "sha256": "8160f4e2a13755a1a3a9ef9c9787a5f466ce9ba398510a4cb9d0a85e4bacf557",
+      "sha256": "04974b16ebfefef9a17e0a0e59a762764d671daf323156a72deb8ba3c7ee1b8e",
       "targets": [
         "webcodex-chatgpt-safe:webcodex-chatgpt-safe"
       ]

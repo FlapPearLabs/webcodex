@@ -1,5 +1,7 @@
 # chatgpt-safe 交付证据
 
+本文件保留 `c5ec0a89` 本地工程里程碑的历史证据。2026-10-05 真实 Tunnel/ChatGPT 实测、协议修复及外部安全证据缺口见 [TRANSPORT_VALIDATION.md](TRANSPORT_VALIDATION.md)。
+
 本轮交付是独立的 macOS stdio MCP 编码入口。**本地工程验证通过；真实 ChatGPT Web transport 尚未配置，TONIGHT_DOGFOOD_READY=NO。** 不从本地客户端推断 ChatGPT 读写 entitlement。RDC 当前仍暴露任意宿主命令/文件能力，未被接受为安全后备。
 
 ## 版本绑定

@@ -22,6 +22,8 @@
 
 Git 工具使用固定只读参数，禁用外部 diff/textconv、fsmonitor 和 hooks；结果保留失败、timeout、capture incomplete 和 output cap 状态。`git_status` 的三次读取共用一次 15 秒操作预算。
 
+`tools/call` 可以携带对象形式的外层 `_meta`。这些 MCP 协议元数据被忽略，不进入工具参数、项目身份或权限判断。业务 `arguments` 仍须符合各工具的精确字段集合；未知外层字段、畸形 `_meta` 和业务参数里的权限扩展字段仍被拒绝。
+
 ## 构建和本地操作
 
 ```sh
@@ -40,7 +42,7 @@ Doctor 运行真实固定 Python sandbox probe。`ENV_BLOCKED` 和 `HOST_UNAVAIL
 
 ## Secure MCP Tunnel
 
-使用官方 tunnel-client 的 stdio transport，不启动无认证 public listener。当前隔离安装为 `0.0.15`，未替换仓库原有 tunnel pin，也没有修改全局配置。Tunnel ID 和 runtime key 尚未配置，因此真实 ChatGPT 读写能力为 **NOT_RUN**。
+使用官方 tunnel-client 的 stdio transport，不启动无认证 public listener。当前隔离安装为 `0.0.15`，未替换仓库原有 tunnel pin，也没有修改全局配置。真实 Tunnel 和 ChatGPT 验证见 [TRANSPORT_VALIDATION.md](TRANSPORT_VALIDATION.md)。密钥继续保存在仓库外权限受限文件中；配置只使用 `file:` 引用。
 
 先由操作者从 OpenAI 组织取得真实 Tunnel ID，把 runtime key 保存到项目外的权限受限文件，命令只使用 `file:` 引用。不要把 key 放进 registry、MCP 参数、命令字符串或对话。
 
@@ -52,15 +54,17 @@ KEY_REF='file:/absolute/private/path/runtime-key'
 BIN=/absolute/path/to/webcodex-chatgpt-safe
 REGISTRY=/absolute/path/outside-project/operator-registry.json
 
-"$TUNNEL_CLIENT" runtimes connect --alias chatgpt-safe \
-  --profile chatgpt-safe --profile-dir "$PROFILE_DIR" \
-  --tunnel-id "$TUNNEL_ID" --runtime-api-key "$KEY_REF" \
-  --mcp-command "$BIN serve --profile chatgpt-safe --registry $REGISTRY"
-"$TUNNEL_CLIENT" doctor --profile chatgpt-safe --profile-dir "$PROFILE_DIR" --json --explain
-"$TUNNEL_CLIENT" runtimes status chatgpt-safe --json
+"$TUNNEL_CLIENT" init --profile webcodex-chatgpt --profile-dir "$PROFILE_DIR" \
+  --tunnel-id "$TUNNEL_ID" --control-plane-api-key-ref "$KEY_REF" \
+  --mcp-command "$BIN serve --profile chatgpt-safe --registry $REGISTRY" \
+  --health-listen-addr 127.0.0.1:0
+"$TUNNEL_CLIENT" doctor --profile webcodex-chatgpt --profile-dir "$PROFILE_DIR" --json --explain
+"$TUNNEL_CLIENT" run --profile webcodex-chatgpt --profile-dir "$PROFILE_DIR" \
+  --health.url-file /absolute/private/path/health-url \
+  --pid.file /absolute/private/path/tunnel.pid
 ```
 
-以上变量是操作者提供的占位说明，不是已配置的现场资源。路径含空格时，应根据官方 CLI 的 stdio command 解析规则引用，不能由模型传入任意 MCP server command。只有实际 status 明确给出进程运行、health/ready 成功才报告服务已启动。停止使用 `tunnel-client runtimes stop chatgpt-safe`；不要使用 nohup/disown。受管 status 返回的 loopback health URL 才是实际监听地址，不能假定默认端口可用。日志留在官方 runtime/profile 的 operator 日志路径；MCP stdout 不写日志，不开启 raw credential/payload logging。
+以上变量是操作者提供的占位说明，不是已配置的现场资源。路径含空格时，应根据官方 CLI 的 stdio command 解析规则引用，不能由模型传入任意 MCP server command。只有进程实际运行且 health/ready 成功才报告服务已启动。此处使用前台 `run`，正常停止用 Ctrl-C；不要使用 nohup/disown。运行时写出的 loopback health URL 才是实际监听地址，不能假定默认端口可用。日志留在官方 runtime/profile 的 operator 日志路径；MCP stdout 不写日志，不开启 raw credential/payload logging。
 
 操作者在 ChatGPT developer-mode 添加该 Tunnel、refresh tools，并核对恰好八个工具，然后实测 read 和需要确认的 write。组织 Tunnel 权限与 ChatGPT 账户功能是不同的门禁，不能从套餐名称或本地测试推断权限。当前 RDC 仍提供任意宿主命令和文件能力，未提供可证明的项目 ACL，因此没有被接受为安全后备 transport。
 

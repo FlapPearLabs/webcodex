@@ -1,0 +1,25 @@
+{"direction":"request","time":"2026-10-05T04:59:52.008487+00:00","id":0,"method":"initialize","params_keys":["capabilities","clientInfo","protocolVersion"]}
+{"direction":"response","time":"2026-10-05T04:59:52.009481+00:00","id":0,"result_keys":["capabilities","protocolVersion","serverInfo"]}
+{"direction":"request","time":"2026-10-05T04:59:52.409112+00:00","method":"notifications/initialized"}
+{"direction":"request","time":"2026-10-05T04:59:52.830689+00:00","id":1,"method":"tools/call","params_keys":["_meta","arguments","name"],"tool":"project_list","argument_types":{},"meta_types":{"openai/locale":"string","openai/organization":"string","openai/session":"string","openai/subject":"string","openai/userAgent":"string","openai/userLocation":"object","timezone":"string"}}
+{"direction":"response","time":"2026-10-05T04:59:52.831053+00:00","id":1,"error":{"code":-32602,"message":"arguments contain missing or unknown keys"}}
+{"direction":"request","time":"2026-10-05T05:09:44.042594+00:00","id":0,"method":"initialize","params_keys":["capabilities","clientInfo","protocolVersion"]}
+{"direction":"response","time":"2026-10-05T05:09:44.043808+00:00","id":0,"result_keys":["capabilities","protocolVersion","serverInfo"]}
+{"direction":"request","time":"2026-10-05T05:09:44.419877+00:00","method":"notifications/initialized"}
+{"direction":"request","time":"2026-10-05T05:09:44.838868+00:00","id":1,"method":"tools/call","params_keys":["_meta","arguments","name"],"tool":"project_list","argument_types":{},"meta_types":{"openai/locale":"string","openai/organization":"string","openai/session":"string","openai/subject":"string","openai/userAgent":"string","openai/userLocation":"object","timezone":"string"}}
+{"direction":"response","time":"2026-10-05T05:09:44.839436+00:00","id":1,"result_keys":["content","isError","structuredContent"],"structured_keys":["projects"],"outcome":{}}
+{"direction":"request","time":"2026-10-05T05:09:46.897412+00:00","id":0,"method":"initialize","params_keys":["capabilities","clientInfo","protocolVersion"]}
+{"direction":"response","time":"2026-10-05T05:09:46.897783+00:00","id":0,"result_keys":["capabilities","protocolVersion","serverInfo"]}
+{"direction":"request","time":"2026-10-05T05:09:47.276511+00:00","method":"notifications/initialized"}
+{"direction":"request","time":"2026-10-05T05:09:47.738077+00:00","id":1,"method":"tools/call","params_keys":["_meta","arguments","name"],"tool":"project_select","argument_types":{"project_id":"string"},"meta_types":{"openai/locale":"string","openai/organization":"string","openai/session":"string","openai/subject":"string","openai/userAgent":"string","openai/userLocation":"object","timezone":"string"}}
+{"direction":"response","time":"2026-10-05T05:09:47.738435+00:00","id":1,"result_keys":["content","isError","structuredContent"],"structured_keys":["authority_changed","selected"],"outcome":{}}
+{"direction":"request","time":"2026-10-05T05:09:49.891228+00:00","id":0,"method":"initialize","params_keys":["capabilities","clientInfo","protocolVersion"]}
+{"direction":"response","time":"2026-10-05T05:09:49.892157+00:00","id":0,"result_keys":["capabilities","protocolVersion","serverInfo"]}
+{"direction":"request","time":"2026-10-05T05:09:50.312522+00:00","method":"notifications/initialized"}
+{"direction":"request","time":"2026-10-05T05:09:50.733549+00:00","id":1,"method":"tools/call","params_keys":["_meta","arguments","name"],"tool":"files_search","argument_types":{"project_id":"string","query":"string"},"meta_types":{"openai/locale":"string","openai/organization":"string","openai/session":"string","openai/subject":"string","openai/userAgent":"string","openai/userLocation":"object","timezone":"string"}}
+{"direction":"response","time":"2026-10-05T05:09:50.816668+00:00","id":1,"result_keys":["content","isError","structuredContent"],"structured_keys":["files_scanned","matches","success","truncated"],"outcome":{"success":true,"truncated":true}}
+{"direction":"request","time":"2026-10-05T05:09:54.426699+00:00","id":0,"method":"initialize","params_keys":["capabilities","clientInfo","protocolVersion"]}
+{"direction":"response","time":"2026-10-05T05:09:54.428178+00:00","id":0,"result_keys":["capabilities","protocolVersion","serverInfo"]}
+{"direction":"request","time":"2026-10-05T05:09:54.809069+00:00","method":"notifications/initialized"}
+{"direction":"request","time":"2026-10-05T05:09:55.229924+00:00","id":1,"method":"tools/call","params_keys":["_meta","arguments","name"],"tool":"files_read","argument_types":{"limit":"number","offset":"number","path":"string","project_id":"string"},"meta_types":{"openai/locale":"string","openai/organization":"string","openai/session":"string","openai/subject":"string","openai/userAgent":"string","openai/userLocation":"object","timezone":"string"}}
+{"direction":"response","time":"2026-10-05T05:09:55.286411+00:00","id":1,"result_keys":["content","isError","structuredContent"],"structured_keys":["content","offset","path","revision","success","truncated"],"outcome":{"success":true,"truncated":false}}

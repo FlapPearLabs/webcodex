@@ -121,6 +121,65 @@ fn project_selection_and_tool_gateway_reject_unknown_authority() {
 }
 
 #[test]
+fn optional_mcp_metadata_is_ignored_without_changing_tool_authority() {
+    let fixture = Fixture::new();
+    let responses = fixture.call(&[
+        json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"project_list","arguments":{}}}),
+        json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"project_list","arguments":{},"_meta":{"progressToken":"synthetic-progress","openai/locale":"zh-CN","openai/subject":{"root":"/synthetic/root","environment":"synthetic-environment","project_id":"unregistered"}}}}),
+        json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"project_select","arguments":{"project_id":"project-1"},"_meta":{"project_id":"unregistered","registered":true,"root":"/synthetic/root","environment":"synthetic-environment"}}}),
+        json!({"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"project_select","arguments":{"project_id":"unregistered"},"_meta":{"project_id":"project-1","registered":true}}}),
+    ]);
+
+    let expected_projects = json!({"projects":[{"project_id":"project-1","name":"Fixture"}]});
+    assert_eq!(
+        responses[0]["result"]["structuredContent"],
+        expected_projects
+    );
+    assert_eq!(
+        responses[1]["result"]["structuredContent"],
+        expected_projects
+    );
+    assert_eq!(
+        responses[2]["result"]["structuredContent"],
+        json!({"selected":"project-1","authority_changed":false})
+    );
+    assert_eq!(responses[3]["error"]["code"], -32000);
+}
+
+#[test]
+fn malformed_metadata_and_extra_authority_fields_fail_closed() {
+    let fixture = Fixture::new();
+    let malformed_metadata = [
+        Value::Null,
+        json!([]),
+        json!("synthetic"),
+        json!(7),
+        json!(false),
+    ];
+    let mut requests: Vec<Value> = malformed_metadata
+        .into_iter()
+        .enumerate()
+        .map(|(index, meta)| {
+            json!({"jsonrpc":"2.0","id":index+1,"method":"tools/call","params":{"name":"project_list","arguments":{},"_meta":meta}})
+        })
+        .collect();
+    requests.extend([
+        json!({"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"project_list","arguments":{},"root":"/synthetic/root","_meta":{}}}),
+        json!({"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"project_select","arguments":{"project_id":"project-1","_meta":{}},"_meta":{}}}),
+        json!({"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"project_select","arguments":{"project_id":"project-1","root":"/synthetic/root"},"_meta":{}}}),
+        json!({"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"project_list"}}),
+        json!({"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"project_list","_meta":{}}}),
+        json!({"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"job_start","arguments":{},"_meta":{"registered":true}}}),
+    ]);
+
+    let responses = fixture.call(&requests);
+    assert_eq!(responses.len(), requests.len());
+    for response in &responses {
+        assert_eq!(response["error"]["code"], -32602, "{response}");
+    }
+}
+
+#[test]
 fn rpc_version_and_unknown_methods_fail_closed() {
     let fixture = Fixture::new();
     let responses = fixture.call(&[
