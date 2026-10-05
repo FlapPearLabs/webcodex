@@ -13,7 +13,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 webcodex-process = { path = "../webcodex-process" }
 webcodex-workspace = { path = "../webcodex-workspace" }
+webcodex-core = { path = "../webcodex-core" }
+webcodex-lsp = { path = "../webcodex-lsp" }
 libc = "0.2"
 
 [dev-dependencies]
 tempfile = "3"
+serde_json = "1"

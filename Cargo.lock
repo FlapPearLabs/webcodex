@@ -5455,6 +5455,8 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "webcodex-core",
+ "webcodex-lsp",
  "webcodex-process",
  "webcodex-workspace",
 ]

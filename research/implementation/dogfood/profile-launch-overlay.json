@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "SOL_REVIEWED_CHATGPT_SAFE_PROFILE",
+  "status": "UNREVIEWED_CANDIDATE",
   "rust_target": {
     "package": "webcodex-chatgpt-safe",
     "target": "webcodex-chatgpt-safe",
@@ -9,7 +9,14 @@
   "production_origin_sources": [
     {
       "path": "crates/webcodex-chatgpt-safe/src/main.rs",
-      "sha256": "04974b16ebfefef9a17e0a0e59a762764d671daf323156a72deb8ba3c7ee1b8e",
+      "sha256": "4ce90cce88f34eec79c7b53035e5095fce33e3b798db460728f49f96182f29f9",
+      "targets": [
+        "webcodex-chatgpt-safe:webcodex-chatgpt-safe"
+      ]
+    },
+    {
+      "path": "crates/webcodex-chatgpt-safe/src/service.rs",
+      "sha256": "7444d8da6ca656edf7adebe66273181888f8ec441ec75584e5a1b8794904bca3",
       "targets": [
         "webcodex-chatgpt-safe:webcodex-chatgpt-safe"
       ]
@@ -24,18 +31,44 @@
       "targets": [
         "webcodex-chatgpt-safe:webcodex-chatgpt-safe"
       ]
+    },
+    {
+      "file": "crates/webcodex-chatgpt-safe/src/service.rs",
+      "symbol": "crate::service::launchctl",
+      "primitive": "Command::new",
+      "count": 1,
+      "targets": [
+        "webcodex-chatgpt-safe:webcodex-chatgpt-safe"
+      ]
+    },
+    {
+      "file": "crates/webcodex-chatgpt-safe/src/service.rs",
+      "symbol": "crate::service::launchctl",
+      "primitive": "method::output",
+      "count": 1,
+      "targets": [
+        "webcodex-chatgpt-safe:webcodex-chatgpt-safe"
+      ]
     }
   ],
   "nonrust_assets": [],
   "tool_allowlist": [
     "project_list",
     "project_select",
+    "project_current",
     "files_search",
     "files_read",
     "files_apply_patch",
     "shell_run",
+    "job_start",
+    "job_poll",
+    "job_cancel",
     "git_status",
-    "git_diff"
+    "git_diff",
+    "lsp_symbols",
+    "lsp_definition",
+    "lsp_references",
+    "lsp_diagnostics"
   ],
   "profile_facts": [
     {
@@ -49,6 +82,24 @@
       "caller": "crate::spawn_python",
       "fact": "the Python file helper is a Class A logical caller routed through the shared spawn_broker",
       "source": "crates/webcodex-chatgpt-safe/src/main.rs"
+    },
+    {
+      "class": "A",
+      "caller": "crate::JobRegistry::spawn_job",
+      "fact": "job_start is a Class A logical caller that reuses prepare_shell and the shared spawn_broker; there is no alternate naked Command/spawn path",
+      "source": "crates/webcodex-chatgpt-safe/src/main.rs"
+    },
+    {
+      "class": "A",
+      "caller": "webcodex_lsp::LspSupervisor",
+      "fact": "LSP server launch is brokered inside webcodex-lsp via ExecutionBroker::spawn_with_toolchain; the MCP layer never supplies an executable, args, or initialization command",
+      "source": "crates/webcodex-chatgpt-safe/src/main.rs"
+    },
+    {
+      "class": "D",
+      "caller": "crate::service::launchctl",
+      "fact": "the operator-only launchd control plane runs launchctl as a fixed literal; it is unreachable from the MCP tool surface, takes no model-supplied executable, and never carries model execution authority",
+      "source": "crates/webcodex-chatgpt-safe/src/service.rs"
     }
   ]
 }

@@ -212,24 +212,86 @@ fn lsp_server_status_entry(
     }
 }
 
+/// `O_NOFOLLOW` on Darwin and Linux: fail rather than traverse a symlink at
+/// the final path component. Spelled as a literal so this crate keeps its
+/// dependency surface unchanged; the value is the `fcntl.h` constant on both.
+const O_NOFOLLOW_FLAG: i32 = 0o400000;
+/// `O_NONBLOCK` on Darwin/Linux. The descriptor is only read to EOF, so a
+/// blocking read would also be fine; this matches the ChatGPT-safe helper's
+/// `files_read` open flags.
+const O_NONBLOCK_FLAG: i32 = 0o4000;
+
 /// Read a validated project document with a pre-allocation size guard.
 ///
 /// The LSP wire cap (`MAX_LSP_MESSAGE_BYTES`) would reject an oversized
 /// `didOpen` only after the whole file is already resident in agent memory;
 /// checking metadata first keeps a model-chosen giant `.rs` file from forcing
 /// that allocation. See `MAX_LSP_DOCUMENT_BYTES` for the race caveat.
+///
+/// The read is bound to the *already canonicalized* path via `O_NOFOLLOW` and a
+/// post-open `fstat`, so a symlink swapped in after `resolve_source_file`
+/// canonicalized cannot redirect the read outside the project between the
+/// containment check and the open. Size is re-checked on the open descriptor,
+/// because the pre-check is only advisory.
 fn read_document_text(file: &Path) -> Result<String, RunnerLspResultEnvelope> {
-    let metadata = fs::metadata(file).map_err(|_| {
+    use std::io::Read;
+    use std::os::unix::fs::OpenOptionsExt;
+
+    let advisory = fs::metadata(file).map_err(|_| {
         RunnerLspResultEnvelope::err(error_codes::FILE_NOT_FOUND, "failed to read file")
     })?;
-    if metadata.len() > MAX_LSP_DOCUMENT_BYTES {
+    if advisory.len() > MAX_LSP_DOCUMENT_BYTES {
         return Err(RunnerLspResultEnvelope::err(
             error_codes::DOCUMENT_TOO_LARGE,
             "file exceeds the LSP navigation document size limit",
         ));
     }
-    fs::read_to_string(file).map_err(|_| {
+
+    // O_NOFOLLOW: refuse to traverse a symlink at the final component, so the
+    // descriptor is bound to the object the containment check approved.
+    let mut file = fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(O_NOFOLLOW_FLAG | O_NONBLOCK_FLAG)
+        .open(file)
+        .map_err(|_| {
+            RunnerLspResultEnvelope::err(error_codes::FILE_NOT_FOUND, "failed to read file")
+        })?;
+
+    // Re-verify the opened object, not the path: a regular file only, and still
+    // within the size cap even if it changed since the advisory metadata read.
+    let opened = file.metadata().map_err(|_| {
         RunnerLspResultEnvelope::err(error_codes::FILE_NOT_FOUND, "failed to read file")
+    })?;
+    if !opened.is_file() {
+        return Err(RunnerLspResultEnvelope::err(
+            error_codes::FILE_NOT_FOUND,
+            "path is not a regular file",
+        ));
+    }
+    if opened.len() > MAX_LSP_DOCUMENT_BYTES {
+        return Err(RunnerLspResultEnvelope::err(
+            error_codes::DOCUMENT_TOO_LARGE,
+            "file exceeds the LSP navigation document size limit",
+        ));
+    }
+
+    // Read through the descriptor with a hard cap, so a file that grew after
+    // the fstat cannot force an unbounded allocation.
+    let mut raw = Vec::new();
+    file.by_ref()
+        .take(MAX_LSP_DOCUMENT_BYTES as u64 + 1)
+        .read_to_end(&mut raw)
+        .map_err(|_| {
+            RunnerLspResultEnvelope::err(error_codes::FILE_NOT_FOUND, "failed to read file")
+        })?;
+    if raw.len() as u64 > MAX_LSP_DOCUMENT_BYTES {
+        return Err(RunnerLspResultEnvelope::err(
+            error_codes::DOCUMENT_TOO_LARGE,
+            "file exceeds the LSP navigation document size limit",
+        ));
+    }
+    String::from_utf8(raw).map_err(|_| {
+        RunnerLspResultEnvelope::err(error_codes::FILE_NOT_FOUND, "file is not valid UTF-8 text")
     })
 }
 

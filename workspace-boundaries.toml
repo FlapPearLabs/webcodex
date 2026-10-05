@@ -86,7 +86,7 @@ test_support = []
 [packages.webcodex-chatgpt-safe]
 layer = "entrypoint"
 role = "Narrow stdio MCP CLI for one operator-registered project."
-normal = ["webcodex-process", "webcodex-workspace"]
+normal = ["webcodex-process", "webcodex-workspace", "webcodex-core", "webcodex-lsp"]
 dev = []
 build = []
 test_support = []

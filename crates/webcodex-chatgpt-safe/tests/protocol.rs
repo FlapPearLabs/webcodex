@@ -73,23 +73,48 @@ fn tools_list_is_the_exact_closed_safe_surface() {
         [
             "project_list",
             "project_select",
+            "project_current",
             "files_search",
             "files_read",
             "files_apply_patch",
             "shell_run",
+            "job_start",
+            "job_poll",
+            "job_cancel",
             "git_status",
-            "git_diff"
+            "git_diff",
+            "lsp_symbols",
+            "lsp_definition",
+            "lsp_references",
+            "lsp_diagnostics"
         ]
     );
+    // Authority-widening and hidden-capability fields must never appear in any
+    // tool schema, including the new Jobs and LSP surfaces.
     for withheld in [
-        "job_start",
-        "job_poll",
-        "job_cancel",
         "root",
         "network",
         "environment",
         "profile",
         "shell_interpreter",
+        "authority",
+        "workspace_root",
+        "server",
+        "executable",
+        "server_path",
+        "command_path",
+        "args",
+        "server_args",
+        "initialize_command",
+        "executeCommand",
+        "execute_command",
+        "codeAction",
+        "code_action",
+        "detach",
+        "session",
+        "durable",
+        "approval",
+        "full_access",
     ] {
         assert!(
             tools
@@ -105,6 +130,62 @@ fn tools_list_is_the_exact_closed_safe_surface() {
     assert!(tools
         .iter()
         .all(|tool| tool["inputSchema"]["additionalProperties"] == false));
+}
+
+#[test]
+fn job_surface_rejects_authority_widening_and_unknown_job_ids() {
+    let fixture = Fixture::new();
+    let responses = fixture.call(&[
+        // Job arguments must not be able to claim an unregistered project.
+        json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"job_start","arguments":{"project_id":"unregistered","cwd":".","command":"echo hi","timeout_seconds":60}}}),
+        // Unknown/stale job id is a bounded business rejection, not a panic.
+        json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"job_poll","arguments":{"project_id":"project-1","job_id":"wcjob-does-not-exist","stdout_cursor":0,"stderr_cursor":0}}}),
+        json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"job_cancel","arguments":{"project_id":"project-1","job_id":"wcjob-does-not-exist"}}}),
+        // Authority-widening extra keys are rejected by exact schema validation.
+        json!({"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"job_start","arguments":{"project_id":"project-1","cwd":".","command":"echo hi","timeout_seconds":60,"environment":"inherit"}}}),
+        json!({"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"job_start","arguments":{"project_id":"project-1","cwd":"/","command":"echo hi","timeout_seconds":60}}}),
+        // An unwaited-out job id belonging to another project is denied.
+        json!({"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"job_poll","arguments":{"project_id":"unregistered","job_id":"wcjob-anything","stdout_cursor":0,"stderr_cursor":0}}}),
+    ]);
+    assert_eq!(responses[0]["error"]["code"], -32000);
+    assert_eq!(responses[1]["error"]["code"], -32602);
+    assert_eq!(responses[2]["error"]["code"], -32602);
+    assert_eq!(
+        responses[3]["error"]["code"], -32602,
+        "extra key must fail closed"
+    );
+    assert_eq!(
+        responses[4]["error"]["code"], -32602,
+        "absolute cwd must fail closed"
+    );
+    assert_eq!(responses[5]["error"]["code"], -32000);
+}
+
+#[test]
+fn lsp_surface_cannot_be_given_an_executable_or_execute_command() {
+    let fixture = Fixture::new();
+    let responses = fixture.call(&[
+        // Caller cannot choose the language-server executable.
+        json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"lsp_symbols","arguments":{"project_id":"project-1","path":"src/lib.rs","limit":10,"executable":"/bin/sh"}}}),
+        json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"lsp_definition","arguments":{"project_id":"project-1","path":"src/lib.rs","line":1,"column":1,"limit":10,"server_path":"/tmp/evil"}}}),
+        // Caller cannot request workspace/executeCommand.
+        json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"lsp_references","arguments":{"project_id":"project-1","path":"src/lib.rs","line":1,"column":1,"include_declaration":true,"limit":10,"executeCommand":"workspace/executeCommand"}}}),
+        // Paths outside the registered project are refused before any server start.
+        json!({"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"lsp_diagnostics","arguments":{"project_id":"project-1","path":"/etc/passwd","limit":10}}}),
+        json!({"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"lsp_symbols","arguments":{"project_id":"project-1","path":"../../escape.rs","limit":10}}}),
+        // Unregistered project has no LSP authority at all.
+        json!({"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"lsp_symbols","arguments":{"project_id":"unregistered","path":"src/lib.rs","limit":10}}}),
+        // Positions are bounded and 1-based.
+        json!({"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"lsp_definition","arguments":{"project_id":"project-1","path":"src/lib.rs","line":0,"column":1,"limit":10}}}),
+    ]);
+    for response in responses.iter().take(5) {
+        assert_eq!(
+            response["error"]["code"], -32602,
+            "LSP authority widening was not rejected at the schema/path gate: {response}"
+        );
+    }
+    // An unregistered project has no LSP authority at all: -32000, not a schema error.
+    assert_eq!(responses[5]["error"]["code"], -32000);
 }
 
 #[test]
@@ -191,7 +272,6 @@ fn rpc_version_and_unknown_methods_fail_closed() {
 }
 
 #[test]
-#[ignore = "requires real macOS broker enforcement; ENV_BLOCKED must fail the harness"]
 fn brokered_file_gate_rejects_git_and_external_paths_and_stale_edits() {
     let fixture = Fixture::new();
     let file = fixture.root.join("sample.txt");
@@ -229,7 +309,6 @@ fn brokered_file_gate_rejects_git_and_external_paths_and_stale_edits() {
 }
 
 #[test]
-#[ignore = "requires real macOS broker enforcement; ENV_BLOCKED must fail the harness"]
 fn brokered_file_gate_rechecks_resolved_sensitive_paths_and_keeps_safe_links() {
     let fixture = Fixture::new();
     let git = fixture.root.join(".git");
@@ -270,7 +349,6 @@ fn brokered_file_gate_rechecks_resolved_sensitive_paths_and_keeps_safe_links() {
 }
 
 #[test]
-#[ignore = "requires real macOS broker enforcement; ENV_BLOCKED must fail the harness"]
 fn brokered_search_reports_unreadable_paths_as_partial() {
     let fixture = Fixture::new();
     assert_ne!(
