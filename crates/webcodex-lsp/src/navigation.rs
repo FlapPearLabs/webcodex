@@ -253,11 +253,25 @@ fn read_document_text(file: &Path) -> Result<String, RunnerLspResultEnvelope> {
     }
     // A symlinked final component is refused outright rather than followed, so
     // the descriptor can only ever be the object the containment check named.
-    if advisory.file_type().is_symlink() {
-        return Err(RunnerLspResultEnvelope::err(
-            error_codes::FILE_NOT_FOUND,
-            "document path is a symlink",
-        ));
+    //
+    // `symlink_metadata` is lstat(2): it reports the link itself. `fs::metadata`
+    // is stat(2) and FOLLOWS the link, so it would report the target and this
+    // check could never fire — leaving O_NOFOLLOW as the only thing standing
+    // between a swapped link and an out-of-project read.
+    match fs::symlink_metadata(file) {
+        Ok(meta) if meta.file_type().is_symlink() => {
+            return Err(RunnerLspResultEnvelope::err(
+                error_codes::FILE_NOT_FOUND,
+                "document path is a symlink",
+            ));
+        }
+        Ok(_) => {}
+        Err(_) => {
+            return Err(RunnerLspResultEnvelope::err(
+                error_codes::FILE_NOT_FOUND,
+                "failed to read file",
+            ))
+        }
     }
 
     // O_NOFOLLOW: refuse to traverse a symlink at the final component, so the
@@ -2186,8 +2200,8 @@ mod document_read_tests {
     ///
     /// Asserting the composed value catches the exact class of defect that
     /// shipped: a literal that compiles, links, and silently sets the wrong
-    /// bit. It also pins the platform, so a value copied from another OS
-    /// cannot pass here.
+    /// bit. Pinning to `libc` also means the value is correct per platform, so
+    /// this holds on both macOS and Linux.
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn document_open_flags_request_nofollow_on_this_platform() {
@@ -2200,12 +2214,6 @@ mod document_read_tests {
             DOCUMENT_OPEN_FLAGS & libc::O_NONBLOCK,
             libc::O_NONBLOCK,
             "O_NONBLOCK must be set on this platform"
-        );
-        // The historical wrong literal must never come back.
-        assert_ne!(
-            libc::O_NOFOLLOW,
-            0o400000,
-            "this platform's O_NOFOLLOW unexpectedly equals the Linux literal that broke the read"
         );
     }
 
