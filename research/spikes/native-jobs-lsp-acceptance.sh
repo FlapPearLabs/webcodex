@@ -443,18 +443,46 @@ say "listener port:   ${LISTENER_PORT:-none}"
 say ""
 
 # Registry for the chatgpt-safe profile.
+#
+# CONTRACT (crates/webcodex-chatgpt-safe/src/main.rs:68-73,166-167):
+#   #[serde(deny_unknown_fields)]
+#   struct Registry { id: String, name: String, root: PathBuf }
+#
+# It is a FLAT object, not a list of projects, and the field is `root`, not
+# `path`. `deny_unknown_fields` means both a missing and an extra key are hard
+# errors. An earlier version of this harness wrote
+# {"projects":[{"id","name","path"}]}, which is the shape used by a different
+# tool in this repo; App::load then failed before serve() ever ran, the child
+# exited, and the driver reported the result as a JSONDecodeError on empty
+# stdout instead of the actual startup error.
 cat >"$REGISTRY" <<JSON
 {
-  "projects": [
-    {
-      "id": "native-accept",
-      "name": "native-accept",
-      "path": "$PROJECT"
-    }
-  ]
+  "id": "native-accept",
+  "name": "native-accept",
+  "root": "$PROJECT"
 }
 JSON
 say "registry: $REGISTRY"
+
+# Preflight: prove the candidate can actually load THIS registry file, using the
+# same accepted `status` subcommand and the same path the MCP driver will use.
+# Without this, a registry rejection only shows up as an unreadable MCP stream.
+PREFLIGHT_OUT="$(mktemp -t webcodex-native-preflight.XXXXXX)"
+PREFLIGHT_ERR="$(mktemp -t webcodex-native-preflight-err.XXXXXX)"
+if "$BIN_PATH" status --registry "$REGISTRY" >"$PREFLIGHT_OUT" 2>"$PREFLIGHT_ERR"; then
+  say "registry preflight: accepted"
+  say "  $(head -c 200 "$PREFLIGHT_OUT")"
+else
+  preflight_rc=$?
+  say "registry preflight: REJECTED (rc=$preflight_rc)"
+  say "  the candidate refused the generated registry:"
+  # Bounded tail only. This binary prints diagnostics, never credentials, but a
+  # harness must not assume that about arbitrary future stderr.
+  tail -20 "$PREFLIGHT_ERR" 2>/dev/null | head -20
+  rm -f "$PREFLIGHT_OUT" "$PREFLIGHT_ERR"
+  fail "candidate could not load the harness registry (MCP_CHILD_STARTUP_FAILURE precondition)"
+fi
+rm -f "$PREFLIGHT_OUT" "$PREFLIGHT_ERR"
 say ""
 
 # ---------------------------------------------------------------------------
@@ -479,6 +507,52 @@ proc = subprocess.Popen(
     text=True, bufsize=1, env={**os.environ, "HOME": work},
 )
 _rid = [0]
+
+def _child_startup_failure(reason):
+    """Classify an early child exit instead of degrading into a decode error.
+
+    `readline()` returning "" means the child closed stdout. The overwhelmingly
+    most likely cause is that it exited before serving — for example because it
+    rejected its registry during App::load — and the real reason is on stderr.
+    Reporting that as JSONDecodeError hides the actual defect, so surface the
+    exit code and a bounded, redacted stderr tail instead.
+    """
+    try:
+        rc = proc.poll()
+        if rc is None:
+            # Still running but closed stdout: it is not going to answer.
+            try:
+                proc.terminate()
+                proc.wait(timeout=5)
+            except Exception:
+                pass
+            rc = proc.poll()
+    except Exception:
+        rc = None
+    sys.stderr.write("MCP_CHILD_STARTUP_FAILURE: %s\n" % reason)
+    sys.stderr.write("  child exit code: %s\n" % ("(still running)" if rc is None else rc))
+    try:
+        tail = proc.stderr.read() or ""
+    except Exception:
+        tail = ""
+    if tail.strip():
+        # Bounded tail, and strip anything token-shaped before printing: this
+        # output is a diagnostic, but a harness must not become a leak path.
+        safe = []
+        for line in tail.strip().splitlines()[-25:]:
+            low = line.lower()
+            if any(m in low for m in ("bearer", "api_key", "api-key", "secret",
+                                      "token", "password")):
+                safe.append("  <redacted: credential-shaped stderr line>")
+            else:
+                safe.append("  " + line[:400])
+        sys.stderr.write("  child stderr (bounded, redacted):\n" + "\n".join(safe) + "\n")
+    else:
+        sys.stderr.write("  child stderr: (empty)\n")
+    sys.stderr.flush()
+    raise SystemExit(3)
+
+
 def send(method, params=None, notify=False):
     _rid[0] += 1
     msg = {"jsonrpc": "2.0", "method": method}
@@ -486,9 +560,26 @@ def send(method, params=None, notify=False):
         msg["id"] = _rid[0]
     if params is not None:
         msg["params"] = params
-    proc.stdin.write(json.dumps(msg) + "\n"); proc.stdin.flush()
+    try:
+        proc.stdin.write(json.dumps(msg) + "\n"); proc.stdin.flush()
+    except (BrokenPipeError, OSError) as exc:
+        _child_startup_failure("could not write %s to the child (%s)" % (method, exc))
     if notify: return None
-    return json.loads(proc.stdout.readline())
+    try:
+        line = proc.stdout.readline()
+    except Exception as exc:
+        _child_startup_failure("could not read the %s response (%s)" % (method, exc))
+    if line == "":
+        _child_startup_failure(
+            "child closed stdout before answering %s" % method)
+    try:
+        return json.loads(line)
+    except json.JSONDecodeError:
+        sys.stderr.write(
+            "MCP_CHILD_STARTUP_FAILURE: non-JSON reply to %s: %r\n"
+            % (method, line[:400]))
+        sys.stderr.flush()
+        raise SystemExit(3)
 
 def call(name, args):
     return send("tools/call", {"name": name, "arguments": args})
@@ -499,7 +590,11 @@ try:
     send("notifications/initialized", notify=True)
     rec("tools", [t["name"] for t in send("tools/list")["result"]["tools"]])
     rec("project_select", call("project_select", {"project_id": project_id}))
-    rec("project_current", call("project_current", {}))
+    # CONTRACT: project_current requires {"project_id": ...}
+    # (main.rs:517-518 exact_keys(&args,["project_id"]); schema required:["project_id"]).
+    # Calling it with {} returns -32602, which would make this check fail for a
+    # schema reason rather than because the project identity is wrong.
+    rec("project_current", call("project_current", {"project_id": project_id}))
 
     rec("files_search", call("files_search", {"project_id": project_id, "query": "helper"}))
     rec("files_read", call("files_read", {"project_id": project_id, "path": "src/lib.rs",
@@ -519,6 +614,14 @@ try:
                                                   "include_declaration": True, "limit": 20}))
     rec("lsp_diagnostics", call("lsp_diagnostics", {"project_id": project_id, "path": "src/lib.rs", "limit": 50}))
     rec("lsp_escape", call("lsp_symbols", {"project_id": project_id, "path": "../host-secret.txt", "limit": 10}))
+    # NEGATIVE CONTROLS. These inject fields the schemas do not declare, so the
+    # candidate must reject them at the ARGUMENT LAYER (-32602 from
+    # exact_keys_optional) before any LSP is spawned. That is the correct and
+    # desired security outcome — but note the rejection is a schema rejection,
+    # not an LSP-level refusal. Do not "fix" a failure here by adding these
+    # fields to the lsp_* schemas: a field the model may send is a field the
+    # model controls. lsp_definition declares only [limit] as optional;
+    # lsp_references only [include_declaration, limit].
     rec("lsp_exec_arg", call("lsp_definition", {"project_id": project_id, "path": "src/lib.rs",
                                                "line": 1, "column": 1, "limit": 10,
                                                "executable": "/bin/sh"}))
