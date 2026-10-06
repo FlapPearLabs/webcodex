@@ -18,6 +18,14 @@ sha2 = "0.10"
 tracing = "0.1"
 url = "2"
 
+# O_NOFOLLOW is load-bearing for document reads: hand-written flag literals were
+# silently wrong on Darwin (0o400000 is O_NOCTTY there, not O_NOFOLLOW), which
+# left the symlink window open while the code read as if it were closed. Only
+# the libc constants are correct per platform, so this is a real dependency
+# rather than an optimisation.
+[target.'cfg(any(target_os = "macos", target_os = "linux"))'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 tempfile = "3"
 

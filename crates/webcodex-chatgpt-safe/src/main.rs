@@ -545,9 +545,10 @@ fn tool_call(app: &App, params: &Value) -> Result<Value, (i64, &'static str)> {
                 .spawn_job(app, &app.project.id, cwd_rel, command, timeout)?
         }
         "job_poll" => {
-            exact_keys(
+            exact_keys_optional(
                 &args,
-                &["project_id", "job_id", "stdout_cursor", "stderr_cursor"],
+                &["project_id", "job_id"],
+                &["stdout_cursor", "stderr_cursor"],
             )?;
             check_project(app, &args)?;
             let job_id = args["job_id"]
@@ -571,7 +572,7 @@ fn tool_call(app: &App, params: &Value) -> Result<Value, (i64, &'static str)> {
             app.jobs.lock().unwrap().cancel(&app.project.id, job_id)?
         }
         "lsp_symbols" => {
-            exact_keys(&args, &["project_id", "path", "limit"])?;
+            exact_keys_optional(&args, &["project_id", "path"], &["limit"])?;
             check_project(app, &args)?;
             app.check_root()
                 .map_err(|_| (-32000, "project authority unavailable"))?;
@@ -590,7 +591,7 @@ fn tool_call(app: &App, params: &Value) -> Result<Value, (i64, &'static str)> {
             )?
         }
         "lsp_definition" => {
-            exact_keys(&args, &["project_id", "path", "line", "column", "limit"])?;
+            exact_keys_optional(&args, &["project_id", "path", "line", "column"], &["limit"])?;
             check_project(app, &args)?;
             app.check_root()
                 .map_err(|_| (-32000, "project authority unavailable"))?;
@@ -612,16 +613,10 @@ fn tool_call(app: &App, params: &Value) -> Result<Value, (i64, &'static str)> {
             )?
         }
         "lsp_references" => {
-            exact_keys(
+            exact_keys_optional(
                 &args,
-                &[
-                    "project_id",
-                    "path",
-                    "line",
-                    "column",
-                    "include_declaration",
-                    "limit",
-                ],
+                &["project_id", "path", "line", "column"],
+                &["include_declaration", "limit"],
             )?;
             check_project(app, &args)?;
             app.check_root()
@@ -646,7 +641,7 @@ fn tool_call(app: &App, params: &Value) -> Result<Value, (i64, &'static str)> {
             )?
         }
         "lsp_diagnostics" => {
-            exact_keys(&args, &["project_id", "path", "limit"])?;
+            exact_keys_optional(&args, &["project_id", "path"], &["limit"])?;
             check_project(app, &args)?;
             app.check_root()
                 .map_err(|_| (-32000, "project authority unavailable"))?;
@@ -678,6 +673,36 @@ fn exact_keys(value: &Value, keys: &[&str]) -> Result<(), (i64, &'static str)> {
         .ok_or((-32602, "arguments must be an object"))?;
     if object.len() != keys.len() || object.keys().any(|k| !keys.contains(&k.as_str())) {
         return Err((-32602, "arguments contain missing or unknown keys"));
+    }
+    Ok(())
+}
+
+/// Validate a business argument object against a required set plus a set of
+/// declared-optional keys.
+///
+/// A tool schema advertises optional arguments, so the handler must accept a
+/// call that omits them — otherwise every schema-conformant call fails
+/// validation and the advertised contract is uncallable. Unknown keys are still
+/// rejected outright: optionality is declared per key, never open-ended, so this
+/// cannot become a hole for smuggling authority-bearing fields.
+fn exact_keys_optional(
+    value: &Value,
+    required: &[&str],
+    optional: &[&str],
+) -> Result<(), (i64, &'static str)> {
+    let object = value
+        .as_object()
+        .ok_or((-32602, "arguments must be an object"))?;
+    if object
+        .keys()
+        .any(|k| !required.contains(&k.as_str()) && !optional.contains(&k.as_str()))
+    {
+        return Err((-32602, "arguments contain unknown keys"));
+    }
+    for key in required {
+        if !object.contains_key(*key) {
+            return Err((-32602, "arguments contain missing or unknown keys"));
+        }
     }
     Ok(())
 }
@@ -1229,6 +1254,48 @@ impl JobOutput {
         self.total += record_len as u64;
     }
 
+    /// Snap an arbitrary byte offset down to the nearest record boundary.
+    ///
+    /// A caller controls the cursor, so it can arrive pointing into the middle
+    /// of a record. Indexing there reads a length field out of payload bytes,
+    /// immediately fails the `i + rec <= len` bound, and returns nothing — and
+    /// because the next cursor is then the same offset, the caller is stuck
+    /// forever on an empty delta. Snapping down to the enclosing boundary is
+    /// lossless: the caller re-reads bytes it already had rather than skipping
+    /// any it never saw.
+    ///
+    /// Returns the snapped offset and whether it was already exact.
+    fn floor_boundary(&self, offset: usize) -> (usize, bool) {
+        let mut boundary = 0usize;
+        let mut exact = offset == 0;
+        let mut i = 0usize;
+        while i < offset && i + 5 <= self.buf.len() {
+            let len = u32::from_be_bytes([
+                self.buf[i + 1],
+                self.buf[i + 2],
+                self.buf[i + 3],
+                self.buf[i + 4],
+            ]) as usize;
+            let rec = 5 + len;
+            if i + rec > self.buf.len() {
+                // A partial trailing record: it is not a usable boundary.
+                break;
+            }
+            i += rec;
+            if i == offset {
+                exact = true;
+            }
+            if i < offset {
+                boundary = i;
+            }
+        }
+        if exact {
+            (offset, true)
+        } else {
+            (boundary, false)
+        }
+    }
+
     // Returns (stdout_delta, stderr_delta, next_cursor, history_lost, capped).
     //
     // stdout and stderr are interleaved in ONE record stream, so they must be
@@ -1238,7 +1305,7 @@ impl JobOutput {
     // boundary that was actually delivered in full, so an incremental caller
     // can never silently skip output it has not seen.
     fn read_since(&self, cursor: u64) -> (Vec<u8>, Vec<u8>, u64, bool, bool) {
-        let start: usize = if cursor < self.dropped {
+        let requested: usize = if cursor < self.dropped {
             0usize
         } else {
             (cursor - self.dropped) as usize
@@ -1246,7 +1313,15 @@ impl JobOutput {
         // A cursor below the eviction watermark means the caller's history was
         // discarded; `self.truncated` means it may have been discarded earlier.
         let history_lost: bool = cursor < self.dropped || self.truncated;
-        let mut i = start.min(self.buf.len());
+        // Never index into the middle of a record: that both loses the rest of
+        // the stream and can stall the caller permanently.
+        let (mut i, exact) = self.floor_boundary(requested.min(self.buf.len()));
+        if !exact {
+            // Re-reading from an earlier boundary means the caller's cursor was
+            // not one this server issued, so its view of history is incomplete.
+            // Report it as lost rather than letting it believe it is in sync.
+            return (Vec::new(), Vec::new(), self.dropped + i as u64, true, false);
+        }
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
         let mut capped = false;
@@ -1291,14 +1366,25 @@ impl JobOutput {
     }
 }
 
+/// Immutable terminal snapshot published atomically.
+///
+/// The three fields are written together and read together. Keeping them in
+/// separate mutexes let a reader observe a half-published transition (a
+/// running state with a final exit code), which is a self-contradictory answer
+/// to "how did this job end?".
+#[derive(Clone, Copy)]
+struct JobTerminal {
+    state: JobState,
+    exit_code: Option<i32>,
+    duration_ms: Option<u64>,
+}
+
 struct JobRecord {
     project_id: String,
     started_at_unix: u64,
     deadline_unix: u64,
     cancel: Arc<AtomicBool>,
-    state: Mutex<JobState>,
-    exit_code: Mutex<Option<i32>>,
-    duration_ms: Mutex<Option<u64>>,
+    terminal: Mutex<JobTerminal>,
     output: Arc<Mutex<JobOutput>>,
 }
 
@@ -1330,7 +1416,9 @@ impl JobRegistry {
         let terminal: Vec<String> = self
             .jobs
             .iter()
-            .filter(|(_, record)| !matches!(*record.state.lock().unwrap(), JobState::Running))
+            .filter(|(_, record)| {
+                !matches!(record.terminal.lock().unwrap().state, JobState::Running)
+            })
             .map(|(id, _)| id.clone())
             .collect();
         let excess = terminal.len().saturating_sub(MAX_RETAINED_TERMINAL_JOBS);
@@ -1355,7 +1443,7 @@ impl JobRegistry {
         let live = self
             .jobs
             .values()
-            .filter(|record| matches!(*record.state.lock().unwrap(), JobState::Running))
+            .filter(|record| matches!(record.terminal.lock().unwrap().state, JobState::Running))
             .count();
         if live >= MAX_CONCURRENT_JOBS {
             return Err((
@@ -1378,9 +1466,11 @@ impl JobRegistry {
             started_at_unix: now,
             deadline_unix: now + deadline_seconds,
             cancel: Arc::new(AtomicBool::new(false)),
-            state: Mutex::new(JobState::Running),
-            exit_code: Mutex::new(None),
-            duration_ms: Mutex::new(None),
+            terminal: Mutex::new(JobTerminal {
+                state: JobState::Running,
+                exit_code: None,
+                duration_ms: None,
+            }),
             output: Arc::new(Mutex::new(JobOutput::new())),
         });
         self.jobs.insert(job_id.clone(), record.clone());
@@ -1422,19 +1512,32 @@ impl JobRegistry {
                 "AUTHORITY_DENIED: job does not belong to the selected project",
             ));
         }
-        let state = *record.state.lock().unwrap();
+        // One lock for the whole snapshot. Reading state, exit_code and
+        // duration_ms separately can report JOB_RUNNING alongside a populated
+        // exit code, or a terminal status with a null duration, because the
+        // writer publishes them one lock at a time.
+        //
         // stdout and stderr share one interleaved record stream, so they are
         // read in a single scan from a single position. Taking the minimum of
         // the two cursors is lossless: a caller that has consumed up to N
         // re-reads from N and never skips a record it has not already seen.
         let from = stdout_cursor.min(stderr_cursor);
-        let (out_d, err_d, next, history_lost, capped) = {
-            let guard = record.output.lock().unwrap();
-            guard.read_since(from)
+        let (out_d, err_d, next, history_lost, capped, total, state, exit_code, duration_ms) = {
+            let guard = record.terminal.lock().unwrap();
+            let output = record.output.lock().unwrap();
+            let (out_d, err_d, next, history_lost, capped) = output.read_since(from);
+            (
+                out_d,
+                err_d,
+                next,
+                history_lost,
+                capped,
+                output.total,
+                guard.state,
+                guard.exit_code,
+                guard.duration_ms,
+            )
         };
-        let exit_code = *record.exit_code.lock().unwrap();
-        let duration_ms = *record.duration_ms.lock().unwrap();
-        let total = { record.output.lock().unwrap().total };
         Ok(json!({
             "job_id": job_id,
             "project_id": project_id,
@@ -1472,7 +1575,7 @@ impl JobRegistry {
                 "AUTHORITY_DENIED: job does not belong to the selected project",
             ));
         }
-        let already_terminal = !matches!(*record.state.lock().unwrap(), JobState::Running);
+        let already_terminal = !matches!(record.terminal.lock().unwrap().state, JobState::Running);
         record.cancel.store(true, Ordering::SeqCst);
         Ok(json!({
             "job_id": job_id,
@@ -1551,51 +1654,15 @@ fn job_runner(
         }
         let status = child.try_wait().ok().flatten();
         if status.is_some() {
-            let mut tree_exited;
-            let cleanup_deadline = Instant::now() + DRAIN_TAIL;
-            loop {
-                let mut buf = [0u8; JOB_READ_CHUNK];
-                loop {
-                    match stdout.read(&mut buf) {
-                        Ok(0) => {
-                            out_eof = true;
-                            break;
-                        }
-                        Ok(n) => output.lock().unwrap().push(0, &buf[..n]),
-                        Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
-                        Err(_) => {
-                            // Not EOF: the stream failed, so captured output is incomplete.
-                            read_failed = true;
-                            out_eof = true;
-                            break;
-                        }
-                    }
-                }
-                loop {
-                    match stderr.read(&mut buf) {
-                        Ok(0) => {
-                            err_eof = true;
-                            break;
-                        }
-                        Ok(n) => output.lock().unwrap().push(1, &buf[..n]),
-                        Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
-                        Err(_) => {
-                            // Not EOF: the stream failed, so captured output is incomplete.
-                            read_failed = true;
-                            err_eof = true;
-                            break;
-                        }
-                    }
-                }
-                tree_exited = child.wait_tree_exit(Duration::ZERO).unwrap_or(false);
-                if out_eof && err_eof && tree_exited {
-                    break;
-                }
-                if Instant::now() >= cleanup_deadline {
-                    break;
-                }
-                thread::sleep(JOB_SLEEP);
-            }
+            let tree_exited = drain_job_pipes(
+                &child,
+                &output,
+                &mut stdout,
+                &mut stderr,
+                &mut out_eof,
+                &mut err_eof,
+                &mut read_failed,
+            );
             let code = status.unwrap().code();
             // Succeeded/FAILED require trustworthy output: both pipes must have
             // reached clean EOF, the whole process tree must be provably gone,
@@ -1633,6 +1700,23 @@ fn job_runner(
             } else {
                 JobState::OutcomeUnknown
             };
+            // A terminated tree often still has buffered bytes in its pipes.
+            // Drain them before recording the terminal state, and mark the
+            // output truncated if the drain did not reach clean EOF — otherwise
+            // the caller is told the output is complete while most of it is
+            // silently discarded.
+            let drained = drain_job_pipes(
+                &child,
+                &output,
+                &mut stdout,
+                &mut stderr,
+                &mut out_eof,
+                &mut err_eof,
+                &mut read_failed,
+            );
+            if !(out_eof && err_eof && !read_failed) || !drained {
+                output.lock().unwrap().mark_truncated();
+            }
             record_terminal(&record, outcome, code, started);
             return;
         }
@@ -1648,11 +1732,90 @@ fn job_runner(
             } else {
                 JobState::OutcomeUnknown
             };
+            // Same contract as cancellation: a timed-out tree can have buffered
+            // output, so drain it and report truncation honestly.
+            let drained = drain_job_pipes(
+                &child,
+                &output,
+                &mut stdout,
+                &mut stderr,
+                &mut out_eof,
+                &mut err_eof,
+                &mut read_failed,
+            );
+            if !(out_eof && err_eof && !read_failed) || !drained {
+                output.lock().unwrap().mark_truncated();
+            }
             record_terminal(&record, outcome, code, started);
             return;
         }
         thread::sleep(JOB_SLEEP);
     }
+}
+
+/// Drain both job pipes to EOF (or to `DRAIN_TAIL`) and wait for the tree to
+/// exit. Returns whether the whole tree was observed gone.
+///
+/// Shared by every terminal path. A path that terminates a job without
+/// draining would discard whatever was still buffered and then report the
+/// output as complete, which is the fabricated-success pattern this module
+/// exists to prevent.
+#[cfg(unix)]
+fn drain_job_pipes(
+    child: &ManagedChild,
+    output: &Mutex<JobOutput>,
+    stdout: &mut std::process::ChildStdout,
+    stderr: &mut std::process::ChildStderr,
+    out_eof: &mut bool,
+    err_eof: &mut bool,
+    read_failed: &mut bool,
+) -> bool {
+    use std::io::Read;
+    let cleanup_deadline = Instant::now() + DRAIN_TAIL;
+    let mut tree_exited;
+    loop {
+        let mut buf = [0u8; JOB_READ_CHUNK];
+        loop {
+            match stdout.read(&mut buf) {
+                Ok(0) => {
+                    *out_eof = true;
+                    break;
+                }
+                Ok(n) => output.lock().unwrap().push(0, &buf[..n]),
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
+                Err(_) => {
+                    // Not EOF: the stream failed, so captured output is incomplete.
+                    *read_failed = true;
+                    *out_eof = true;
+                    break;
+                }
+            }
+        }
+        loop {
+            match stderr.read(&mut buf) {
+                Ok(0) => {
+                    *err_eof = true;
+                    break;
+                }
+                Ok(n) => output.lock().unwrap().push(1, &buf[..n]),
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
+                Err(_) => {
+                    *read_failed = true;
+                    *err_eof = true;
+                    break;
+                }
+            }
+        }
+        tree_exited = child.wait_tree_exit(Duration::ZERO).unwrap_or(false);
+        if *out_eof && *err_eof && tree_exited {
+            break;
+        }
+        if Instant::now() >= cleanup_deadline {
+            break;
+        }
+        thread::sleep(JOB_SLEEP);
+    }
+    tree_exited
 }
 
 #[cfg(not(unix))]
@@ -1670,14 +1833,16 @@ fn record_terminal(record: &Arc<JobRecord>, state: JobState, code: Option<i32>, 
     // First terminal verdict wins. A later observation (for example a cancel
     // landing after the process already exited and was reaped) must not
     // overwrite a real recorded outcome with a weaker or contradictory one.
-    let mut slot = record.state.lock().unwrap();
-    if !matches!(*slot, JobState::Running) {
+    //
+    // The three fields are published together under one lock so a concurrent
+    // poll can never read a state that disagrees with its exit code.
+    let mut slot = record.terminal.lock().unwrap();
+    if !matches!(slot.state, JobState::Running) {
         return;
     }
-    *record.exit_code.lock().unwrap() = code;
-    *record.duration_ms.lock().unwrap() =
-        Some(Instant::now().duration_since(started).as_millis() as u64);
-    *slot = state;
+    slot.exit_code = code;
+    slot.duration_ms = Some(Instant::now().duration_since(started).as_millis() as u64);
+    slot.state = state;
 }
 
 // ===========================================================================

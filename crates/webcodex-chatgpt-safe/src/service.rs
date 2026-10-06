@@ -225,13 +225,24 @@ pub fn install(config: &ServiceConfig) -> Result<String, String> {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("cannot create LaunchAgents directory: {e}"))?;
     }
-    // Refuse to overwrite a plist this tool does not own.
-    if let Ok(existing) = std::fs::read_to_string(&plist) {
-        if !existing.contains(OWNER_MARKER) {
+    // Refuse to overwrite a plist this tool does not own. An unreadable plist
+    // is NOT treated as absent: ownership would be unverified, and overwriting
+    // it could destroy a foreign agent definition.
+    match std::fs::read_to_string(&plist) {
+        Ok(existing) => {
+            if !existing.contains(OWNER_MARKER) {
+                return Err(format!(
+                    "refusing to overwrite unmanaged plist: {}",
+                    plist.display()
+                ));
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
             return Err(format!(
-                "refusing to overwrite unmanaged plist: {}",
+                "cannot verify ownership of {}: {error}; refusing to overwrite",
                 plist.display()
-            ));
+            ))
         }
     }
     let stderr_path = config.log_dir()?.join("chatgpt-safe.err.log");
@@ -509,7 +520,17 @@ pub fn uninstall() -> Result<String, String> {
                     plist.display()
                 ))
             }
-            Err(_) => {}
+            // Only a genuinely absent plist is a no-op. Any other IO failure
+            // (permissions, unreadable file) means ownership is UNVERIFIED, and
+            // reporting UNINSTALLED while the file is still on disk would be
+            // claiming a removal that never happened.
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => {
+                return Err(format!(
+                    "cannot verify ownership of {}: {error}; refusing to report UNINSTALLED",
+                    plist.display()
+                ))
+            }
         }
     }
     Ok(json!({

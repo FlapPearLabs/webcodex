@@ -9,14 +9,14 @@
   "production_origin_sources": [
     {
       "path": "crates/webcodex-chatgpt-safe/src/main.rs",
-      "sha256": "4ce90cce88f34eec79c7b53035e5095fce33e3b798db460728f49f96182f29f9",
+      "sha256": "f63d2a503a567c6d381a00e702d69f6819933f659018ac9a97892d07864d8182",
       "targets": [
         "webcodex-chatgpt-safe:webcodex-chatgpt-safe"
       ]
     },
     {
       "path": "crates/webcodex-chatgpt-safe/src/service.rs",
-      "sha256": "7444d8da6ca656edf7adebe66273181888f8ec441ec75584e5a1b8794904bca3",
+      "sha256": "cdabcbd69816acbde9d6f59a81e39adfca7f690728cf397edbe4e0b01a087a9e",
       "targets": [
         "webcodex-chatgpt-safe:webcodex-chatgpt-safe"
       ]

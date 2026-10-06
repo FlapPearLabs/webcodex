@@ -386,3 +386,70 @@ fn unknown_chatgpt_subcommand_and_option_fail_closed() {
     assert!(!ok);
     assert!(stderr.contains("unknown chatgpt option"), "{stderr}");
 }
+
+/// An unreadable plist means ownership is UNVERIFIED, not absent.
+///
+/// Both destructive paths previously treated any read failure as "there is
+/// nothing here": `install` skipped the ownership check and overwrote the file,
+/// and `uninstall` reported UNINSTALLED while the plist was still on disk.
+/// That is error-swallowing-as-success on the exact paths that guard a
+/// user-level agent definition, so both must fail closed instead.
+#[test]
+fn install_and_uninstall_fail_closed_on_an_unreadable_plist() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let fixture = Fixture::new();
+    let plist = fixture.plist();
+    let foreign = "<?xml version=\"1.0\"?><plist version=\"1.0\"><dict/></plist>";
+    std::fs::write(&plist, foreign).expect("write foreign plist");
+
+    // Write-only: readable=False, writable=True. This is the dangerous case —
+    // install could clobber the file but could not verify who owns it.
+    std::fs::set_permissions(&plist, std::fs::Permissions::from_mode(0o200))
+        .expect("make plist write-only");
+    let readable = {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::metadata(&plist)
+            .map(|m| m.permissions().mode() & 0o400 != 0)
+            .unwrap_or(false)
+    };
+    if readable {
+        // Running as a user for whom mode bits are not enforced; the assertions
+        // below would not prove anything, so do not pretend they did.
+        eprintln!("skipping: ownership bits are not enforced for this user");
+        return;
+    }
+
+    let (ok, _, stderr) = fixture.chatgpt(&fixture.install_args());
+    assert!(!ok, "install must not overwrite a plist it cannot audit");
+    assert!(
+        stderr.contains("cannot verify ownership"),
+        "install must name the unverified ownership: {stderr}"
+    );
+    // Restore readability before comparing, then prove the content survived.
+    std::fs::set_permissions(&plist, std::fs::Permissions::from_mode(0o600)).expect("restore mode");
+    assert_eq!(
+        std::fs::read_to_string(&plist).unwrap(),
+        foreign,
+        "the unverified plist must be left byte-identical"
+    );
+    std::fs::set_permissions(&plist, std::fs::Permissions::from_mode(0o200)).expect("re-arm mode");
+
+    let (ok, stdout, stderr) = fixture.chatgpt(&["uninstall"]);
+    assert!(
+        !ok,
+        "uninstall must not report success without verified ownership"
+    );
+    assert!(
+        stderr.contains("cannot verify ownership"),
+        "uninstall must name the unverified ownership: {stderr}"
+    );
+    assert!(
+        !stdout.contains("UNINSTALLED"),
+        "uninstall must not claim UNINSTALLED: {stdout}"
+    );
+    assert!(plist.is_file(), "the plist must still exist");
+
+    // Restore permissions so the temp dir can clean up.
+    std::fs::set_permissions(&plist, std::fs::Permissions::from_mode(0o600)).ok();
+}

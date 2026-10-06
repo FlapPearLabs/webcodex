@@ -212,14 +212,19 @@ fn lsp_server_status_entry(
     }
 }
 
-/// `O_NOFOLLOW` on Darwin and Linux: fail rather than traverse a symlink at
-/// the final path component. Spelled as a literal so this crate keeps its
-/// dependency surface unchanged; the value is the `fcntl.h` constant on both.
-const O_NOFOLLOW_FLAG: i32 = 0o400000;
-/// `O_NONBLOCK` on Darwin/Linux. The descriptor is only read to EOF, so a
-/// blocking read would also be fine; this matches the ChatGPT-safe helper's
-/// `files_read` open flags.
-const O_NONBLOCK_FLAG: i32 = 0o4000;
+/// Open flags for a project document read.
+///
+/// These MUST come from `libc`, never from hand-written literals. The flag
+/// values are platform-specific and overlap: on Darwin `O_NOFOLLOW` is `0x100`
+/// while the Linux value `0o400000` is `O_NOCTTY` there, and Darwin
+/// `O_NONBLOCK` is `0x4` while the Linux value `0o4000` is `O_EXCL`. A
+/// literal therefore compiles, links, and silently fails to set the bit it
+/// claims to set — leaving the symlink window open while the code reads as if
+/// it were closed. Only the libc constants are correct per platform.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+const DOCUMENT_OPEN_FLAGS: i32 = libc::O_NOFOLLOW | libc::O_NONBLOCK;
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+const DOCUMENT_OPEN_FLAGS: i32 = 0;
 
 /// Read a validated project document with a pre-allocation size guard.
 ///
@@ -246,12 +251,20 @@ fn read_document_text(file: &Path) -> Result<String, RunnerLspResultEnvelope> {
             "file exceeds the LSP navigation document size limit",
         ));
     }
+    // A symlinked final component is refused outright rather than followed, so
+    // the descriptor can only ever be the object the containment check named.
+    if advisory.file_type().is_symlink() {
+        return Err(RunnerLspResultEnvelope::err(
+            error_codes::FILE_NOT_FOUND,
+            "document path is a symlink",
+        ));
+    }
 
     // O_NOFOLLOW: refuse to traverse a symlink at the final component, so the
     // descriptor is bound to the object the containment check approved.
     let mut file = fs::OpenOptions::new()
         .read(true)
-        .custom_flags(O_NOFOLLOW_FLAG | O_NONBLOCK_FLAG)
+        .custom_flags(DOCUMENT_OPEN_FLAGS)
         .open(file)
         .map_err(|_| {
             RunnerLspResultEnvelope::err(error_codes::FILE_NOT_FOUND, "failed to read file")
@@ -2123,4 +2136,104 @@ fn sanitize_path_message(message: impl Into<String>) -> String {
     // characters, and truncates. Kept as a named wrapper so agent call sites
     // state intent.
     bound_error_message(message.into())
+}
+
+#[cfg(test)]
+mod document_read_tests {
+    use super::*;
+    use std::os::unix::fs::symlink;
+
+    /// A document whose final component is a symlink must be refused, never
+    /// followed.
+    ///
+    /// This is the regression test for a real escape: the read was bound to an
+    /// already-canonicalized path, so if the symlink is followed at open time
+    /// the descriptor is bound to whatever the link points at — outside the
+    /// registered project. The earlier fix used hand-written flag literals
+    /// (`0o400000`, the *Linux* O_NOFOLLOW) which on Darwin resolve to
+    /// O_NOCTTY and set no protection at all, so the test must exercise the
+    /// real open path rather than assert on a constant.
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[test]
+    fn document_read_refuses_a_symlink_that_escapes_the_project() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("project");
+        fs::create_dir_all(&root).unwrap();
+
+        // The canary lives OUTSIDE the project root. Reading it through a
+        // symlink is exactly the escape this must prevent.
+        let canary = temp.path().join("outside.rs");
+        fs::write(&canary, "TOP-SECRET-CANARY-CONTENT").unwrap();
+
+        let link = root.join("lib.rs");
+        symlink(&canary, &link).unwrap();
+
+        let result = read_document_text(&link);
+        assert!(
+            result.is_err(),
+            "a symlinked document must be refused, got {:?}",
+            result.ok()
+        );
+        // And explicitly: the canary must not appear anywhere in the error.
+        let rendered = format!("{:?}", result.err());
+        assert!(
+            !rendered.contains("TOP-SECRET-CANARY-CONTENT"),
+            "the refusal must not carry document content: {rendered}"
+        );
+    }
+
+    /// The open flags must actually request O_NOFOLLOW on this platform.
+    ///
+    /// Asserting the composed value catches the exact class of defect that
+    /// shipped: a literal that compiles, links, and silently sets the wrong
+    /// bit. It also pins the platform, so a value copied from another OS
+    /// cannot pass here.
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[test]
+    fn document_open_flags_request_nofollow_on_this_platform() {
+        assert_eq!(
+            DOCUMENT_OPEN_FLAGS & libc::O_NOFOLLOW,
+            libc::O_NOFOLLOW,
+            "O_NOFOLLOW must be set on this platform"
+        );
+        assert_eq!(
+            DOCUMENT_OPEN_FLAGS & libc::O_NONBLOCK,
+            libc::O_NONBLOCK,
+            "O_NONBLOCK must be set on this platform"
+        );
+        // The historical wrong literal must never come back.
+        assert_ne!(
+            libc::O_NOFOLLOW,
+            0o400000,
+            "this platform's O_NOFOLLOW unexpectedly equals the Linux literal that broke the read"
+        );
+    }
+
+    /// A regular in-project document must still read normally, or the fix would
+    /// be "security" only by refusing everything.
+    #[test]
+    fn document_read_still_accepts_a_regular_project_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("project");
+        fs::create_dir_all(&root).unwrap();
+        let document = root.join("lib.rs");
+        fs::write(&document, "fn main() {}\n").unwrap();
+
+        let text = read_document_text(&document).expect("a regular file must read");
+        assert_eq!(text, "fn main() {}\n");
+    }
+
+    /// The size cap must survive the descriptor-based read.
+    #[test]
+    fn document_read_still_enforces_the_size_cap() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("project");
+        fs::create_dir_all(&root).unwrap();
+        let document = root.join("big.rs");
+        let oversized = vec![b'a'; (MAX_LSP_DOCUMENT_BYTES + 1) as usize];
+        fs::write(&document, &oversized).unwrap();
+
+        let result = read_document_text(&document);
+        assert!(result.is_err(), "an oversized document must be refused");
+    }
 }
