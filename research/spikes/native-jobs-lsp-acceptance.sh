@@ -17,22 +17,46 @@
 # A false "all pass" is worse than no result at all.
 #
 # It tests the exact current candidate bytes: it builds from the working tree
-# and pins the source SHA-256 of every file that defines the candidate, so a
-# result can never be attributed to different code than the one that ran.
+# and pins the source SHA-256 of every runtime file that defines the code this
+# suite exercises, so a result can never be attributed to different code than
+# the one that ran. The binding is audited against the real tree (the broker is
+# a directory module, not a flat file) and is itself self-tested: a missing
+# bound path, a mutated bound source, and the clean current candidate are each
+# verified to behave correctly before any build or product check runs.
 #
 # USAGE
 #   bash research/spikes/native-jobs-lsp-acceptance.sh
+#   bash research/spikes/native-jobs-lsp-acceptance.sh --identity-only
 #
 # EXIT CODES
 #   0  all required checks passed
 #   1  at least one required check FAILED
 #   2  preconditions not met (wrong environment, build failed, no cargo)
 #   3  host cannot apply a restrictive Seatbelt profile (ENV_BLOCKED, not a pass)
+#
+# `--identity-only` runs the candidate-source binding and its self-test, then
+# exits 0. It runs NO product check and applies NO sandbox, so it is safe on any
+# host. It exists because the binding is otherwise only reachable after the
+# Seatbelt precondition passes — which would leave the machinery that attributes
+# a result to specific bytes unverifiable on exactly the hosts that cannot
+# produce a result at all. It can never report a product PASS.
 
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CRATE="webcodex-chatgpt-safe"
+
+IDENTITY_ONLY=0
+for arg in "$@"; do
+  case "$arg" in
+    --identity-only) IDENTITY_ONLY=1 ;;
+    *)
+      printf 'FATAL: unknown option: %s\n' "$arg" >&2
+      printf 'usage: %s [--identity-only]\n' "$0" >&2
+      exit 2
+      ;;
+  esac
+done
 
 say()  { printf '%s\n' "$*"; }
 hr()   { printf '=%.0s' {1..72}; printf '\n'; }
@@ -68,6 +92,13 @@ say ""
 # ---------------------------------------------------------------------------
 # 1. Environment sanity: refuse to run where the result would be meaningless
 # ---------------------------------------------------------------------------
+# `--identity-only` deliberately skips this gate: it performs no product check,
+# so the Seatbelt precondition is irrelevant to it.
+if [ "$IDENTITY_ONLY" -eq 1 ]; then
+  say "--- environment check (skipped: --identity-only) ---"
+  say "no product check will run; no sandbox is applied"
+  say ""
+else
 say "--- environment check ---"
 
 SESSION_TYPE="$(launchctl managername 2>/dev/null || echo 'unknown')"
@@ -103,16 +134,75 @@ if [ "$probe_rc" -ne 0 ]; then
 fi
 say "restrictive profile probe: rc=0 (host accepts narrowing)"
 say ""
+fi
 
-command -v cargo >/dev/null 2>&1 || fail "cargo not found on PATH"
+if [ "$IDENTITY_ONLY" -ne 1 ]; then
+  command -v cargo >/dev/null 2>&1 || fail "cargo not found on PATH"
+fi
 
 # ---------------------------------------------------------------------------
 # 2. Pin the exact candidate bytes under test
 # ---------------------------------------------------------------------------
 say "--- candidate source identity ---"
 
-# These are the files that define the candidate behavior. Recording their
-# SHA-256 means a result can never be silently attributed to other code.
+# The candidate is the `webcodex-chatgpt-safe` binary. These are the runtime
+# source files that define the code it actually executes, grouped by the role
+# each one plays in the Jobs/LSP path under test.
+#
+# AUDITED against the real tree. The previous list assumed a flat
+# `execution_broker.rs`, which does not exist: the broker is a DIRECTORY
+# module. `ExecutionBroker`, `SpawnSpec`, `SandboxPlan`, `EnvPolicy`,
+# `NetworkPolicy`, `StreamPolicy` and `BrokerError` live in `mod.rs`;
+# `TrustedToolchainRoot`/`CompiledProfile` in `compiler.rs`; `WorkspaceAuthority`
+# in `workspace_authority.rs`.
+#
+# The two `.sbpl` files are bound because they are NOT data files: `mod.rs`
+# pulls them in with `include_str!` and `compiler.rs` concatenates them into
+# every compiled profile. Editing either changes enforcement without changing
+# any `.rs` byte, so leaving them unbound would defeat the entire purpose of
+# pinning.
+#
+# `unix.rs` is bound because it implements `ManagedChild` — `terminate_tree`,
+# `wait_tree_exit` and `try_wait` are what make a job cancellation observable
+# as CANCELLED/TIMED_OUT/OUTCOME_UNKNOWN rather than an unverifiable guess.
+#
+# `supervisor.rs` and `protocol.rs` are bound because the LSP facade reaches the
+# broker through `LspSupervisor::spawn` in `supervisor.rs`, which is the second
+# broker client under test.
+#
+# EXCLUDED, deliberately:
+#   - `execution_broker/fidelity_tests.rs` — `#[cfg(test)]`-only (declared at
+#     execution_broker/mod.rs:739-741), so it does not exist in a release build
+#     and cannot affect any measured behaviour.
+#   - `windows.rs` — not compiled on this macOS host.
+#   - `program.rs`, `src/bin/*` — program resolution helpers and separate
+#     binaries, not on the Jobs/LSP spawn path.
+#
+# A file is bound if editing it could change what this suite observes. That set
+# is exactly the list below; the self-test proves it is enforced, not decorative.
+CANDIDATE_SOURCES=(
+  # --- the candidate surface under test -------------------------------------
+  "crates/webcodex-chatgpt-safe/src/main.rs"
+  "crates/webcodex-chatgpt-safe/src/service.rs"
+  # --- read-only LSP facade + the brokered supervisor behind it -------------
+  "crates/webcodex-lsp/src/navigation.rs"
+  "crates/webcodex-lsp/src/supervisor.rs"
+  "crates/webcodex-lsp/src/protocol.rs"
+  # --- the broker itself: policy types, compilation, authority --------------
+  "crates/webcodex-process/src/execution_broker/mod.rs"
+  "crates/webcodex-process/src/execution_broker/compiler.rs"
+  "crates/webcodex-process/src/execution_broker/workspace_authority.rs"
+  "crates/webcodex-process/src/lib.rs"
+  # --- SBPL policies compiled into every profile via include_str! -----------
+  "crates/webcodex-process/src/execution_broker/sbpl/codex_base_policy.sbpl"
+  "crates/webcodex-process/src/execution_broker/sbpl/codex_read_only_platform_defaults.sbpl"
+  # --- process-tree supervision that makes cancel/timeout verifiable -------
+  "crates/webcodex-process/src/unix.rs"
+)
+
+# Record one `sha256  path` line per bound file. A missing path is FATAL before
+# anything is built or run: an identity check that silently skips what it cannot
+# find would let a result be attributed to code that never ran.
 pin_source() {
   local rel="$1"
   local digest
@@ -121,20 +211,132 @@ pin_source() {
   fi
   digest="$(shasum -a 256 "$REPO_ROOT/$rel" | cut -d' ' -f1)"
   say "  $digest  $rel"
-  printf '%s' "$digest" >>"$PINS"
+  printf '%s  %s\n' "$digest" "$rel" >>"$PINS"
 }
+
 PINS="$(mktemp -t webcodex-native-pins.XXXXXX)"
-for rel in \
-  "crates/webcodex-chatgpt-safe/src/main.rs" \
-  "crates/webcodex-chatgpt-safe/src/service.rs" \
-  "crates/webcodex-lsp/src/navigation.rs" \
-  "crates/webcodex-process/src/execution_broker.rs"
-do
+for rel in "${CANDIDATE_SOURCES[@]}"; do
   pin_source "$rel"
 done
 say ""
 say "  candidate fingerprint: $(shasum -a 256 "$PINS" | cut -d' ' -f1)"
+say "  bound files: ${#CANDIDATE_SOURCES[@]}"
 say ""
+
+# ---------------------------------------------------------------------------
+# 2b. Identity self-test: prove the binding above is actually enforced
+# ---------------------------------------------------------------------------
+# A binding that is never exercised is a comment. These three controls are run
+# against throwaway copies, never against the real tree, and each must behave
+# exactly as it would during a real run:
+#
+#   a) a nonexistent bound path fails BEFORE any build or execution
+#   b) mutating one bound runtime source produces an identity mismatch
+#   c) the unmodified current candidate validates clean
+#
+# (b) and (c) share one comparison function, which is the same one a real rerun
+# would use against a recorded fingerprint, so a passing self-test cannot come
+# from a comparison that is not actually performed.
+say "--- identity self-test ---"
+IDENTITY_SELFTEST="PASS"
+identity_of() {
+  # $1 = repo root. Prints "sha256  path" lines for every bound source.
+  local root="$1" rel digest
+  for rel in "${CANDIDATE_SOURCES[@]}"; do
+    if [ ! -f "$root/$rel" ]; then
+      echo "MISSING $rel"
+      return 1
+    fi
+    digest="$(shasum -a 256 "$root/$rel" | cut -d' ' -f1)"
+    printf '%s  %s\n' "$digest" "$rel"
+  done
+}
+
+SELFTEST_DIR="$(mktemp -d -t webcodex-native-identity.XXXXXX)"
+# WORK and BUILD_LOG do not exist yet at this point, so the cleanup function
+# tests for them rather than expanding unset names under `set -u`.
+# shellcheck disable=SC2064
+trap 'cleanup_paths' EXIT
+cleanup_paths() {
+  [ -n "${WORK:-}" ] && rm -rf "$WORK"
+  [ -n "${PINS:-}" ] && rm -f "$PINS"
+  [ -n "${SELFTEST_DIR:-}" ] && rm -rf "$SELFTEST_DIR"
+  [ -n "${BUILD_LOG:-}" ] && rm -f "$BUILD_LOG"
+  return 0
+}
+
+# (a) a bound path that does not exist must be rejected by the same check the
+#     real run uses, before anything is built.
+if identity_of "$SELFTEST_DIR" >/dev/null 2>&1; then
+  say "  FAIL  a nonexistent bound path was NOT rejected"
+  IDENTITY_SELFTEST="FAIL"
+else
+  say "  PASS  a nonexistent bound path is rejected before execution"
+fi
+
+# (b) mutating one bound runtime source must change the fingerprint.
+#     mod.rs is chosen because it defines ExecutionBroker, SpawnSpec,
+#     SandboxPlan and the policy enums — editing it cannot fail to matter.
+#     Only the bound paths are staged, so this stays cheap regardless of how
+#     large the repository or its build directory is.
+MUTANT_ROOT="$SELFTEST_DIR/mutant"
+mkdir -p "$MUTANT_ROOT"
+STAGE_OK=1
+for rel in "${CANDIDATE_SOURCES[@]}"; do
+  target="$MUTANT_ROOT/$rel"
+  if [ -e "$target" ]; then
+    # A previous iteration already staged this path.
+    continue
+  fi
+  if ! mkdir -p "$(dirname "$target")" 2>/dev/null; then
+    STAGE_OK=0
+    break
+  fi
+  if ! cp "$REPO_ROOT/$rel" "$target" 2>/dev/null; then
+    STAGE_OK=0
+    break
+  fi
+done
+if [ "$STAGE_OK" -eq 1 ]; then
+  BASE_ID="$(identity_of "$MUTANT_ROOT")"
+  printf '\n// identity self-test mutation\n' \
+    >>"$MUTANT_ROOT/crates/webcodex-process/src/execution_broker/mod.rs"
+  MUTANT_ID="$(identity_of "$MUTANT_ROOT")"
+  if [ "$BASE_ID" != "$MUTANT_ID" ]; then
+    say "  PASS  mutating a bound runtime source changes the identity"
+  else
+    say "  FAIL  mutating execution_broker/mod.rs did NOT change the identity"
+    IDENTITY_SELFTEST="FAIL"
+  fi
+
+  # (c) the unmodified candidate must validate clean against itself.
+  if [ "$(identity_of "$REPO_ROOT")" = "$BASE_ID" ]; then
+    say "  PASS  the current candidate validates clean"
+  else
+    say "  FAIL  the current candidate did NOT match its own recorded identity"
+    IDENTITY_SELFTEST="FAIL"
+  fi
+else
+  say "  FAIL  could not stage the bound sources for the mutation control"
+  IDENTITY_SELFTEST="FAIL"
+fi
+rm -rf "$MUTANT_ROOT"
+say "  identity self-test: $IDENTITY_SELFTEST"
+say ""
+
+if [ "$IDENTITY_SELFTEST" != "PASS" ]; then
+  fail "candidate identity self-test failed; the binding is not trustworthy"
+fi
+
+# `--identity-only` stops here on purpose: identity is proven, and no product
+# check has run, so there is nothing further this mode may claim.
+if [ "$IDENTITY_ONLY" -eq 1 ]; then
+  hr
+  say "IDENTITY_ONLY: binding verified, NO product check was run."
+  say "This is NOT a Jobs or LSP acceptance result."
+  hr
+  exit 0
+fi
 
 # ---------------------------------------------------------------------------
 # 3. Build the candidate binary
@@ -168,8 +370,6 @@ say ""
 # ---------------------------------------------------------------------------
 say "--- building disposable project fixture ---"
 WORK="$(mktemp -d -t webcodex-native-accept.XXXXXX)"
-cleanup() { rm -rf "$WORK"; rm -f "$PINS"; }
-trap cleanup EXIT
 
 PROJECT="$WORK/project"
 REGISTRY="$WORK/registry.json"
