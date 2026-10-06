@@ -240,6 +240,10 @@ const DOCUMENT_OPEN_FLAGS: i32 = 0;
 /// because the pre-check is only advisory.
 fn read_document_text(file: &Path) -> Result<String, RunnerLspResultEnvelope> {
     use std::io::Read;
+    // `OpenOptionsExt` (and therefore `custom_flags`) exists only on unix.
+    // This crate is built for Windows too, so the import must be gated to match
+    // `DOCUMENT_OPEN_FLAGS`, which is already 0 off unix.
+    #[cfg(unix)]
     use std::os::unix::fs::OpenOptionsExt;
 
     let advisory = fs::metadata(file).map_err(|_| {
@@ -274,15 +278,17 @@ fn read_document_text(file: &Path) -> Result<String, RunnerLspResultEnvelope> {
         }
     }
 
+    let mut open_options = fs::OpenOptions::new();
+    open_options.read(true);
     // O_NOFOLLOW: refuse to traverse a symlink at the final component, so the
-    // descriptor is bound to the object the containment check approved.
-    let mut file = fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(DOCUMENT_OPEN_FLAGS)
-        .open(file)
-        .map_err(|_| {
-            RunnerLspResultEnvelope::err(error_codes::FILE_NOT_FOUND, "failed to read file")
-        })?;
+    // descriptor is bound to the object the containment check approved. Off
+    // unix the flag does not exist and the symlink pre-check above is the only
+    // enforcement.
+    #[cfg(unix)]
+    open_options.custom_flags(DOCUMENT_OPEN_FLAGS);
+    let mut file = open_options.open(file).map_err(|_| {
+        RunnerLspResultEnvelope::err(error_codes::FILE_NOT_FOUND, "failed to read file")
+    })?;
 
     // Re-verify the opened object, not the path: a regular file only, and still
     // within the size cap even if it changed since the advisory metadata read.
@@ -2152,7 +2158,10 @@ fn sanitize_path_message(message: impl Into<String>) -> String {
     bound_error_message(message.into())
 }
 
-#[cfg(test)]
+// These tests exercise the unix symlink defence directly, so the module is
+// gated as a whole: the crate is also built for Windows, where
+// `--lib test` must still compile.
+#[cfg(all(test, unix))]
 mod document_read_tests {
     use super::*;
     use std::os::unix::fs::symlink;
@@ -2167,7 +2176,6 @@ mod document_read_tests {
     /// (`0o400000`, the *Linux* O_NOFOLLOW) which on Darwin resolve to
     /// O_NOCTTY and set no protection at all, so the test must exercise the
     /// real open path rather than assert on a constant.
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn document_read_refuses_a_symlink_that_escapes_the_project() {
         let temp = tempfile::tempdir().unwrap();
@@ -2202,7 +2210,6 @@ mod document_read_tests {
     /// shipped: a literal that compiles, links, and silently sets the wrong
     /// bit. Pinning to `libc` also means the value is correct per platform, so
     /// this holds on both macOS and Linux.
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn document_open_flags_request_nofollow_on_this_platform() {
         assert_eq!(
