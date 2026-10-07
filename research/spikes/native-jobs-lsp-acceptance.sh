@@ -405,29 +405,59 @@ echo "canary" >"$PROJECT/.env"
 mkdir -p "$PROJECT/.git"
 echo "git-internals-canary" >"$PROJECT/.git/config"
 
-# A positive-control listener for the network-deny check. If the broker
-# permitted network egress, the job could reach it; with deny it must not, and
-# the listener must never record an accepted connection.
+# A recording listener for the network-deny check.
+#
+# It appends the exact bytes of every accepted connection to a log, so the
+# verdict is behavioural: a token appearing in the log is the ONLY evidence
+# that a connection completed. Substring counting over a job's captured output
+# cannot distinguish a successful connection from a traceback echoing the
+# source line that contained the marker.
+#
+# `timeout` bounds the listener so it cannot outlive the suite.
 PY_PORT_FILE="$WORK/.listener-port"
-rm -f "$PY_PORT_FILE" "$WORK/.listener-accepted"
-python3 - "$PY_PORT_FILE" "$WORK/.listener-accepted" <<'PY' &
+PY_TOKEN_LOG="$WORK/.listener-tokens"
+rm -f "$PY_PORT_FILE" "$PY_TOKEN_LOG"
+python3 - "$PY_PORT_FILE" "$PY_TOKEN_LOG" <<'PY' &
 import socket, pathlib, sys
-port_file, accepted_file = sys.argv[1], sys.argv[2]
+port_file, token_log = sys.argv[1], sys.argv[2]
 srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 srv.bind(("127.0.0.1", 0))
 srv.listen(8)
+srv.settimeout(300)
 pathlib.Path(port_file).write_text(str(srv.getsockname()[1]))
-srv.settimeout(240)
 try:
-    conn, _ = srv.accept()
-    pathlib.Path(accepted_file).write_text("1")
-    conn.close()
-except Exception:
-    pathlib.Path(accepted_file).write_text("0")
+    while True:
+        try:
+            conn, _ = srv.accept()
+        except socket.timeout:
+            break
+        except Exception:
+            break
+        try:
+            conn.settimeout(5)
+            data = b""
+            try:
+                data = conn.recv(256)
+            except Exception:
+                data = b""
+            with open(token_log, "a") as fh:
+                fh.write(data.decode("utf-8", "replace").strip() + "\n")
+                fh.flush()
+            try:
+                conn.close()
+            except Exception:
+                pass
+        except Exception:
+            pass
+finally:
+    try:
+        srv.close()
+    except Exception:
+        pass
 PY
 LISTENER_PID=$!
-rm -f "$WORK/.listener-accepted"
+rm -f "$PY_TOKEN_LOG"
 
 for _ in $(seq 1 100); do
   [ -s "$PY_PORT_FILE" ] && break
@@ -438,7 +468,51 @@ if [ -z "$LISTENER_PORT" ]; then
   say "WARNING: positive-control listener did not start; network checks will be skipped"
   say ""
 fi
+
+# --- network control tokens -------------------------------------------------
+# Two distinct tokens. HOST_CONTROL is sent by this UNSANDBOXED shell and MUST
+# be recorded; JOB_CONTROL is handed to the brokered job and MUST NOT be. They
+# are generated per run and never appear in the job's command source, so a
+# traceback echoing that source cannot fabricate a match.
+NET_TOKEN_FILE="$WORK/.net-token"
+NET_HOST_TOKEN="HOST_CONTROL_$$_$(date +%s)"
+NET_JOB_TOKEN="JOB_CONTROL_$$_$(date +%s)"
+printf '%s' "$NET_JOB_TOKEN" >"$NET_TOKEN_FILE"
+
+# Host positive control: prove the listener is reachable at all. Without this, a
+# brokered-job failure to connect proves nothing — it could equally mean the
+# listener was already gone.
+if [ -n "$LISTENER_PORT" ]; then
+  if /usr/bin/python3 -c "
+import socket, sys
+s = socket.create_connection(('127.0.0.1', int(sys.argv[1])), 5)
+s.sendall(sys.argv[2].encode())
+s.close()
+" "$LISTENER_PORT" "$NET_HOST_TOKEN" 2>/dev/null; then
+    say "network host positive control: connected and sent its token"
+  else
+    say "network host positive control: FAILED to connect to the listener"
+    say ""
+  fi
+  # Let the listener record before anyone asserts on the log.
+  sleep 1
+fi
+
+# --- external filesystem canaries ------------------------------------------
+# EXTERNAL: outside the registered project, marker absent from the command.
+# LOCAL: inside the project, read by the same command shape as a control.
+EXT_MARKER="EXT-CANARY-$$-$(date +%s)-a7f3"
+LOC_MARKER="LOC-CANARY-$$-$(date +%s)-b2e9"
+EXTERNAL_CANARY="$WORK/external-absolute-canary.txt"
+LOCAL_CANARY="$PROJECT/src/local-canary.txt"
+printf '%s\n' "$EXT_MARKER" >"$EXTERNAL_CANARY"
+printf '%s\n' "$LOC_MARKER" >"$LOCAL_CANARY"
+# Exported so the verdict layer counts occurrences of these exact markers. They
+# are generated here and never embedded in any command string.
+export EXT_MARKER LOC_MARKER
 say "fixture project: $PROJECT"
+say "external canary: $EXTERNAL_CANARY (outside the project)"
+say "local canary:    $LOCAL_CANARY (inside the project)"
 say "listener port:   ${LISTENER_PORT:-none}"
 say ""
 
@@ -498,6 +572,11 @@ cat >"$WORK/stage1.py" <<'PY'
 import json, subprocess, sys, os
 
 binary, registry, project_id, work, listener_port, out_path = sys.argv[1:7]
+external_canary = sys.argv[7]
+local_canary = sys.argv[8]
+net_token_file = sys.argv[9]
+host_control_token = sys.argv[10]
+job_control_token = sys.argv[11]
 W = {}
 def rec(k, v): W[k] = v
 
@@ -643,12 +722,41 @@ try:
     ids["fail"] = start("fail", "echo TO-FAIL; exit 7", 60)
     ids["timeout"] = start("timeout", "sleep 300", 3)
     ids["secret"] = start("secret", "cat ../host-secret.txt; echo CANARY-END", 30)
-    ids["external"] = start("external", "cat /etc/hosts; echo EXTERNAL-END", 30)
+    # EXTERNAL FILESYSTEM DENIAL.
+    #
+    # The previous check ran `cat /etc/hosts; echo EXTERNAL-END` and asserted the
+    # marker never appeared. That assertion was invalid twice over: the `echo`
+    # runs whether or not the `cat` succeeded, and `/etc/hosts` is a poor probe
+    # because minimum platform/runtime read allowances may legitimately include
+    # system files — so it tests policy, not authority.
+    #
+    # This instead uses a unique canary OUTSIDE the registered project whose
+    # marker deliberately does NOT appear in the command string, so the only way
+    # for it to reach the output is if the broker actually permitted the read.
+    # The local_positive job proves the same command SHAPE succeeds for an
+    # in-project file, which is what makes the negative meaningful.
+    ids["external"] = start("external", "cat '%s'" % external_canary, 30)
+    ids["local_positive"] = start("local_positive", "cat '%s'" % local_canary, 30)
     ids["env"] = start("env", "echo ENVLEAK; env | sort", 30)
     if listener_port:
+        # NETWORK DENIAL — behavioural proof, not substring counting.
+        #
+        # The previous check ran a Python one-liner containing `print('CONNECTED')`
+        # and asserted the string never appeared in stdout/stderr. Invalid: on a
+        # connection failure Python prints a traceback that echoes the offending
+        # source line, so the marker could appear WITHOUT a successful connection.
+        #
+        # This proves it behaviourally against a recording listener:
+        #   1. the UNSANDBOXED host connects and sends HOST_CONTROL -> must be
+        #      recorded, proving the listener is reachable and the protocol works;
+        #   2. the BROKERED job attempts the same connection and sends JOB_CONTROL
+        #      -> must never be recorded.
+        # The token is read from a FILE by the job, never embedded in the job's
+        # own source line, so a traceback cannot echo it.
         ids["net"] = start("net",
-            "python3 -c \"import socket;s=socket.create_connection(('127.0.0.1',%s),3);print('CONNECTED');s.close()\""
-            % listener_port, 30)
+            "python3 -c \"import socket;s=socket.create_connection(('127.0.0.1',%s),3);"
+            "s.sendall(open('%s').read());print('NETJOB-REACHED-LISTENER');s.close()\""
+            % (listener_port, net_token_file), 30)
     ids["cancel"] = start("cancel", "echo BEFORE-CANCEL; sleep 300", 150)
     if ids["cancel"]:
         rec("cancel_request", call("job_cancel", {"project_id": project_id, "job_id": ids["cancel"]}))
@@ -692,6 +800,19 @@ try:
     rec("job_ids", ids)
     rec("job_deltas", seen)
     rec("job_final", final)
+    # Read the recording listener's log and record which control tokens it
+    # actually received. Behavioural evidence, unlike scanning job output for a
+    # marker that a traceback could echo.
+    token_log = os.path.join(work, ".listener-tokens")
+    tokens = []
+    try:
+        with open(token_log) as fh:
+            tokens = [ln.strip() for ln in fh if ln.strip()]
+    except Exception:
+        tokens = []
+    rec("listener_tokens", tokens)
+    rec("host_control_recorded", host_control_token in tokens)
+    rec("job_control_recorded", job_control_token in tokens)
     rec("listener_accepted", os.path.exists(os.path.join(work, ".listener-accepted")))
 finally:
     try: proc.stdin.close()
@@ -706,6 +827,8 @@ PY
 say "running the MCP acceptance driver against the real binary..."
 if ! /usr/bin/python3 "$WORK/stage1.py" "$BIN_PATH" "$REGISTRY" "native-accept" \
       "$WORK" "${LISTENER_PORT:-}" "$WORK/result.json" \
+      "$EXTERNAL_CANARY" "$LOCAL_CANARY" "$NET_TOKEN_FILE" \
+      "$NET_HOST_TOKEN" "$NET_JOB_TOKEN" \
       >"$WORK/stage1.log" 2>&1; then
   say "driver failed; last 40 lines of driver log:"
   tail -40 "$WORK/stage1.log"
@@ -859,6 +982,41 @@ say "LSP (read-only facade)"
 # NOTE: an LSP_UNAVAILABLE / server-unavailable outcome reads as DENIED here,
 # which is intentional: the harness must not report a pass on a host where the
 # language server never started.
+#
+# When a positive LSP call does NOT succeed, print the product's own structured
+# code/message/status/path so the report names a root cause instead of collapsing
+# every failure into "DENIED". The product preserves the underlying cause; hiding
+# it behind one word is what made the previous run unclassifiable.
+#
+# The message is bounded and path-scrubbed: absolute paths are redacted so a
+# harness report cannot leak the operator's directory layout.
+lsp_diagnose() {
+  /usr/bin/python3 -c '
+import json, re, sys
+d = json.load(open(sys.argv[1]))
+key = sys.argv[2]
+sc = ((d.get(key) or {}).get("result") or {}).get("structuredContent") or {}
+msg = str(sc.get("message", ""))
+# Redact absolute POSIX/macOS paths; keep the shape of the message.
+msg = re.sub(r"/(?:[^\s/:]+/)+[^\s/:]*", "<path>", msg)
+if len(msg) > 400:
+    msg = msg[:400] + "...(truncated)"
+print("    %s: status=%s code=%s success=%s path=%s" % (
+    key, sc.get("status", "<none>"), sc.get("code", "<none>"),
+    sc.get("success", "<none>"), sc.get("path", "<none>")))
+if msg:
+    print("      message: %s" % msg)
+' "$RESULT" "$1" 2>/dev/null || echo "    $1: <diagnostic unavailable>"
+}
+
+for lsp_key in lsp_symbols lsp_definition lsp_references lsp_diagnostics; do
+  lsp_state="$(readout "$lsp_key" outcome)"
+  if [ "$lsp_state" != "OK" ]; then
+    say "  LSP $lsp_key did not succeed; product-reported cause:"
+    lsp_diagnose "$lsp_key"
+  fi
+done
+
 check "lsp_symbols succeeded" "OK" "$(readout lsp_symbols outcome)"
 check "lsp_definition succeeded" "OK" "$(readout lsp_definition outcome)"
 check "lsp_references succeeded" "OK" "$(readout lsp_references outcome)"
@@ -904,9 +1062,34 @@ check "cancel job reached CANCELLED" "CANCELLED" "$(jobfield cancel status)"
 
 check "host secret is not readable by a job" "0" \
       "$(readout job_deltas count TOP-SECRET-CANARY-VALUE)"
-check "external filesystem read is denied" "0" \
-      "$(readout job_deltas count EXTERNAL-END)"
-check "network egress is denied" "0" "$(readout job_deltas count CONNECTED)"
+
+# --- external filesystem: marker absent from output, and a positive control ---
+# The marker is generated per run and does NOT appear in the command string, so
+# the only way it can appear in captured output is if the broker allowed the read.
+check "project-external absolute canary never appears in job output" "0" \
+      "$(readout job_deltas count "$EXT_MARKER")"
+check "project-external read did not succeed" "yes" \
+      "$( [ "$(jobfield external status)" = "SUCCEEDED" ] && echo no || echo yes )"
+# Positive control: the SAME command shape against an in-project file must work,
+# otherwise "no marker" would prove nothing (it could just mean `cat` is missing).
+check "project-local canary IS readable by the same command shape" "1" \
+      "$( [ "$(readout job_deltas count "$LOC_MARKER")" -ge 1 ] && echo 1 || echo 0 )"
+
+# --- network: behavioural, with an unsandboxed positive control ---
+# The host control proves the listener is reachable, so a brokered-job failure to
+# connect is attributable to the sandbox rather than a dead listener.
+check "host positive control reached the listener" "true" \
+      "$(/usr/bin/python3 -c '
+import json,sys
+d=json.load(open(sys.argv[1]))
+print("true" if d.get("host_control_recorded") else "false")' "$RESULT")"
+check "brokered job never reached the listener" "false" \
+      "$(/usr/bin/python3 -c '
+import json,sys
+d=json.load(open(sys.argv[1]))
+print("true" if d.get("job_control_recorded") else "false")' "$RESULT")"
+check "brokered job did not report a successful connection" "yes" \
+      "$( [ "$(jobfield net status)" = "SUCCEEDED" ] && echo no || echo yes )"
 check "positive-control listener never accepted a connection" "false" \
       "$(/usr/bin/python3 -c '
 import json,sys
@@ -922,15 +1105,63 @@ hr
 say "required checks passed: $PASS_COUNT"
 say "required checks failed: $FAIL_COUNT"
 say ""
+
+# INDEPENDENT RESULT CLASSIFICATION.
+#
+# Deriving both verdicts from a single FAIL_COUNT loses causality: a pure LSP
+# availability failure (the language server never started) would rewrite a
+# proven Jobs lifecycle result to FAIL, and vice versa. Each verdict is derived
+# from the failures that actually belong to its surface.
+#
+# This is classification, NOT skipping: every check above still ran and still
+# prints PASS or FAIL, and the FAILED CHECKS list below is exhaustive.
+declare -a FAILED_JOBS=() FAILED_LSP=() FAILED_SECURITY=()
+for entry in "${FAILED_CHECKS[@]}"; do
+  case "$entry" in
+    *lsp_symbols*|*lsp_definition*|*lsp_references*|*lsp_diagnostics*)
+      FAILED_LSP+=("$entry") ;;
+    *host\ secret*|*external*|*project-local\ canary*|*network*|*listener*|*positive-control*)
+      FAILED_SECURITY+=("$entry")
+      FAILED_JOBS+=("$entry") ;;
+    *job*|*cursor*|*timeout*|*cancel*|*deltas*|*listener*|*secret*|*canary*|*network*)
+      FAILED_JOBS+=("$entry") ;;
+    *)
+      # Unclassified failures are attributed to ALL surfaces: an unknown
+      # failure must never silently pass by landing in no bucket.
+      FAILED_JOBS+=("$entry")
+      FAILED_LSP+=("$entry")
+      FAILED_SECURITY+=("$entry") ;;
+  esac
+done
+
 if [ "$FAIL_COUNT" -ne 0 ]; then
-  say "FAILED CHECKS:"
-  for f in "${FAILED_CHECKS[@]}"; do say "  - $f"; done
+  say "FAILED CHECKS (all of them, by surface):"
+  if [ "${#FAILED_JOBS[@]}" -gt 0 ]; then
+    say "  Jobs / security:"
+    for f in "${FAILED_JOBS[@]}"; do say "    - $f"; done
+  fi
+  if [ "${#FAILED_LSP[@]}" -gt 0 ]; then
+    say "  LSP:"
+    for f in "${FAILED_LSP[@]}"; do say "    - $f"; done
+  fi
   say ""
-  say "NATIVE_JOBS_ACCEPTANCE=FAIL"
-  say "NATIVE_LSP_ACCEPTANCE=FAIL"
+fi
+
+JOBS_VERDICT=PASS
+LSP_VERDICT=PASS
+SECURITY_VERDICT=PASS
+[ "${#FAILED_JOBS[@]}" -gt 0 ] && JOBS_VERDICT=FAIL
+[ "${#FAILED_LSP[@]}" -gt 0 ] && LSP_VERDICT=FAIL
+[ "${#FAILED_SECURITY[@]}" -gt 0 ] && SECURITY_VERDICT=FAIL
+
+say "NATIVE_JOBS_ACCEPTANCE=$JOBS_VERDICT"
+say "NATIVE_LSP_ACCEPTANCE=$LSP_VERDICT"
+say "NATIVE_SECURITY_ACCEPTANCE=$SECURITY_VERDICT"
+say ""
+say "These verdicts are INDEPENDENT. A FAIL on one surface does not rewrite the"
+say "other: read each line against the failure list above."
+
+if [ "$FAIL_COUNT" -ne 0 ]; then
   exit 1
 fi
-say "NATIVE_JOBS_ACCEPTANCE=PASS"
-say "NATIVE_LSP_ACCEPTANCE=PASS"
-say "NATIVE_SECURITY_ACCEPTANCE=PASS"
 exit 0
