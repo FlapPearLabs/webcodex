@@ -1087,10 +1087,15 @@ check "no job recorded a start error" "MISSING" "$(readout long_start_error valu
 # rather than surfacing later as confusing per-status failures.
 check "no phase timed out before reaching terminal state" "MISSING" \
       "$(readout phase_timeout value)"
-# `net_started` is recorded by the driver; assert it so an absent network job is
-# reported here instead of only as MISSING inside the network checks.
-check "network job started (or listener was unavailable)" "listener-unavailable" \
-      "$(readout net_started value)"
+# `net_started` is a bool when a listener exists and the sentinel
+# "listener-unavailable" when it does not, so the expectation has to follow the
+# same condition. Comparing a bool against the sentinel failed every healthy run.
+if [ -n "${LISTENER_PORT:-}" ]; then
+  check "network job started" "true" "$(readout net_started value)"
+else
+  check "network job skipped (no listener)" "listener-unavailable" \
+        "$(readout net_started value)"
+fi
 say ""
 
 jobfield() { /usr/bin/python3 -c '
@@ -1181,18 +1186,27 @@ say ""
 # prints PASS or FAIL, and the FAILED CHECKS list below is exhaustive.
 declare -a FAILED_JOBS=() FAILED_LSP=() FAILED_SECURITY=()
 for entry in "${FAILED_CHECKS[@]}"; do
-  # Order matters. A refused start is a HARNESS CAPACITY problem, not a security
-  # event: attributing it to the security surface would inflate that verdict's
-  # blast radius and contradict the start-error reporting above.
+  # Order matters, and it is security-first on purpose.
+  #
+  # A refused start for a job that CARRIES A SECURITY PROBE (external canary,
+  # host secret, network) is a failure of that probe, so it must fail the security
+  # verdict. Matching `*started*` first would divert `job 'external' started` into
+  # Jobs only, and because the canary checks then pass vacuously over an empty
+  # delta set, the run would report NATIVE_SECURITY_ACCEPTANCE=PASS while the
+  # probe never executed. That is a wrong-green, so the security arm is tested
+  # first and the harness-capacity arm only catches starts of non-security jobs.
   case "$entry" in
-    *start_error*|*started*|*phase_timeout*)
+    *external*|*secret*|*canary*|*network*|*listener*|*positive-control*)
+      FAILED_SECURITY+=("$entry")
+      FAILED_JOBS+=("$entry") ;;
+    *start_error*|*"phase timed out"*|*" started"*)
+      # Capacity or harness plumbing, not a security event. Matched BEFORE the
+      # generic arms so a phase timeout cannot be swept into LSP or SECURITY by a
+      # later wildcard.
       FAILED_JOBS+=("$entry") ;;
     *lsp_symbols*|*lsp_definition*|*lsp_references*|*lsp_diagnostics*)
       FAILED_LSP+=("$entry") ;;
-    *host\ secret*|*external*|*project-local\ canary*|*network*|*listener*|*positive-control*)
-      FAILED_SECURITY+=("$entry")
-      FAILED_JOBS+=("$entry") ;;
-    *job*|*cursor*|*timeout*|*cancel*|*deltas*|*secret*|*canary*)
+    *job*|*cursor*|*timeout*|*cancel*|*deltas*)
       FAILED_JOBS+=("$entry") ;;
     *)
       # Unclassified failures are attributed to ALL surfaces: an unknown
