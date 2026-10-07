@@ -712,13 +712,16 @@ try:
         resp = call("job_start", {"project_id": project_id, "cwd": ".", "command": command,
                                   "timeout_seconds": timeout})
         try:
-            return resp["result"]["structuredContent"]["job_id"]
+            job_id = resp["result"]["structuredContent"]["job_id"]
         except Exception:
             # Record the ACTUAL MCP error rather than degrading to a MISSING
             # status later. A refused start (e.g. the concurrency limit) is a
             # harness capacity bug, not a product lifecycle verdict.
             rec(name + "_start_error", resp)
             return None
+        cursors.setdefault(name, {"stdout": 0, "stderr": 0})
+        seen.setdefault(name, [])
+        return job_id
 
     # ---------------------------------------------------------------------
     # PHASED JOB EXECUTION
@@ -734,8 +737,12 @@ try:
     # requires more live jobs than the product documents. The product limit is
     # NOT raised to accommodate the suite.
     ids = {}
-    cursors = {k: {"stdout": 0, "stderr": 0} for k in ids}
-    seen = {k: [] for k in ids}
+    # Seeded lazily. These used to be comprehensions over `ids`, evaluated before
+    # any start() call — which captured ZERO keys, so the first poll raised
+    # KeyError and aborted the whole driver before a single Job check ran. Each
+    # successful start() now seeds its own entry via setdefault().
+    cursors = {}
+    seen = {}
     final = {}
 
     def poll_until_terminal(keys, max_seconds):
@@ -749,6 +756,8 @@ try:
                 if not job_id:
                     # Terminal-by-absence: a refused start is already recorded.
                     continue
+                cursors.setdefault(key, {"stdout": 0, "stderr": 0})
+                seen.setdefault(key, [])
                 resp = call("job_poll", {"project_id": project_id, "job_id": job_id,
                                          "stdout_cursor": cursors[key]["stdout"],
                                          "stderr_cursor": cursors[key]["stderr"]})
@@ -1074,6 +1083,14 @@ for required in long fail timeout cancel secret external local_positive env; do
   check "job '$required' started" "MISSING" "$(readout "${required}_start_error" value)"
 done
 check "no job recorded a start error" "MISSING" "$(readout long_start_error value)"
+# A phase that runs out of time leaves jobs non-terminal; that must be named
+# rather than surfacing later as confusing per-status failures.
+check "no phase timed out before reaching terminal state" "MISSING" \
+      "$(readout phase_timeout value)"
+# `net_started` is recorded by the driver; assert it so an absent network job is
+# reported here instead of only as MISSING inside the network checks.
+check "network job started (or listener was unavailable)" "listener-unavailable" \
+      "$(readout net_started value)"
 say ""
 
 jobfield() { /usr/bin/python3 -c '
@@ -1164,13 +1181,18 @@ say ""
 # prints PASS or FAIL, and the FAILED CHECKS list below is exhaustive.
 declare -a FAILED_JOBS=() FAILED_LSP=() FAILED_SECURITY=()
 for entry in "${FAILED_CHECKS[@]}"; do
+  # Order matters. A refused start is a HARNESS CAPACITY problem, not a security
+  # event: attributing it to the security surface would inflate that verdict's
+  # blast radius and contradict the start-error reporting above.
   case "$entry" in
+    *start_error*|*started*|*phase_timeout*)
+      FAILED_JOBS+=("$entry") ;;
     *lsp_symbols*|*lsp_definition*|*lsp_references*|*lsp_diagnostics*)
       FAILED_LSP+=("$entry") ;;
     *host\ secret*|*external*|*project-local\ canary*|*network*|*listener*|*positive-control*)
       FAILED_SECURITY+=("$entry")
       FAILED_JOBS+=("$entry") ;;
-    *job*|*cursor*|*timeout*|*cancel*|*deltas*|*listener*|*secret*|*canary*|*network*)
+    *job*|*cursor*|*timeout*|*cancel*|*deltas*|*secret*|*canary*)
       FAILED_JOBS+=("$entry") ;;
     *)
       # Unclassified failures are attributed to ALL surfaces: an unknown

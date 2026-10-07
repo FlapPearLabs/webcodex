@@ -214,7 +214,13 @@ impl TrustedToolchainRoot {
     /// it out lets the policy be tested against a synthetic layout instead of
     /// depending on whatever happens to be installed on the machine running the
     /// tests.
-    pub fn resolve_with_rustup_home(
+    ///
+    /// Deliberately `pub(crate)`, NOT `pub`. The type's guarantee is that a
+    /// caller cannot supply a root; exposing this seam publicly would make the
+    /// rustup home a caller-supplied value and weaken exactly the invariant the
+    /// type exists to provide. No production caller exists — `resolve` is the only
+    /// entry point used outside tests.
+    pub(crate) fn resolve_with_rustup_home(
         executable: &Path,
         operator_rustup_home: Option<PathBuf>,
     ) -> Result<Self, CompileError> {
