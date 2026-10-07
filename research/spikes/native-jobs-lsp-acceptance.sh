@@ -714,13 +714,79 @@ try:
         try:
             return resp["result"]["structuredContent"]["job_id"]
         except Exception:
+            # Record the ACTUAL MCP error rather than degrading to a MISSING
+            # status later. A refused start (e.g. the concurrency limit) is a
+            # harness capacity bug, not a product lifecycle verdict.
             rec(name + "_start_error", resp)
             return None
 
+    # ---------------------------------------------------------------------
+    # PHASED JOB EXECUTION
+    # ---------------------------------------------------------------------
+    # The product bounds LIVE jobs at MAX_CONCURRENT_JOBS=8. The previous
+    # version started eight authority/lifecycle jobs back to back and only then
+    # started `cancel`, making it the 9th concurrent start. On a real run that
+    # returned JOB_LIMIT_REACHED and `cancel` never existed, which surfaced as a
+    # misleading MISSING rather than as a capacity bug in this harness.
+    #
+    # Phasing removes all dependence on scheduler timing: a phase is only
+    # started after enough of the previous phase is terminal, so the suite never
+    # requires more live jobs than the product documents. The product limit is
+    # NOT raised to accommodate the suite.
     ids = {}
+    cursors = {k: {"stdout": 0, "stderr": 0} for k in ids}
+    seen = {k: [] for k in ids}
+    final = {}
+
+    def poll_until_terminal(keys, max_seconds):
+        """Poll `keys` until every one of them is terminal (or time runs out)."""
+        import time as _time
+        deadline = _time.time() + max_seconds
+        while True:
+            pending = 0
+            for key in keys:
+                job_id = ids.get(key)
+                if not job_id:
+                    # Terminal-by-absence: a refused start is already recorded.
+                    continue
+                resp = call("job_poll", {"project_id": project_id, "job_id": job_id,
+                                         "stdout_cursor": cursors[key]["stdout"],
+                                         "stderr_cursor": cursors[key]["stderr"]})
+                try:
+                    sc = resp["result"]["structuredContent"]
+                except Exception:
+                    rec(key + "_poll_error", resp)
+                    continue
+                if sc.get("stdout_delta") or sc.get("stderr_delta"):
+                    seen[key].append({"stdout": sc.get("stdout_delta", ""),
+                                      "stderr": sc.get("stderr_delta", "")})
+                prev_out = cursors[key]["stdout"]
+                cursors[key]["stdout"] = sc.get("stdout_cursor", prev_out)
+                cursors[key]["stderr"] = sc.get("stderr_cursor", cursors[key]["stderr"])
+                if cursors[key]["stdout"] < prev_out:
+                    rec("cursor_regressed", {"key": key, "prev": prev_out,
+                                             "now": cursors[key]["stdout"]})
+                final[key] = sc
+                if sc.get("status") != "JOB_RUNNING":
+                    continue
+                pending += 1
+            if pending == 0:
+                return
+            if _time.time() > deadline:
+                rec("phase_timeout", {"pending": [k for k in keys if ids.get(k)]})
+                return
+            _time.sleep(1)
+
+    # --- PHASE A: lifecycle (at most 4 live jobs) ------------------------
     ids["long"] = start("long", "echo JOB-PART-1; sleep 1; echo JOB-PART-2; sleep 34; echo JOB-DONE", 150)
     ids["fail"] = start("fail", "echo TO-FAIL; exit 7", 60)
     ids["timeout"] = start("timeout", "sleep 300", 3)
+    ids["cancel"] = start("cancel", "echo BEFORE-CANCEL; sleep 300", 150)
+    if ids["cancel"]:
+        rec("cancel_request", call("job_cancel", {"project_id": project_id, "job_id": ids["cancel"]}))
+    poll_until_terminal(["long", "fail", "timeout", "cancel"], 240)
+
+    # --- PHASE B: authority / security (at most 5 live jobs) --------------
     ids["secret"] = start("secret", "cat ../host-secret.txt; echo CANARY-END", 30)
     # EXTERNAL FILESYSTEM DENIAL.
     #
@@ -757,45 +823,14 @@ try:
             "python3 -c \"import socket;s=socket.create_connection(('127.0.0.1',%s),3);"
             "s.sendall(open('%s').read());print('NETJOB-REACHED-LISTENER');s.close()\""
             % (listener_port, net_token_file), 30)
-    ids["cancel"] = start("cancel", "echo BEFORE-CANCEL; sleep 300", 150)
-    if ids["cancel"]:
-        rec("cancel_request", call("job_cancel", {"project_id": project_id, "job_id": ids["cancel"]}))
+    poll_until_terminal(["secret", "external", "local_positive", "env", "net"], 180)
 
-    # Incremental polling: record every distinct delta to prove increments
-    # rather than a single replay, and to prove monotonic cursors.
-    cursors = {k: {"stdout": 0, "stderr": 0} for k in ids}
-    seen = {k: [] for k in ids}
-    final = {}
-    for _ in range(300):
-        done = 0
-        for key, job_id in ids.items():
-            if not job_id:
-                done += 1
-                continue
-            resp = call("job_poll", {"project_id": project_id, "job_id": job_id,
-                                     "stdout_cursor": cursors[key]["stdout"],
-                                     "stderr_cursor": cursors[key]["stderr"]})
-            try:
-                sc = resp["result"]["structuredContent"]
-            except Exception:
-                rec(key + "_poll_error", resp)
-                done += 1
-                continue
-            if sc.get("stdout_delta") or sc.get("stderr_delta"):
-                seen[key].append({"stdout": sc.get("stdout_delta", ""),
-                                  "stderr": sc.get("stderr_delta", "")})
-            prev_out = cursors[key]["stdout"]
-            cursors[key]["stdout"] = sc.get("stdout_cursor", prev_out)
-            cursors[key]["stderr"] = sc.get("stderr_cursor", cursors[key]["stderr"])
-            if cursors[key]["stdout"] < prev_out:
-                rec("cursor_regressed", {"key": key, "prev": prev_out,
-                                         "now": cursors[key]["stdout"]})
-            final[key] = sc
-            if sc.get("status") != "JOB_RUNNING":
-                done += 1
-        if done >= len(ids):
-            break
-        __import__("time").sleep(1)
+    # Every required job must have started. A refused start is a harness
+    # capacity bug and is reported as such, never as a missing status.
+    for required in ["long", "fail", "timeout", "cancel",
+                     "secret", "external", "local_positive", "env"]:
+        rec(required + "_started", bool(ids.get(required)))
+    rec("net_started", bool(ids.get("net")) if listener_port else "listener-unavailable")
 
     rec("job_ids", ids)
     rec("job_deltas", seen)
@@ -813,7 +848,6 @@ try:
     rec("listener_tokens", tokens)
     rec("host_control_recorded", host_control_token in tokens)
     rec("job_control_recorded", job_control_token in tokens)
-    rec("listener_accepted", os.path.exists(os.path.join(work, ".listener-accepted")))
 finally:
     try: proc.stdin.close()
     except Exception: pass
@@ -1031,6 +1065,17 @@ say ""
 
 # --- Jobs ---
 say "Jobs"
+
+# Every REQUIRED job must have started. A refused start is a harness capacity
+# bug (the suite must never exceed the documented product concurrency limit), so
+# it is reported explicitly with the product's own error instead of degrading
+# into a MISSING status that looks like a lifecycle defect.
+for required in long fail timeout cancel secret external local_positive env; do
+  check "job '$required' started" "MISSING" "$(readout "${required}_start_error" value)"
+done
+check "no job recorded a start error" "MISSING" "$(readout long_start_error value)"
+say ""
+
 jobfield() { /usr/bin/python3 -c '
 import json,sys
 d=json.load(open(sys.argv[1]))
@@ -1075,7 +1120,14 @@ check "project-external read did not succeed" "yes" \
 check "project-local canary IS readable by the same command shape" "1" \
       "$( [ "$(readout job_deltas count "$LOC_MARKER")" -ge 1 ] && echo 1 || echo 0 )"
 
-# --- network: behavioural, with an unsandboxed positive control ---
+# The authoritative network proof is exactly the token pair plus the job's own
+# verdict:
+#   HOST_CONTROL recorded = true   (the listener is reachable and the protocol works)
+#   JOB_CONTROL  recorded = false  (the brokered job never completed a connection)
+#   brokered network job  != SUCCEEDED
+# The older "listener never accepted a connection" line was removed: it was
+# derived from a stale marker file, it contradicted the host positive control
+# (which necessarily DOES accept a connection), and it proved nothing.
 # The host control proves the listener is reachable, so a brokered-job failure to
 # connect is attributable to the sandbox rather than a dead listener.
 check "host positive control reached the listener" "true" \
@@ -1090,11 +1142,6 @@ d=json.load(open(sys.argv[1]))
 print("true" if d.get("job_control_recorded") else "false")' "$RESULT")"
 check "brokered job did not report a successful connection" "yes" \
       "$( [ "$(jobfield net status)" = "SUCCEEDED" ] && echo no || echo yes )"
-check "positive-control listener never accepted a connection" "false" \
-      "$(/usr/bin/python3 -c '
-import json,sys
-d=json.load(open(sys.argv[1]))
-print("true" if d.get("listener_accepted") else "false")' "$RESULT")"
 check "job environment carries no host secret" "0" \
       "$(readout job_deltas count TOP-SECRET-CANARY-VALUE)"
 say ""

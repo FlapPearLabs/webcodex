@@ -1461,6 +1461,7 @@ fn resolve_lsp_program_with_path(
             })?
             .join(candidate)
     };
+    let absolute = resolve_rustup_component(&absolute).unwrap_or(absolute);
     absolute.canonicalize().map_err(|error| {
         LspError::SpawnFailed(format!(
             "language-server executable {} could not be resolved: {error}",
@@ -1474,6 +1475,57 @@ fn resolve_lsp_program_with_path(
         )));
     }
     Ok(absolute)
+}
+
+/// If `path` is a rustup proxy shim, resolve it to the real component binary of
+/// the active toolchain.
+///
+/// rustup dispatches on `argv[0]`: `~/.cargo/bin/rust-analyzer` is a symlink to
+/// `rustup`, and executing it runs the toolchain manager, while executing the
+/// same file *as* `rust-analyzer` runs the component. Canonicalizing the shim
+/// therefore destroys the dispatch — it yields `~/.cargo/bin/rustup`, which
+/// starts successfully and then behaves like rustup, so the language server
+/// never comes up. Under the broker this surfaced as an execvp failure.
+///
+/// Resolving to the component first is both correct and narrower for the sandbox:
+/// the executable is then the real binary, and the broker derives its toolchain
+/// grant from that real path rather than from the `~/.cargo` shim directory.
+///
+/// Returns `None` for anything that is not a recognised rustup proxy, so ordinary
+/// PATH resolution is completely unaffected. Filesystem-only: no process is
+/// spawned to make this decision.
+fn resolve_rustup_component(path: &Path) -> Option<PathBuf> {
+    let file_name = path.file_name()?.to_str()?;
+    // The proxy dispatches on the name it was invoked as, so only the tool names
+    // rustup proxies are considered.
+    const PROXIED: &[&str] = &[
+        "rust-analyzer",
+        "rustc",
+        "rustdoc",
+        "cargo",
+        "rustfmt",
+        "clippy-driver",
+        "cargo-clippy",
+        "cargo-fd",
+    ];
+    if !PROXIED.contains(&file_name) {
+        return None;
+    }
+    if !looks_like_rustup_proxy(path) {
+        return None;
+    }
+    let toolchain = active_rustup_toolchain()?;
+    let rustup_home = rustup_home_dir()?;
+    let component = rustup_home
+        .join("toolchains")
+        .join(&toolchain)
+        .join("bin")
+        .join(format!("{file_name}{}", env::consts::EXE_SUFFIX));
+    if is_executable_file(&component) {
+        Some(component)
+    } else {
+        None
+    }
 }
 
 /// True when `path` is a rustup proxy for `rust-analyzer` whose active

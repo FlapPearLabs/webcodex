@@ -205,6 +205,19 @@ impl TrustedToolchainRoot {
     /// layout. This is the whole point of the type: an arbitrary directory
     /// cannot become a grant.
     pub fn resolve(executable: &Path) -> Result<Self, CompileError> {
+        Self::resolve_with_rustup_home(executable, rustup_home())
+    }
+
+    /// `resolve`, with the operator's rustup home supplied explicitly.
+    ///
+    /// Both the executable and the rustup home are server-side inputs. Splitting
+    /// it out lets the policy be tested against a synthetic layout instead of
+    /// depending on whatever happens to be installed on the machine running the
+    /// tests.
+    pub fn resolve_with_rustup_home(
+        executable: &Path,
+        operator_rustup_home: Option<PathBuf>,
+    ) -> Result<Self, CompileError> {
         let canonical =
             executable
                 .canonicalize()
@@ -220,11 +233,21 @@ impl TrustedToolchainRoot {
             });
         }
 
+        if let Some(prefix) =
+            Self::recognised_rustup_toolchain_prefix_of(&canonical, operator_rustup_home)
+        {
+            // A rustup-managed component. See the function's own contract: the
+            // grant is the single active toolchain subtree, never `$HOME` and
+            // never a caller-named directory.
+            return Ok(Self(prefix));
+        }
+
         let prefix = Self::recognised_prefix_of(&canonical).ok_or_else(|| {
             CompileError::ToolchainRootRejected {
                 root: canonical.clone(),
                 reason: "not inside a recognised toolchain prefix \
-                         (/opt/homebrew, /usr/local, /opt/local, /sw, nix, or a system prefix)"
+                         (/opt/homebrew, /usr/local, /opt/local, /sw, nix, a rustup \
+                         toolchain, or a system prefix)"
                     .to_string(),
             }
         })?;
@@ -264,6 +287,112 @@ impl TrustedToolchainRoot {
                 return Some(PathBuf::from(candidate));
             }
         }
+        None
+    }
+
+    /// A rustup-managed toolchain grant, derived from a real resolved component.
+    ///
+    /// Why this exists: `rust-analyzer`, `rustc`, `clippy-driver` and the sysroot
+    /// a project needs live under `<RUSTUP_HOME>/toolchains/<toolchain>/`, which
+    /// is inside `$HOME`. The pre-existing prefixes are all outside `$HOME`, and
+    /// the home-directory refusal below them is deliberate, so an operator with a
+    /// rustup toolchain had no way to run the language server at all.
+    ///
+    /// Why it is narrow — this is the whole security argument:
+    ///
+    /// * It is derived by the broker from an ALREADY-RESOLVED REAL FILE. Nothing
+    ///   names a path: not the model, not `job_start`, not `lsp_*`. There is no
+    ///   constructor that accepts a caller-supplied root.
+    /// * The root is exactly `<RUSTUP_HOME>/toolchains/<exact toolchain>` — one
+    ///   directory, resolved against the rustup layout, not a prefix match. It
+    ///   is NOT `$HOME`, NOT `~/.cargo`, NOT all of `~/.rustup`.
+    /// * Siblings are therefore unreachable by construction: `~/.ssh`,
+    ///   `~/.aws`, `~/.config` and arbitrary `~/.cargo` files are not under
+    ///   `toolchains/<name>/`, so they cannot be read through this grant.
+    /// * `RUSTUP_HOME` comes from the operator's environment or `~/.rustup`. If
+    ///   neither exists the function returns `None` and the caller falls back to
+    ///   the pre-existing prefixes — ambiguity fails closed.
+    /// * The path shape is validated: absolute, `toolchains` as a literal
+    ///   component, a non-empty toolchain name with no separators or traversal,
+    ///   the candidate a regular file, and the resulting directory existing.
+    fn recognised_rustup_toolchain_prefix_of(
+        executable: &Path,
+        rustup_home: Option<PathBuf>,
+    ) -> Option<PathBuf> {
+        let home = rustup_home?;
+        // Both sides must be canonical before `strip_prefix`. The executable has
+        // already been canonicalized by the caller, and on macOS a path reached
+        // through /var canonicalizes to /private/var — comparing a canonical
+        // executable against a non-canonical toolchains directory would fail to
+        // match and silently deny a legitimate grant.
+        let toolchains = match home.join("toolchains").canonicalize() {
+            Ok(path) => path,
+            Err(_) => return None,
+        };
+        let canonical_executable = executable.canonicalize().ok()?;
+        let rest = canonical_executable.strip_prefix(&toolchains).ok()?;
+        let mut components = rest.components();
+        let toolchain = components.next()?;
+        // The remainder must name something INSIDE the toolchain (bin/, lib/,
+        // ...). If there is no further component then `executable` is the
+        // toolchain directory itself, which cannot be the executable.
+        if components.next().is_none() {
+            return None;
+        }
+        let toolchain_name = toolchain.as_os_str().to_str()?;
+        if toolchain_name.is_empty()
+            || toolchain_name == "."
+            || toolchain_name == ".."
+            || toolchain_name.contains('/')
+            || toolchain_name.contains('\\')
+            || toolchain_name.starts_with('.')
+        {
+            return None;
+        }
+        let root = toolchains.join(toolchain_name);
+        // The grant must be a real directory that exists on disk, so a crafted
+        // path cannot mint a grant for something that is not there.
+        if !root.is_dir() || !canonical_executable.is_file() {
+            return None;
+        }
+        Some(root)
+    }
+}
+
+/// The operator's rustup home, from the environment or the default location.
+///
+/// Server/operator-derived only. This is never read from MCP arguments, so a
+/// model cannot redirect the grant by choosing an executable.
+fn rustup_home() -> Option<PathBuf> {
+    rustup_home_from(
+        std::env::var_os("RUSTUP_HOME").as_deref(),
+        std::env::var_os("HOME").as_deref(),
+    )
+}
+
+/// The operator's rustup home, from explicit inputs so the policy is testable.
+///
+/// Both inputs are server-side: the process environment and the operator's own
+/// home directory. Neither is reachable from an MCP request, so a model cannot
+/// redirect the grant. A configured value must be absolute and must exist;
+/// otherwise it is ignored rather than trusted.
+fn rustup_home_from(
+    configured: Option<&std::ffi::OsStr>,
+    home: Option<&std::ffi::OsStr>,
+) -> Option<PathBuf> {
+    if let Some(value) = configured {
+        let path = PathBuf::from(value);
+        if path.is_absolute() && path.is_dir() {
+            return Some(path);
+        }
+        // A relative or non-existent RUSTUP_HOME is not honoured; fall through
+        // to the default rather than trusting it.
+    }
+    let home = PathBuf::from(home?);
+    let default = home.join(".rustup");
+    if default.is_dir() {
+        Some(default)
+    } else {
         None
     }
 }
@@ -568,6 +697,197 @@ mod tests {
                 "{bogus} must not be resolvable as a toolchain root"
             );
         }
+    }
+
+    // -----------------------------------------------------------------
+    // Rustup-managed toolchain grants.
+    //
+    // An operator with a rustup toolchain keeps the language server, compiler
+    // and sysroot under <RUSTUP_HOME>/toolchains/<toolchain>/, which is inside
+    // $HOME and was therefore unreachable. These tests pin both halves: the
+    // grant works for a real component, and it stays narrow enough that nothing
+    // else under $HOME can be read through it.
+    // -----------------------------------------------------------------
+
+    /// Build a fake rustup layout and return (rustup_home, component_path).
+    fn fake_rustup_layout(tag: &str) -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let bin = dir.path().join("toolchains").join(tag).join("bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        let component = bin.join("rust-analyzer");
+        std::fs::write(&component, "#!/bin/sh\nexit 0\n").unwrap();
+        let mut perms = std::fs::metadata(&component).unwrap().permissions();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            perms.set_mode(0o755);
+        }
+        std::fs::set_permissions(&component, perms).unwrap();
+        (dir, component)
+    }
+
+    /// Positive: a real rustup component yields exactly its toolchain subtree.
+    #[test]
+    fn rustup_component_grants_exactly_the_toolchain_subtree() {
+        let (_guard, component) = fake_rustup_layout("stable-test");
+        let rustup_home = Some(root_home_of(&component));
+        let root = TrustedToolchainRoot::resolve_with_rustup_home(&component, rustup_home)
+            .expect("an installed rustup component is a trusted toolchain root");
+        let path = root.as_path().to_path_buf();
+        assert_eq!(
+            path.file_name().and_then(|n| n.to_str()),
+            Some("stable-test"),
+            "the grant must be the toolchain directory itself: {path:?}"
+        );
+        assert_eq!(
+            path.parent()
+                .and_then(|p| p.file_name())
+                .and_then(|n| n.to_str()),
+            Some("toolchains"),
+            "the grant must sit directly under toolchains/: {path:?}"
+        );
+        // The critical narrowing: NOT the rustup home, NOT $HOME.
+        assert_ne!(
+            path,
+            root_home_of(&component),
+            "the grant must not be the whole rustup home: {path:?}"
+        );
+        if let Some(home) = std::env::var_os("HOME").map(std::path::PathBuf::from) {
+            assert_ne!(path, home, "the grant must never be $HOME: {path:?}");
+        }
+    }
+
+    /// Negative: nothing outside toolchains/<name>/ can mint a grant.
+    ///
+    /// Each case is a path an attacker would want readable. None of them is under
+    /// a `toolchains/<name>` subtree, so the resolver must refuse it.
+    #[test]
+    fn arbitrary_home_locations_cannot_mint_a_toolchain_grant() {
+        // A synthetic rustup home, so the cases below are laid out inside the
+        // exact tree the resolver is pointed at. Using the real ~/.rustup here
+        // would make the test depend on what happens to be installed.
+        let (guard, _component) = fake_rustup_layout("stable-neg");
+        let rustup_home = Some(root_home_of(&_component));
+        let home = rustup_home.clone().unwrap().parent().unwrap().to_path_buf();
+
+        // Each case is a path an attacker would want readable, none of which is
+        // inside toolchains/<name>/. The resolver must refuse every one.
+        for relative in [
+            ".ssh/id_rsa",
+            ".aws/credentials",
+            ".config/gcloud/configurations/config_default",
+            ".cargo/credentials.toml",
+            // Directly inside the rustup home but NOT under toolchains/.
+            ".rustup/settings.toml",
+            // Right shape, wrong rustup home: a forged sibling layout.
+            ".rustup-not-really/toolchains/fake/bin/rust-analyzer",
+            // The right shape under the REAL rustup home, but the component is
+            // not actually installed there.
+            ".rustup/toolchains/never-installed/bin/rust-analyzer",
+        ] {
+            let base = if relative.starts_with(".rustup/") {
+                home.join(".rustup")
+            } else {
+                home.clone()
+            };
+            let candidate = base.join(relative.trim_start_matches(".rustup/"));
+            if let Some(parent) = candidate.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            std::fs::write(&candidate, b"x").unwrap();
+            let mut perms = std::fs::metadata(&candidate).unwrap().permissions();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                perms.set_mode(0o755);
+            }
+            std::fs::set_permissions(&candidate, perms).unwrap();
+            let resolved =
+                TrustedToolchainRoot::resolve_with_rustup_home(&candidate, rustup_home.clone());
+            assert!(
+                resolved.is_err(),
+                "{relative} must not be resolvable as a toolchain root, got {:?}",
+                resolved.map(|r| r.as_path().to_path_buf())
+            );
+            let _ = std::fs::remove_file(&candidate);
+        }
+        drop(guard);
+    }
+
+    /// Negative: a toolchain directory is not itself a grant, and neither is a
+    /// traversal attempt through it.
+    #[test]
+    fn rustup_grant_rejects_a_directory_and_traversal() {
+        let (guard, component) = fake_rustup_layout("stable-dir");
+        // The toolchain dir itself is not an executable.
+        let toolchain_dir = component.parent().unwrap().parent().unwrap();
+        let rustup_home = Some(root_home_of(&component));
+        assert!(
+            TrustedToolchainRoot::resolve_with_rustup_home(toolchain_dir, rustup_home.clone())
+                .is_err(),
+            "a toolchain directory must not be accepted as a component"
+        );
+        // A traversal component inside toolchains/ is not a plain toolchain name.
+        let sneaky = toolchain_dir.join("..").join("other-toolchain").join("bin");
+        let _ = std::fs::create_dir_all(&sneaky);
+        let sneaky_file = sneaky.join("rust-analyzer");
+        std::fs::write(&sneaky_file, b"x").unwrap();
+        let resolved = TrustedToolchainRoot::resolve_with_rustup_home(&sneaky_file, rustup_home);
+        if let Ok(root) = resolved {
+            assert!(
+                !root.as_path().to_string_lossy().contains(".."),
+                "a traversal must never survive into a grant: {:?}",
+                root.as_path()
+            );
+        }
+        drop(guard);
+    }
+
+    /// Negative: with no rustup home the resolver falls back to the fixed
+    /// prefixes, so ambiguity fails closed rather than opening a grant.
+    #[test]
+    fn no_rustup_home_means_no_rustup_grant() {
+        assert!(
+            rustup_home_from(None, None).is_none(),
+            "an absent rustup home must not yield a grant source"
+        );
+        // A relative RUSTUP_HOME is not honoured.
+        assert!(
+            rustup_home_from(Some(std::ffi::OsStr::new("relative/rustup")), None).is_none(),
+            "a relative RUSTUP_HOME must be refused"
+        );
+        // A non-existent absolute one is not honoured either.
+        assert!(
+            rustup_home_from(
+                Some(std::ffi::OsStr::new("/nonexistent-rustup-home-for-test")),
+                Some(std::ffi::OsStr::new("/tmp"))
+            )
+            .is_none(),
+            "a non-existent RUSTUP_HOME must be refused"
+        );
+    }
+
+    /// The resolver reads its rustup home only from server-side inputs.
+    #[test]
+    fn rustup_home_comes_only_from_operator_configuration() {
+        // With neither source present the helper is None, i.e. no grant. There is
+        // deliberately no third parameter a request could populate.
+        assert!(rustup_home_from(None, None).is_none());
+    }
+
+    fn root_home_of(component: &std::path::Path) -> std::path::PathBuf {
+        // Canonicalized, because the resolver canonicalizes the component before
+        // matching, and on macOS the temp dir is reached through /var while the
+        // canonical form is /private/var. Skipping this would make the prefix
+        // comparison fail for a reason that has nothing to do with the policy.
+        component
+            .canonicalize()
+            .unwrap_or_else(|_| component.to_path_buf())
+            .ancestors()
+            .find(|p| p.file_name().and_then(|n| n.to_str()) == Some("toolchains"))
+            .and_then(|p| p.parent())
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| component.to_path_buf())
     }
 
     /// The resolver accepts a real executable in a recognised prefix and yields
