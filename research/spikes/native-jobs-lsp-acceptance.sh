@@ -710,8 +710,27 @@ try:
                                         "offset": 0, "limit": 40}))
 
     rec("lsp_symbols", call("lsp_symbols", {"project_id": project_id, "path": "src/lib.rs", "limit": 50}))
+# Goto-definition targets the CALL SITE, not a function's closing brace.
+    # This fixture is:
+    #     1 //! Fixture with cross-file references for LSP navigation.
+    #     2
+    #     3 pub fn helper(value: i32) -> i32 {
+    #     4     value * 2
+    #     5 }
+    #     6
+    #     7 pub fn caller() -> i32 {
+    #     8     helper(21)
+    #     9 }
+    #
+    # The previous coordinates were line 9, column 12. Line 9 is `}`, one
+    # character long, so the product correctly rejected the out-of-range column
+    # with `invalid_arguments: column 12 is out of range for line 9 (length 1)`.
+    # That was a harness bug and the product was right to refuse it.
+    #
+    # Line 8 column 5 (1-based, matching lsp_references below) is the `h` of the
+    # `helper` call, which is what a goto-definition request should resolve.
     rec("lsp_definition", call("lsp_definition", {"project_id": project_id, "path": "src/lib.rs",
-                                                  "line": 9, "column": 12, "limit": 10}))
+                                                   "line": 8, "column": 5, "limit": 10}))
     rec("lsp_references", call("lsp_references", {"project_id": project_id, "path": "src/lib.rs",
                                                   "line": 4, "column": 8,
                                                   "include_declaration": True, "limit": 20}))
