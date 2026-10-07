@@ -580,10 +580,34 @@ job_control_token = sys.argv[11]
 W = {}
 def rec(k, v): W[k] = v
 
+# Child environment.
+#
+# HOME is redirected into the throwaway work directory so the agent cannot read
+# the operator's real home. That isolation is correct and must stay.
+#
+# It must NOT, however, break language-server discovery. Both
+# `rustup_home_from` (webcodex-process) and `rustup_home_dir`
+# (webcodex-lsp) fall back to `$HOME/.rustup`, so with HOME pointing at an empty
+# temp directory BOTH return None: `resolve_rustup_component` never resolves the
+# shim and `TrustedToolchainRoot` never derives the toolchain grant. The observed
+# symptom was `execvp() of '<path>' failed: Operation not permitted` — the same
+# error as before the rustup work, because the fix never got a chance to run.
+#
+# RUSTUP_HOME is therefore forwarded explicitly from the real operator
+# environment. This is server-side configuration: the model cannot influence it,
+# and it names the same toolchain the operator would use interactively, which is
+# exactly what a launchd LaunchAgent would resolve.
+child_env = {**os.environ, "HOME": work}
+_real_rustup_home = os.environ.get("RUSTUP_HOME") or os.path.join(
+    os.path.expanduser("~"), ".rustup")
+if os.path.isdir(_real_rustup_home):
+    child_env["RUSTUP_HOME"] = _real_rustup_home
+rec("child_rustup_home_present", bool(child_env.get("RUSTUP_HOME")))
+
 proc = subprocess.Popen(
     [binary, "serve", "--profile", "chatgpt-safe", "--registry", registry],
     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-    text=True, bufsize=1, env={**os.environ, "HOME": work},
+    text=True, bufsize=1, env=child_env,
 )
 _rid = [0]
 
@@ -1070,6 +1094,17 @@ check "lsp workspace/executeCommand is rejected" "DENIED" "$(readout lsp_exec_cm
 # The host secret lives outside the registered project; no LSP result may echo it.
 check "no host secret appears in any LSP result" "0" "$(readout lsp_symbols count TOP-SECRET-CANARY)"
 check "no host secret appears via lsp_references" "0" "$(readout lsp_references count TOP-SECRET-CANARY)"
+
+# If the language server still cannot start, say whether the toolchain was even
+# discoverable. The previous run redacted the executable path out of the message,
+# which hid the fact that the rustup grant never applied because RUSTUP_HOME was
+# not forwarded. These are preflight facts, not new checks, so they report rather
+# than gate.
+if [ "$(readout child_rustup_home_present value)" != "true" ]; then
+  say "  NOTE: RUSTUP_HOME was not resolvable in the child environment; a"
+  say "        rustup-managed language server cannot be discovered at all."
+  say "        Install the component or set RUSTUP_HOME for the operator."
+fi
 say ""
 
 # --- Jobs ---
