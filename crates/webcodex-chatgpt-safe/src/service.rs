@@ -24,6 +24,7 @@
 //! marker, so it cannot delete an unrelated plist.
 
 use serde_json::{json, Value};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};

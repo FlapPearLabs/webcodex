@@ -474,7 +474,12 @@ fi
 # be recorded; JOB_CONTROL is handed to the brokered job and MUST NOT be. They
 # are generated per run and never appear in the job's command source, so a
 # traceback echoing that source cannot fabricate a match.
-NET_TOKEN_FILE="$WORK/.net-token"
+# The token file MUST be inside the registered project. It used to be written to
+# $WORK/.net-token while the project root is $WORK/project, so the broker denied
+# the job's own token read and the job died before it ever attempted a
+# connection -- which made "brokered job never reached the listener" pass
+# vacuously, for a reason that has nothing to do with the sandbox.
+NET_TOKEN_FILE="$PROJECT/.net-token"
 NET_HOST_TOKEN="HOST_CONTROL_$$_$(date +%s)"
 NET_JOB_TOKEN="JOB_CONTROL_$$_$(date +%s)"
 printf '%s' "$NET_JOB_TOKEN" >"$NET_TOKEN_FILE"
@@ -871,10 +876,24 @@ try:
         #      -> must never be recorded.
         # The token is read from a FILE by the job, never embedded in the job's
         # own source line, so a traceback cannot echo it.
+        #
+        # STAGE REPORTING. The job prints a stage marker BEFORE each step, so the
+        # captured output distinguishes "died reading the token", "reached
+        # create_connection and was denied" and "connected". Without this the
+        # denial check passes for the wrong reason whenever the job fails before
+        # it ever attempts the connection.
+        #
+        # The token file must live INSIDE the registered project. It used to be
+        # written to $WORK/.net-token while the project root is $WORK/project, so
+        # the broker denied the read and the job died before socket() — and
+        # "brokered job never reached the listener" passed vacuously.
         ids["net"] = start("net",
-            "python3 -c \"import socket;s=socket.create_connection(('127.0.0.1',%s),3);"
-            "s.sendall(open('%s').read());print('NETJOB-REACHED-LISTENER');s.close()\""
-            % (listener_port, net_token_file), 30)
+            "python3 -c \"print('STAGE-READING-TOKEN');import socket;"
+            "tok=open('%s').read();print('STAGE-TOKEN-READ');"
+            "s=socket.create_connection(('127.0.0.1',%s),3);"
+            "print('STAGE-CONNECTED');s.sendall(tok.encode());"
+            "print('NETJOB-SENT-TOKEN');s.close()\""
+            % (net_token_file, listener_port), 30)
     poll_until_terminal(["secret", "external", "local_positive", "env", "net"], 180)
 
     # Every required job must have started. A refused start is a harness
@@ -1218,6 +1237,15 @@ d=json.load(open(sys.argv[1]))
 print("true" if d.get("job_control_recorded") else "false")' "$RESULT")"
 check "brokered job did not report a successful connection" "yes" \
       "$( [ "$(jobfield net status)" = "SUCCEEDED" ] && echo no || echo yes )"
+# The denial checks above are only meaningful if the job actually got as far as
+# attempting the connection. Without this, a job that died earlier (bad token
+# path, no python3, wrong cwd) would satisfy every denial check vacuously.
+check "brokered network job reached the connect stage" "1" \
+      "$( [ "$(readout job_deltas count STAGE-CONNECTED)" -ge 1 ] && echo 1 || echo 0 )"
+check "brokered network job read its token" "1" \
+      "$( [ "$(readout job_deltas count STAGE-TOKEN-READ)" -ge 1 ] && echo 1 || echo 0 )"
+check "brokered network job never reported the token as sent" "0" \
+      "$(readout job_deltas count NETJOB-SENT-TOKEN)"
 check "job environment carries no host secret" "0" \
       "$(readout job_deltas count TOP-SECRET-CANARY-VALUE)"
 say ""

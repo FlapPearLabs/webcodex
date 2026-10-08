@@ -19,6 +19,9 @@ use webcodex_process::execution_broker::{
 use webcodex_process::ManagedChild;
 use webcodex_workspace::git_broker::run_git_bounded_read;
 
+/// The service control plane drives launchd, which is macOS-only, and the module
+/// uses unix-only APIs. Gating it here keeps the crate compiling on Windows.
+#[cfg(unix)]
 mod service;
 
 const MAX_REQUEST: usize = 64 * 1024;
@@ -92,7 +95,10 @@ fn run() -> Result<(), String> {
     let raw: Vec<String> = std::env::args().skip(1).collect();
     // Operator-only service control. Never reachable from the MCP tool surface.
     if raw.first().map(String::as_str) == Some("chatgpt") {
+        #[cfg(unix)]
         return service::run(&raw[1..]);
+        #[cfg(not(unix))]
+        return Err("service control is only available on unix".into());
     }
     let mut args = raw.into_iter();
     let command = args.next().unwrap_or_default();

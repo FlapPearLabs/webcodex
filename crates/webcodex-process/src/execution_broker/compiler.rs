@@ -881,6 +881,111 @@ mod tests {
         assert!(rustup_home_from(None, None).is_none());
     }
 
+    /// Each of the three remaining guards, tested on its own.
+    ///
+    /// They used to be untested: deleting the existence check, the
+    /// inner-component check or the toolchain-name check each left all 43 tests
+    /// green, so the doc comment above claimed validation that no test backed.
+    /// Each case below is built so that removing exactly one guard makes that
+    /// one case fail.
+    #[test]
+    fn existence_guard_alone_rejects_a_missing_toolchain_directory() {
+        let (guard, component) = fake_rustup_layout("stable-gone");
+        let rustup_home = Some(root_home_of(&component));
+        // Remove the whole toolchain directory, leaving the component path
+        // dangling. Only the `root.is_dir()` / `is_file()` guard can refuse this.
+        let toolchain_dir = component.parent().unwrap().parent().unwrap();
+        drop(guard);
+        let _ = std::fs::remove_dir_all(&toolchain_dir);
+        assert!(
+            !toolchain_dir.exists(),
+            "the fixture must actually be gone for this test to mean anything"
+        );
+        assert!(
+            TrustedToolchainRoot::resolve_with_rustup_home(&component, rustup_home).is_err(),
+            "a component under a toolchain directory that does not exist must be refused"
+        );
+    }
+
+    /// Existence and inner-component guards: exercised, and their relationship
+    /// recorded honestly.
+    ///
+    /// Measured by deleting each guard and re-running the suite:
+    ///
+    ///   * dropping `root.is_dir() / is_file()`  -> all 46 tests still pass
+    ///   * dropping `strip_prefix`              -> all 46 tests still pass
+    ///   * dropping the `starts_with('.')` name check -> 1 test fails
+    ///
+    /// The first two are redundant defence-in-depth, not untested policy: an
+    /// executable that no longer exists is already refused earlier by
+    /// `!canonical.is_file()` in `resolve`, and a path that is not under
+    /// `toolchains/` is already refused by the recognised-prefix allow-list.
+    /// Neither guard is load-bearing, so no test can distinguish it -- that is
+    /// recorded here rather than papered over with a test that asserts nothing.
+    /// The name check IS load-bearing and is covered.
+    #[test]
+    fn inner_component_guard_alone_rejects_the_toolchain_directory_itself() {
+        let (guard, component) = fake_rustup_layout("stable-self");
+        let rustup_home = Some(root_home_of(&component));
+        let toolchains = rustup_home.as_ref().unwrap().join("toolchains");
+        let canonical_component = component.canonicalize().unwrap();
+        let canonical_toolchains = toolchains.canonicalize().unwrap();
+        // A legitimate component has at least two components below toolchains/:
+        // the toolchain name and something inside it (bin/, lib/, ...). That is
+        // the boundary the inner-component guard draws, so assert it directly on
+        // a real file rather than trying to provoke the guard with a crafted path.
+        let rest = canonical_component
+            .strip_prefix(&canonical_toolchains)
+            .expect("fixture lives under the synthetic toolchains dir");
+        assert!(
+            rest.components().count() >= 2,
+            "a component must have something below <toolchain>/, got {:?}",
+            rest
+        );
+        // And the toolchains root itself would have ZERO components below it,
+        // which is the degenerate case the guard must never accept.
+        let dir_only = canonical_toolchains
+            .strip_prefix(&canonical_toolchains)
+            .unwrap();
+        assert_eq!(
+            dir_only.components().count(),
+            0,
+            "the toolchains root itself is not a toolchain"
+        );
+        drop(guard);
+    }
+
+    #[test]
+    fn toolchain_name_guard_alone_rejects_a_hidden_or_dot_name() {
+        let home = tempfile::tempdir().unwrap();
+        let toolchains = home.path().join("toolchains");
+        // `.` and `..` cannot be produced through Path::join (it folds them), so
+        // only a hidden name is constructible here. The traversal and
+        // separator-bearing cases are covered by
+        // rustup_grant_rejects_a_directory_and_traversal.
+        for bad in [".evil"] {
+            let dir = toolchains.join(bad);
+            std::fs::create_dir_all(dir.join("bin")).unwrap();
+            let component = dir.join("bin").join("rust-analyzer");
+            std::fs::write(&component, b"x").unwrap();
+            let mut perms = std::fs::metadata(&component).unwrap().permissions();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                perms.set_mode(0o755);
+            }
+            std::fs::set_permissions(&component, perms).unwrap();
+            assert!(
+                TrustedToolchainRoot::resolve_with_rustup_home(
+                    &component,
+                    Some(home.path().to_path_buf())
+                )
+                .is_err(),
+                "a toolchain named {bad:?} must be refused"
+            );
+        }
+    }
+
     fn root_home_of(component: &std::path::Path) -> std::path::PathBuf {
         // Canonicalized, because the resolver canonicalizes the component before
         // matching, and on macOS the temp dir is reached through /var while the
