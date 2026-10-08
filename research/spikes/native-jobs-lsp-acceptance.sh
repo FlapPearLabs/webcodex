@@ -1239,6 +1239,13 @@ say ""
 # This is classification, NOT skipping: every check above still ran and still
 # prints PASS or FAIL, and the FAILED CHECKS list below is exhaustive.
 declare -a FAILED_JOBS=() FAILED_LSP=() FAILED_SECURITY=()
+# Under `set -u`, expanding an EMPTY array as "${ARR[@]}" is an unbound-variable
+# error. A fully green run has zero failed checks, so this loop is reached with
+# FAILED_CHECKS empty -- and the previous version died right there, printing the
+# error and exiting 1 after reporting 45 passed / 0 failed. An all-green run must
+# be able to report success, so every iteration over a possibly-empty array is
+# length-guarded.
+if [ "${#FAILED_CHECKS[@]}" -gt 0 ]; then
 for entry in "${FAILED_CHECKS[@]}"; do
   # Order matters, and it is security-first on purpose.
   #
@@ -1270,6 +1277,7 @@ for entry in "${FAILED_CHECKS[@]}"; do
       FAILED_SECURITY+=("$entry") ;;
   esac
 done
+fi
 
 if [ "$FAIL_COUNT" -ne 0 ]; then
   say "FAILED CHECKS (all of them, by surface):"
